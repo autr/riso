@@ -110,8 +110,8 @@ export default [
     {
         "name": "FLATALLIC GOLD",
         "japanese": "フラッタリックゴールド",
-        "rgb": "PART #\nS-2772 + S-4403",
-        "pantone": "RGB\n180, 143, 80"
+        "rgb": "180, 143, 80",
+        "pantone": ""
     },
     {
         "name": "METALLIC GOLD",
@@ -446,8 +446,8 @@ export default [
     {
         "name": "WHITE",
         "japanese": "白",
-        "rgb": "CMYK\n0, 0, 0 ,0",
-        "pantone": "RGB\n255, 255, 255"
+        "rgb": "255, 255, 255",
+        "pantone": ""
     },
     {
         "name": "AQUA",
@@ -464,8 +464,8 @@ export default [
     {
         "name": "CLEAR MEDIUM",
         "japanese": "透明な培地",
-        "rgb": "Z-TYPE\nS-6343",
-        "pantone": "RGB\n242,242,242"
+        "rgb": "242,242,242",
+        "pantone": ""
     },
     {
         "name": "FLUORESCENT YELLOW",
@@ -484,11 +484,5 @@ export default [
         "japanese": "蛍光グリーン",
         "rgb": "68, 214, 44",
         "pantone": "802 U"
-    },
-    {
-        "name": "Riso Ink Colors",
-        "japanese": "",
-        "rgb": "",
-        "pantone": ""
     }
 ]

@@ -291,19 +291,22 @@ void main(void) {
 				<span class="">{colour?.japanese || '~'}</span>
 			</span>
 			<div 
-				class="flex abs l0 t100pc w100pc maxh50vh b1-solid bg wrap overflow-auto z-index99"
+				class="flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99"
 				class:none={ !overlay }>
 				{#each colours as c}
 					<div 
 						on:click={ e => select(c) }
 						style={`background-color:rgb(${c.rgb});margin-top:-1px`}
-						class="flex column p0-5 pointer no-basis grow minw16em clickable minh0em">
+						class="flex column pointer no-basis grow minw16em clickable minh0em">
 						<span 
-							class="inverted flex column">
+							class="inverted flex column p1">
 							<span>{c.name}</span>
-							<span>{c.japanese}</span>
+							<span>{c.japanese || '-'}</span>
 						</span>
 					</div>
+				{/each}
+				{#each new Array(10) as ii,i}
+					<span class="flex column pointer no-basis grow minw16em clickable h0em" style="line-height:0px;max-height:0px" />
 				{/each}
 			</div>
 		</div>
