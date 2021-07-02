@@ -22,6 +22,40 @@
 
 	})
 
+	let uniforms = {}
+
+	function setUniforms( bg ) {
+		uniforms.invert = bg
+		console.log('UNIS', uniforms)
+	}
+
+	$: setUniforms( BG )
+
+	function background() {
+
+		bg = new PIXI.Sprite( image.texture )
+
+		const fragment = `
+uniform bool invert;
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;
+
+void main(void) {
+
+	vec3 color = vec3(texture2D(uSampler, vTextureCoord));
+	gl_FragColor = (!invert) ? vec4(1.0) : vec4(0.0);
+
+}`
+
+
+
+	    let filter = new PIXI.Filter(null, fragment, uniforms)
+		bg.filters = [ filter ]
+
+
+		stage.addChild( bg )
+	}
+
 	function loaded(obj, resources) {
 
 		image = resources[src]
@@ -37,9 +71,6 @@
 
 		stage = app.stage
 
-		bg = new PIXI.Graphics()
-		bg.beginFill( 0x000000 )
-		bg.drawRect(0, 0, image.data.width, image.data.height)
 		// stage.addChild(bg)
 
 		// app.renderer.backgroundColor = 0x000000
@@ -52,6 +83,8 @@
 		add()
 		// add()
 		// add()
+
+		background()
 
 
 		raw = new PIXI.Sprite( image.texture )
@@ -71,10 +104,8 @@
 
 	let BG = false
 
-	function background() {
+	function invert() {
 		BG = !BG
-		stage.removeChild(bg)
-		BG ? bg.beginFill( 0x000000 ) : bg.beginFill( 0xFFFFFF )
 	}
 
 
@@ -102,7 +133,7 @@
 		<footer class="bt1-solid p1">
 			<button on:click={e => (e.target.blur())} on:click={add}>new layer</button>
 			<button on:click={e => (e.target.blur())} class:filled={mode} on:click={toggle}>view</button>
-			<button on:click={e => (e.target.blur())} on:click={background}>background</button>
+			<button on:click={e => (e.target.blur())} on:click={invert}>background</button>
 		</footer>
 	</div>
 	<section class="p0 grow flex row-center-center overflow-auto" bind:this={editor}>

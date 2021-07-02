@@ -151,7 +151,7 @@ void main(void) {
 		sprite.filters = [ filter ]
 
 		// filter.blendMode = PIXI.BLEND_MODES.SCREEN
-		// sprite.blendMode = PIXI.BLEND_MODES.NORMAL
+		sprite.blendMode = PIXI.BLEND_MODES.SCREEN
 
 		stage.addChild( sprite )
 
