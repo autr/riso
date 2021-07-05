@@ -4,41 +4,109 @@
 	import { onMount } from 'svelte'
 	import Layer from './Layer.svelte'
 	import { get, set } from 'idb-keyval'
+	import colorString from 'color-string'
+	import rectd from './rectd.js'
 
-	let main, editor, app, stage, image, loader, ticker, mode, raw, bg
+	let main, editor, app, stage, image, loader, ticker, mode, raw, bg, group
 
-	export let src = 'sources/002.png'
+	export let src = 'sources/swiss.png'
+
+	const gen = {
+		bg: (name, colour, grain) => ({
+			name,
+			colour: colorString.get.hsl(colour),
+			grain
+		}),
+		size: (name, width, height) => ({
+			name,
+			xy: [width,height]
+		})
+	}
+
+	let options = {
+		backgrounds: [
+			gen.bg( 'Ultra black', `hsl(0, 0%, 5%)`, 0.5),
+			gen.bg( 'Blue black', `hsl(200, 60%, 10%)`, 0.5),
+			gen.bg( 'Bone white', `hsl(0, 0%, 98%)`, 0.1),
+			gen.bg( 'Warm white', `hsl(50, 90%, 97%)`, 0.1)
+		],
+		sizes: [
+			gen.size( 'A4 (landscape)', 297, 210 ),
+			gen.size( 'A4 (portrait)', 210, 297 ),
+			gen.size( 'A3 (landscape)', 420, 297 ),
+			gen.size( 'A3 (portrait)', 297, 420 ),
+			gen.size( 'A2 (landscape)', 594, 420 ),
+			gen.size( 'A2 (portrait)', 420, 594 )
+		]
+	}
 
 	export let project = {
 		layers: [],
-		config: {},
-		files: []
+		config: {
+			background: options.backgrounds[0].name,
+			size: options.sizes[0].name,
+			dpi: 300,
+			margin: 0
+		},
+		files: [ 'sources/swiss.png' ]
 	}
-	let layers = []
 
 	onMount( setup )
 
 	let uniforms = {}
 
-	function setUniforms( bg ) {
-		uniforms.invert = bg
+	$: _uniforms = {
+		hsla: options.backgrounds.find( b => b.name == project.config.background ).colour,
+		size: options.sizes.find( b => b.name == project.config.size ).xy
 	}
 
-	$: setUniforms( BG )
+	function setUniforms( unis ) {
+		uniforms.hsla = unis.hsla
+		uniforms.size = unis.size
+	}
 
-	function background() {
+	$: setUniforms( _uniforms )
+
+	const mm2px = mm => ( Math.round( ( project.config.dpi / 25.4 ) * mm ) )
+
+	$: calculate = {
+		width: mm2px( _uniforms.size[0] ) * 0.25,
+		height: mm2px( _uniforms.size[1] ) * 0.25
+	}
+
+	let fit = {}
+
+	async function update( config ) {
+		if (app?.renderer) {
+			console.log('[Project] update sizes')
+			const { width, height } = calculate
+			await app.renderer.resize( width, height )
+			const print = rectd.neu(0, 0, image.data.width, image.data.height )
+			const inner = rectd.shrinkBy( rectd.neu( 0, 0, width, height ), mm2px( project.config.margin ) )
+			fit = rectd.fitInto( print, inner )
+			rectd.auto( fit, group )
+
+		}
+	}
+
+	$: update( project.config )
+
+	function createBackground() {
 
 		bg = new PIXI.Sprite( image.texture )
 
 		const fragment = `
+${lib}
 uniform bool invert;
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
+uniform vec4 hsla;
 
 void main(void) {
 
-	vec3 color = vec3(texture2D(uSampler, vTextureCoord));
-	gl_FragColor = (!invert) ? vec4(1.0) : vec4(0.0);
+	vec3 bg3 = vec3(hsla.x / 360.0, hsla.y / 100.0, hsla.z / 100.0);
+	vec4 bg4 = vec4( hsl2rgb( bg3 ), 1.0 );
+	gl_FragColor = bg4;
 
 }`
 
@@ -46,15 +114,17 @@ void main(void) {
 		bg.filters = [ filter ]
 
 		stage.addChild( bg )
+		window.group = group = new PIXI.Container()
+		stage.addChild( group )
 	}
 
 	function loaded(obj, resources) {
 
 		image = resources[src]
 
-		app = new PIXI.Application({
-			width: image.data.width, 
-			height: image.data.height,
+		window.app = app = new PIXI.Application({
+			width: calculate.width, 
+			height: calculate.height,
 			antialias: false,
 			transparent: true,
 			resolution: 1,
@@ -62,31 +132,28 @@ void main(void) {
 		})
 
 		stage = app.stage
-
-		// stage.addChild(bg)
-
-		// app.renderer.backgroundColor = 0x000000
 		editor.appendChild(app.view)
 
-
-		add()
-
-		background()
-
-
+		addLayer()
+		createBackground()
 		raw = new PIXI.Sprite( image.texture )
 	}
 
-	function toggle() {
-		mode = !mode
-		mode ? stage.addChild( raw ) : stage.removeChild( raw )
+	function togglePreview( b ) {
+		mode = b
+		if (mode) {
+			rectd.auto( fit, raw )
+			stage.addChild( raw )
+		} else {
+			stage.removeChild( raw )
+		}
 	}
 
-	function add() {
-		let cp = layers
-		layers = []
+	function addLayer() {
+		let cp = project.layers
+		project.layers = []
 		cp.push( {} )
-		layers = cp
+		project.layers = cp
 	}
 
 	let BG = false
@@ -95,52 +162,72 @@ void main(void) {
 		BG = !BG
 	}
 
+	async function loadImages() {
+		console.log('LOADING IMAGES')
+		if (!loader) loader = new PIXI.Loader()
+		await loader.reset()
+		for (const file of project.files) loader.add( file, { crossOrigin: 'anonymous' })
+		loader.load( loaded )
+	}
+
+	async function setup() {
+
+		await loadImages()
+		await loadDb()
+		await requestAll()
+
+	}
 
 
+	// --------- App --------------
 
 	function selectImage( e ) {
 		console.log('IMAGE CLICKED!', e)
 	}
 
 
-
-	async function setup() {
-
-		loader = new PIXI.Loader()
-		loader.add( src, {
-			crossOrigin: 'anonymous'
-		} )
-		loader.load( loaded )
-		handles = await get( FILES_KEY )
-
-	}
-
-	async function requestFile( handle ) {
-
-		let opts = {mode: 'read'}
-		let permission = await handle.queryPermission(opts)
-		if (permission  != 'granted') permission = await handle.requestPermission(opts)
-		if (permission == 'granted') {
-			const file = await handle.getFile()
-			srcs[handle.name] = URL.createObjectURL(file)
-		} else {
-			window.alert(`Could not load ${handle.name}!`)
+	let handles = [
+		{
+			name: 'color_test.png',
+			url: 'sources/swiss.png',
+			static: true
 		}
-	}
-
-	async function loadFiles() {
-
-		handles = await get( FILES_KEY )
-		for( const handle of handles) requestFile( handle )
-	}
-
-
-
-	let handles = []
+	]
 	let srcs = {}
 	const KEY = 'RISOGRAPHINATOR'
 	const FILES_KEY = `${KEY}_FILES`
 	const PROJECTS_KEY = `${KEY}_PROJECTS`
+
+
+	async function requestFile( handle ) {
+
+		if (handle.static) {
+			srcs[handle.name] = handle
+		} else {
+
+	 		let opts = {mode: 'read'}
+			let permission = await handle.queryPermission(opts)
+			if (permission  != 'granted') permission = await handle.requestPermission(opts)
+			if (permission == 'granted') {
+				const file = await handle.getFile()
+				srcs[handle.name] = {
+					name: handle.name,
+					url: URL.createObjectURL(file)
+				}
+			} else {
+				window.alert(`Could not load ${handle.name}!`)
+			}
+		}
+	}
+
+	async function loadDb() {
+		handles = handles.concat( (await get( FILES_KEY )) || [] )
+	}
+
+	async function requestAll() {
+		await loadDb()
+		for( const handle of handles) requestFile( handle )
+	}
 
 	async function accessFiles(e) {
 		let neu = await window.showOpenFilePicker({
@@ -155,20 +242,20 @@ void main(void) {
 		})
 
 		handles = handles.concat(neu)
-		await set( FILES_KEY, handles )
-		await loadFiles()
+		await set( FILES_KEY, handles.filter( h => !h.static ) )
+		await requestAll()
 	}
 
 	let isSynced = false
 
-	function checkSync( handles, srcs ) {
+	function syncSrcs( handles, srcs ) {
 		isSynced = true
 		for( const handle of handles ) {
 			if (!srcs[handle.name]) isSynced = false
 		}
 	}
 
-	$: checkSync(handles, srcs)
+	$: syncSrcs(handles, srcs)
 
 
 	let FILES = {}
@@ -181,7 +268,12 @@ void main(void) {
 		const idx = cp.indexOf(handle)
 		if (idx != -1) cp.splice( idx, 1 )
 		handles = cp
-		await set( FILES_KEY, handles )
+		await set( FILES_KEY, handles.filter( h => !h.static ) )
+	}
+	async function clearAllHandles( handle ) {
+		if (!window.confirm(`Remove all files from bin?`)) return
+		handles = handles.filter( h => h.static )
+		await set( FILES_KEY, [] )
 	}
 
 	let classes = {
@@ -193,14 +285,9 @@ void main(void) {
 
 <main 
 	style
-	bind:this={main} class="flex row-stretch-stretch bg">
-	<div class="basis30pc minw42em maxw52em flex column-stretch-stretch grow minh100vh maxh100vh">
+	bind:this={main} class="flex row-stretch-stretch bg overflow-auto">
+	<div class="basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh">
 		<header class="bb1-solid p1 br1-solid">
-			RISO
-			<button on:click={loadFiles}>Load</button>
-			<button on:click={e => (e.target.blur())} on:click={add}>new layer</button>
-			<button on:click={e => (e.target.blur())} class:filled={mode} on:click={toggle}>view</button>
-			<button on:click={e => (e.target.blur())} on:click={invert}>background</button>
 		</header>
 		<sidebar 
 			class="flex row grow overflow-hidden">
@@ -208,7 +295,7 @@ void main(void) {
 				<div class="p1">
 					<button 
 						disabled={isSynced}
-						on:click={loadFiles} 
+						on:click={requestAll} 
 						class="w100pc">
 						Sync files
 					</button>
@@ -217,8 +304,13 @@ void main(void) {
 						class="w100pc mt1">
 						Add files
 					</button>
+					<button 
+						on:click={clearAllHandles} 
+						class="w100pc mt1">
+						Clear all
+					</button>
 				</div>
-				{#each handles as handle, i}
+				{#each handles.reverse() as handle, i}
 					<div 
 						class:bt1-solid={i==0}
 						class="rel bb1-solid file">
@@ -239,7 +331,7 @@ void main(void) {
 								<img 
 									class="pointer" 
 									on:click={selectImage} 
-									src={srcs[handle.name]} 
+									src={srcs[handle.name].url} 
 									alt={handle.name} />
 						{:else}
 							<div 
@@ -255,20 +347,70 @@ void main(void) {
 					<div class="p1">No files</div>
 				{/if}
 			</section>
-			<section class={classes.lanes}>
+			<section class={classes.lanes + ' basis0pc'}>
+				PROJECTS
 			</section>
-			<section class={classes.lanes + ' p1'}>
-				{#each layers as layer, index}
+			<section id="layers" class={classes.lanes + ' basis20pc'}>
+				<div class="p1 flex column cmb1">
+					<div>
+						{calculate.width} x {calculate.height}
+					</div>
+					<div class="select">
+						<select bind:value={project.config.background}>
+							{#each options.backgrounds as bg}
+								<option value={bg.name} name={bg.name}>{bg.name}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="select">
+						<select bind:value={project.config.size}>
+							{#each options.sizes as sz}
+								<option value={sz.name} name={sz.name}>{sz.name}</option>
+							{/each}
+						</select>
+					</div>
+					<input 
+						min={150}
+						max={600}
+						step={50}
+						type="number" 
+						placeholder="DPI" 
+						bind:value={project.config.dpi} />
+					<input 
+						min={0}
+						max={Math.max( _uniforms.size[0], _uniforms.size[1] ) * 0.4 }
+						step={1}
+						type="number" 
+						placeholder="Margin" 
+						bind:value={project.config.margin} />
+					<button 
+						class="w100pc"
+						on:click={e => (e.target.blur())} 
+						on:click={addLayer}>
+						Add layer
+					</button>
+				</div>
+				{#each project.layers as layer, index}
 					<Layer 
 						{index}
+						bind:group={group}
 						bind:layer={layer} 
 						bind:mode={mode} 
 						bind:stage={stage} 
 						bind:image={image} />
 				{/each}
 			</section>
+			<section class="no-basis w2em br1-solid">
+				Hello
+			</section>
 		</sidebar>
 	</div>
-	<section class="basis70pc  p0 grow flex row-center-center overflow-auto" bind:this={editor}>
+	<section 
+		on:mousedown={ e => togglePreview( true ) }
+		on:mouseup={ e => togglePreview( false ) }
+		class="basis70pc minw50em pointer grow flex row-center-flex-start overflow-auto maxh100vh overflow-auto">
+		<div
+			class="flex p4"
+			bind:this={editor} />
 	</section>
 </main>

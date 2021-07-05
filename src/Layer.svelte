@@ -10,6 +10,7 @@
 	export let mode
 	export let uniforms = {}
 	export let index = 0
+	export let group
 
 	let sprite
 
@@ -93,27 +94,28 @@ vec4 extract( vec3 hsv ) {
 
 	if ( within( hsv.x, very_low, very_high ) != 0 ) {
 
+		float sat = hsv.y;
 		float bright = hsv.z;
 
 		int LOW = within( hsv.x, very_low, low );
-		int HIGH = within( hsv.x, very_low, low );
+		int HIGH = within( hsv.x, high, very_high );
 		float HUE = hsv.x;
 
 		if ( LOW != 0 ) {
 			if (LOW == 2) HUE += 1.0;
 			if (LOW == 3) HUE -= 1.0;
-			bright *= map( HUE, very_low, low, 0.0, 1.0 );
+			sat *= map( HUE, very_low, low, 0.0, 1.0 );
 		} else if ( HIGH != 0 ) {
 			if (HIGH == 2) HUE += 1.0;
 			if (HIGH == 3) HUE -= 1.0;
-			bright *= map( HUE, high, very_high, 1.0, 0.0 );
+			sat *= map( HUE, high, very_high, 1.0, 0.0 );
 		}
 
-		bright = map(bright + (levels_mid - 0.5), levels_black, levels_white, 0.0, 1.0 );
-		if (bright > inked.z && inked.y != 0.0) bright = inked.z;
+		sat = map(sat + (levels_mid - 0.5), levels_black, levels_white, 0.0, 1.0 );
+		if (sat > inked.z && inked.y != 0.0) sat = inked.z;
 
 		vec4 cp = ink;
-		cp *= bright * opacity;
+		cp *= sat * opacity;
 		return cp;
 	} else {
 		return vec4(0.0,0.0,0.0,0.0);
@@ -153,14 +155,7 @@ void main(void) {
 		// filter.blendMode = PIXI.BLEND_MODES.SCREEN
 		sprite.blendMode = PIXI.BLEND_MODES.SCREEN
 
-		stage.addChild( sprite )
-
-
-		// container = new PIXI.Container()
-		// container.addChild( sprite )
-		// container.blendMode = PIXI.BLEND_MODES.ADD
-		// container.filters = [getBlendFilter(PIXI.BLEND_MODES.SCREEN)]
-		// stage.addChild( container )
+		group.addChild( sprite )
 
 		visualise()
 
@@ -295,10 +290,12 @@ void main(void) {
 			{#each Object.entries(ui) as [name, two]}
 				{#each Object.entries(two) as [id, o]}
 					<div class="flex column cmb0-2">
-						<label class="capitalize flex row-space-between-flex-start">
-							<span>{id.replace('_', ' ')}</span>
-							<span class="monospace">{o.value.toFixed(2)}</span>
-						</label>
+						{#if id != 'levels_mid' && id != 'levels_white' }
+							<label class="capitalize flex row-space-between-flex-start">
+								<span>{id.replace('_', ' ').replace('black', '')}</span>
+								<span class="monospace">{o.value.toFixed(2)}</span>
+							</label>
+						{/if}
 						<input 
 							class=""
 							type="range" 

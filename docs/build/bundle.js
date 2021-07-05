@@ -45022,54 +45022,54 @@ b_res.rgb *= mult.a;
 
     function get_each_context$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[27] = list[i][0];
-    	child_ctx[28] = list[i][1];
+    	child_ctx[28] = list[i][0];
+    	child_ctx[29] = list[i][1];
     	return child_ctx;
     }
 
     function get_each_context_1$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[31] = list[i][0];
-    	child_ctx[32] = list[i][1];
-    	child_ctx[33] = list;
-    	child_ctx[34] = i;
+    	child_ctx[32] = list[i][0];
+    	child_ctx[33] = list[i][1];
+    	child_ctx[34] = list;
+    	child_ctx[35] = i;
     	return child_ctx;
     }
 
-    function get_each_context_2(ctx, list, i) {
+    function get_each_context_2$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[35] = list[i];
-    	child_ctx[37] = i;
+    	child_ctx[36] = list[i];
+    	child_ctx[38] = i;
     	return child_ctx;
     }
 
-    function get_each_context_3(ctx, list, i) {
+    function get_each_context_3$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[38] = list[i];
+    	child_ctx[39] = list[i];
     	return child_ctx;
     }
 
     function get_each_context_4(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[41] = list[i];
-    	child_ctx[37] = i;
+    	child_ctx[42] = list[i];
+    	child_ctx[38] = i;
     	return child_ctx;
     }
 
-    // (259:5) {#each types as t,i}
+    // (254:5) {#each types as t,i}
     function create_each_block_4(ctx) {
     	let option;
-    	let t_value = /*t*/ ctx[41] + "";
+    	let t_value = /*t*/ ctx[42] + "";
     	let t;
 
     	const block = {
     		c: function create() {
     			option = element("option");
     			t = text(t_value);
-    			option.__value = /*i*/ ctx[37];
+    			option.__value = /*i*/ ctx[38];
     			option.value = option.__value;
-    			attr_dev(option, "name", /*t*/ ctx[41]);
-    			add_location(option, file$1, 259, 6, 6267);
+    			attr_dev(option, "name", /*t*/ ctx[42]);
+    			add_location(option, file$1, 254, 6, 6065);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -45085,29 +45085,29 @@ b_res.rgb *= mult.a;
     		block,
     		id: create_each_block_4.name,
     		type: "each",
-    		source: "(259:5) {#each types as t,i}",
+    		source: "(254:5) {#each types as t,i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (276:5) {#each colours as c}
-    function create_each_block_3(ctx) {
+    // (271:5) {#each colours as c}
+    function create_each_block_3$1(ctx) {
     	let div;
     	let span2;
     	let span0;
-    	let t0_value = /*c*/ ctx[38].name + "";
+    	let t0_value = /*c*/ ctx[39].name + "";
     	let t0;
     	let t1;
     	let span1;
-    	let t2_value = (/*c*/ ctx[38].japanese || "-") + "";
+    	let t2_value = (/*c*/ ctx[39].japanese || "-") + "";
     	let t2;
     	let mounted;
     	let dispose;
 
     	function click_handler_1(...args) {
-    		return /*click_handler_1*/ ctx[17](/*c*/ ctx[38], ...args);
+    		return /*click_handler_1*/ ctx[18](/*c*/ ctx[39], ...args);
     	}
 
     	const block = {
@@ -45119,13 +45119,13 @@ b_res.rgb *= mult.a;
     			t1 = space();
     			span1 = element("span");
     			t2 = text(t2_value);
-    			add_location(span0, file$1, 282, 8, 7036);
-    			add_location(span1, file$1, 283, 8, 7066);
+    			add_location(span0, file$1, 277, 8, 6834);
+    			add_location(span1, file$1, 278, 8, 6864);
     			attr_dev(span2, "class", "inverted flex column p1");
-    			add_location(span2, file$1, 280, 7, 6980);
-    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[38].rgb});margin-top:-1px`);
+    			add_location(span2, file$1, 275, 7, 6778);
+    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[39].rgb});margin-top:-1px`);
     			attr_dev(div, "class", "flex column pointer no-basis grow minw16em clickable minh0em");
-    			add_location(div, file$1, 276, 6, 6791);
+    			add_location(div, file$1, 271, 6, 6589);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -45153,17 +45153,17 @@ b_res.rgb *= mult.a;
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block_3.name,
+    		id: create_each_block_3$1.name,
     		type: "each",
-    		source: "(276:5) {#each colours as c}",
+    		source: "(271:5) {#each colours as c}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (288:5) {#each new Array(10) as ii,i}
-    function create_each_block_2(ctx) {
+    // (283:5) {#each new Array(10) as ii,i}
+    function create_each_block_2$1(ctx) {
     	let span;
 
     	const block = {
@@ -45172,7 +45172,7 @@ b_res.rgb *= mult.a;
     			attr_dev(span, "class", "flex column pointer no-basis grow minw16em clickable h0em");
     			set_style(span, "line-height", "0px");
     			set_style(span, "max-height", "0px");
-    			add_location(span, file$1, 288, 6, 7181);
+    			add_location(span, file$1, 283, 6, 6979);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, span, anchor);
@@ -45184,16 +45184,16 @@ b_res.rgb *= mult.a;
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block_2.name,
+    		id: create_each_block_2$1.name,
     		type: "each",
-    		source: "(288:5) {#each new Array(10) as ii,i}",
+    		source: "(283:5) {#each new Array(10) as ii,i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (294:2) {#if type == 0}
+    // (289:2) {#if type == 0}
     function create_if_block$1(ctx) {
     	let each_1_anchor;
     	let each_value = Object.entries(/*ui*/ ctx[0]);
@@ -45254,74 +45254,105 @@ b_res.rgb *= mult.a;
     		block,
     		id: create_if_block$1.name,
     		type: "if",
-    		source: "(294:2) {#if type == 0}",
+    		source: "(289:2) {#if type == 0}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (296:4) {#each Object.entries(two) as [id, o]}
-    function create_each_block_1$1(ctx) {
-    	let div;
+    // (293:6) {#if id != 'levels_mid' && id != 'levels_white' }
+    function create_if_block_1$1(ctx) {
     	let label;
     	let span0;
-    	let t0_value = /*id*/ ctx[31].replace("_", " ") + "";
+    	let t0_value = /*id*/ ctx[32].replace("_", " ").replace("black", "") + "";
     	let t0;
     	let t1;
     	let span1;
-    	let t2_value = /*o*/ ctx[32].value.toFixed(2) + "";
+    	let t2_value = /*o*/ ctx[33].value.toFixed(2) + "";
     	let t2;
-    	let t3;
-    	let input;
-    	let input_min_value;
-    	let input_max_value;
-    	let t4;
-    	let mounted;
-    	let dispose;
-
-    	function input_change_input_handler() {
-    		/*input_change_input_handler*/ ctx[18].call(input, /*each_value_1*/ ctx[33], /*each_index_1*/ ctx[34]);
-    	}
 
     	const block = {
     		c: function create() {
-    			div = element("div");
     			label = element("label");
     			span0 = element("span");
     			t0 = text(t0_value);
     			t1 = space();
     			span1 = element("span");
     			t2 = text(t2_value);
-    			t3 = space();
-    			input = element("input");
-    			t4 = space();
-    			add_location(span0, file$1, 298, 7, 7556);
+    			add_location(span0, file$1, 294, 8, 7412);
     			attr_dev(span1, "class", "monospace");
-    			add_location(span1, file$1, 299, 7, 7599);
+    			add_location(span1, file$1, 295, 8, 7477);
     			attr_dev(label, "class", "capitalize flex row-space-between-flex-start");
-    			add_location(label, file$1, 297, 6, 7488);
-    			attr_dev(input, "class", "");
-    			attr_dev(input, "type", "range");
-    			attr_dev(input, "min", input_min_value = /*o*/ ctx[32].min);
-    			attr_dev(input, "max", input_max_value = /*o*/ ctx[32].max);
-    			attr_dev(input, "step", 1 / 360);
-    			add_location(input, file$1, 301, 6, 7672);
-    			attr_dev(div, "class", "flex column cmb0-2");
-    			add_location(div, file$1, 296, 5, 7449);
+    			add_location(label, file$1, 293, 7, 7343);
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			append_dev(div, label);
+    			insert_dev(target, label, anchor);
     			append_dev(label, span0);
     			append_dev(span0, t0);
     			append_dev(label, t1);
     			append_dev(label, span1);
     			append_dev(span1, t2);
-    			append_dev(div, t3);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty[0] & /*ui*/ 1 && t0_value !== (t0_value = /*id*/ ctx[32].replace("_", " ").replace("black", "") + "")) set_data_dev(t0, t0_value);
+    			if (dirty[0] & /*ui*/ 1 && t2_value !== (t2_value = /*o*/ ctx[33].value.toFixed(2) + "")) set_data_dev(t2, t2_value);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(label);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1$1.name,
+    		type: "if",
+    		source: "(293:6) {#if id != 'levels_mid' && id != 'levels_white' }",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (291:4) {#each Object.entries(two) as [id, o]}
+    function create_each_block_1$1(ctx) {
+    	let div;
+    	let t0;
+    	let input;
+    	let input_min_value;
+    	let input_max_value;
+    	let t1;
+    	let mounted;
+    	let dispose;
+    	let if_block = /*id*/ ctx[32] != "levels_mid" && /*id*/ ctx[32] != "levels_white" && create_if_block_1$1(ctx);
+
+    	function input_change_input_handler() {
+    		/*input_change_input_handler*/ ctx[19].call(input, /*each_value_1*/ ctx[34], /*each_index_1*/ ctx[35]);
+    	}
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			if (if_block) if_block.c();
+    			t0 = space();
+    			input = element("input");
+    			t1 = space();
+    			attr_dev(input, "class", "");
+    			attr_dev(input, "type", "range");
+    			attr_dev(input, "min", input_min_value = /*o*/ ctx[33].min);
+    			attr_dev(input, "max", input_max_value = /*o*/ ctx[33].max);
+    			attr_dev(input, "step", 1 / 360);
+    			add_location(input, file$1, 298, 6, 7563);
+    			attr_dev(div, "class", "flex column cmb0-2");
+    			add_location(div, file$1, 291, 5, 7247);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			if (if_block) if_block.m(div, null);
+    			append_dev(div, t0);
     			append_dev(div, input);
-    			set_input_value(input, /*o*/ ctx[32].value);
-    			append_dev(div, t4);
+    			set_input_value(input, /*o*/ ctx[33].value);
+    			append_dev(div, t1);
 
     			if (!mounted) {
     				dispose = [
@@ -45334,23 +45365,35 @@ b_res.rgb *= mult.a;
     		},
     		p: function update(new_ctx, dirty) {
     			ctx = new_ctx;
-    			if (dirty[0] & /*ui*/ 1 && t0_value !== (t0_value = /*id*/ ctx[31].replace("_", " ") + "")) set_data_dev(t0, t0_value);
-    			if (dirty[0] & /*ui*/ 1 && t2_value !== (t2_value = /*o*/ ctx[32].value.toFixed(2) + "")) set_data_dev(t2, t2_value);
 
-    			if (dirty[0] & /*ui*/ 1 && input_min_value !== (input_min_value = /*o*/ ctx[32].min)) {
+    			if (/*id*/ ctx[32] != "levels_mid" && /*id*/ ctx[32] != "levels_white") {
+    				if (if_block) {
+    					if_block.p(ctx, dirty);
+    				} else {
+    					if_block = create_if_block_1$1(ctx);
+    					if_block.c();
+    					if_block.m(div, t0);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+
+    			if (dirty[0] & /*ui*/ 1 && input_min_value !== (input_min_value = /*o*/ ctx[33].min)) {
     				attr_dev(input, "min", input_min_value);
     			}
 
-    			if (dirty[0] & /*ui*/ 1 && input_max_value !== (input_max_value = /*o*/ ctx[32].max)) {
+    			if (dirty[0] & /*ui*/ 1 && input_max_value !== (input_max_value = /*o*/ ctx[33].max)) {
     				attr_dev(input, "max", input_max_value);
     			}
 
     			if (dirty[0] & /*ui*/ 1) {
-    				set_input_value(input, /*o*/ ctx[32].value);
+    				set_input_value(input, /*o*/ ctx[33].value);
     			}
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
+    			if (if_block) if_block.d();
     			mounted = false;
     			run_all(dispose);
     		}
@@ -45360,17 +45403,17 @@ b_res.rgb *= mult.a;
     		block,
     		id: create_each_block_1$1.name,
     		type: "each",
-    		source: "(296:4) {#each Object.entries(two) as [id, o]}",
+    		source: "(291:4) {#each Object.entries(two) as [id, o]}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (295:3) {#each Object.entries(ui) as [name, two]}
+    // (290:3) {#each Object.entries(ui) as [name, two]}
     function create_each_block$1(ctx) {
     	let each_1_anchor;
-    	let each_value_1 = Object.entries(/*two*/ ctx[28]);
+    	let each_value_1 = Object.entries(/*two*/ ctx[29]);
     	validate_each_argument(each_value_1);
     	let each_blocks = [];
 
@@ -45395,7 +45438,7 @@ b_res.rgb *= mult.a;
     		},
     		p: function update(ctx, dirty) {
     			if (dirty[0] & /*ui*/ 1) {
-    				each_value_1 = Object.entries(/*two*/ ctx[28]);
+    				each_value_1 = Object.entries(/*two*/ ctx[29]);
     				validate_each_argument(each_value_1);
     				let i;
 
@@ -45428,7 +45471,7 @@ b_res.rgb *= mult.a;
     		block,
     		id: create_each_block$1.name,
     		type: "each",
-    		source: "(295:3) {#each Object.entries(ui) as [name, two]}",
+    		source: "(290:3) {#each Object.entries(ui) as [name, two]}",
     		ctx
     	});
 
@@ -45470,7 +45513,7 @@ b_res.rgb *= mult.a;
     	let each_blocks_1 = [];
 
     	for (let i = 0; i < each_value_3.length; i += 1) {
-    		each_blocks_1[i] = create_each_block_3(get_each_context_3(ctx, each_value_3, i));
+    		each_blocks_1[i] = create_each_block_3$1(get_each_context_3$1(ctx, each_value_3, i));
     	}
 
     	let each_value_2 = new Array(10);
@@ -45478,7 +45521,7 @@ b_res.rgb *= mult.a;
     	let each_blocks = [];
 
     	for (let i = 0; i < each_value_2.length; i += 1) {
-    		each_blocks[i] = create_each_block_2(get_each_context_2(ctx, each_value_2, i));
+    		each_blocks[i] = create_each_block_2$1(get_each_context_2$1(ctx, each_value_2, i));
     	}
 
     	let if_block = /*type*/ ctx[2] == 0 && create_if_block$1(ctx);
@@ -45522,31 +45565,31 @@ b_res.rgb *= mult.a;
     			div6.textContent = "invert";
     			attr_dev(div0, "class", "viz b1-solid p0 mb0-5");
     			set_style(div0, "line-height", "0px");
-    			add_location(div0, file$1, 253, 1, 5966);
+    			add_location(div0, file$1, 248, 1, 5764);
     			attr_dev(select_1, "class", "br0-solid");
     			set_style(select_1, "letter-spacing", "4em");
-    			if (/*type*/ ctx[2] === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[15].call(select_1));
-    			add_location(select_1, file$1, 257, 4, 6162);
+    			if (/*type*/ ctx[2] === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[16].call(select_1));
+    			add_location(select_1, file$1, 252, 4, 5960);
     			attr_dev(div1, "class", "basis5em h100pc select");
-    			add_location(div1, file$1, 256, 3, 6121);
+    			add_location(div1, file$1, 251, 3, 5919);
     			attr_dev(span0, "class", "flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable");
-    			add_location(span0, file$1, 268, 5, 6489);
+    			add_location(span0, file$1, 263, 5, 6287);
     			attr_dev(span1, "class", "select grow");
-    			add_location(span1, file$1, 265, 4, 6415);
+    			add_location(span1, file$1, 260, 4, 6213);
     			attr_dev(div2, "class", "flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99");
     			toggle_class(div2, "none", !/*overlay*/ ctx[4]);
-    			add_location(div2, file$1, 272, 4, 6631);
+    			add_location(div2, file$1, 267, 4, 6429);
     			attr_dev(div3, "class", "flex no-basis h100pc grow ");
-    			add_location(div3, file$1, 264, 3, 6370);
+    			add_location(div3, file$1, 259, 3, 6168);
     			attr_dev(div4, "class", "flex row-stretch-stretch grow w100pc");
-    			add_location(div4, file$1, 255, 2, 6067);
+    			add_location(div4, file$1, 250, 2, 5865);
     			attr_dev(div5, "class", "mb0-5");
-    			add_location(div5, file$1, 254, 1, 6045);
+    			add_location(div5, file$1, 249, 1, 5843);
     			attr_dev(div6, "class", "p1 b1-solid mb0-5 clickable text-center");
     			toggle_class(div6, "filled", /*invert*/ ctx[3]);
-    			add_location(div6, file$1, 313, 1, 7863);
+    			add_location(div6, file$1, 310, 1, 7754);
     			attr_dev(div7, "class", "flex column");
-    			add_location(div7, file$1, 252, 0, 5939);
+    			add_location(div7, file$1, 247, 0, 5737);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -45554,7 +45597,7 @@ b_res.rgb *= mult.a;
     		m: function mount(target, anchor) {
     			insert_dev(target, div7, anchor);
     			append_dev(div7, div0);
-    			/*div0_binding*/ ctx[14](div0);
+    			/*div0_binding*/ ctx[15](div0);
     			append_dev(div7, t0);
     			append_dev(div7, div5);
     			append_dev(div5, div4);
@@ -45591,9 +45634,9 @@ b_res.rgb *= mult.a;
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[15]),
-    					listen_dev(span1, "click", /*click_handler*/ ctx[16], false, false, false),
-    					listen_dev(div6, "click", /*click_handler_2*/ ctx[19], false, false, false)
+    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[16]),
+    					listen_dev(span1, "click", /*click_handler*/ ctx[17], false, false, false),
+    					listen_dev(div6, "click", /*click_handler_2*/ ctx[20], false, false, false)
     				];
 
     				mounted = true;
@@ -45636,12 +45679,12 @@ b_res.rgb *= mult.a;
     				let i;
 
     				for (i = 0; i < each_value_3.length; i += 1) {
-    					const child_ctx = get_each_context_3(ctx, each_value_3, i);
+    					const child_ctx = get_each_context_3$1(ctx, each_value_3, i);
 
     					if (each_blocks_1[i]) {
     						each_blocks_1[i].p(child_ctx, dirty);
     					} else {
-    						each_blocks_1[i] = create_each_block_3(child_ctx);
+    						each_blocks_1[i] = create_each_block_3$1(child_ctx);
     						each_blocks_1[i].c();
     						each_blocks_1[i].m(div2, t4);
     					}
@@ -45679,7 +45722,7 @@ b_res.rgb *= mult.a;
     		o: noop$1,
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div7);
-    			/*div0_binding*/ ctx[14](null);
+    			/*div0_binding*/ ctx[15](null);
     			destroy_each(each_blocks_2, detaching);
     			destroy_each(each_blocks_1, detaching);
     			destroy_each(each_blocks, detaching);
@@ -45710,6 +45753,7 @@ b_res.rgb *= mult.a;
     	let { mode } = $$props;
     	let { uniforms = {} } = $$props;
     	let { index = 0 } = $$props;
+    	let { group } = $$props;
     	let sprite;
 
     	const slider = (value, min, max) => {
@@ -45779,27 +45823,28 @@ vec4 extract( vec3 hsv ) {
 
 	if ( within( hsv.x, very_low, very_high ) != 0 ) {
 
+		float sat = hsv.y;
 		float bright = hsv.z;
 
 		int LOW = within( hsv.x, very_low, low );
-		int HIGH = within( hsv.x, very_low, low );
+		int HIGH = within( hsv.x, high, very_high );
 		float HUE = hsv.x;
 
 		if ( LOW != 0 ) {
 			if (LOW == 2) HUE += 1.0;
 			if (LOW == 3) HUE -= 1.0;
-			bright *= map( HUE, very_low, low, 0.0, 1.0 );
+			sat *= map( HUE, very_low, low, 0.0, 1.0 );
 		} else if ( HIGH != 0 ) {
 			if (HIGH == 2) HUE += 1.0;
 			if (HIGH == 3) HUE -= 1.0;
-			bright *= map( HUE, high, very_high, 1.0, 0.0 );
+			sat *= map( HUE, high, very_high, 1.0, 0.0 );
 		}
 
-		bright = map(bright + (levels_mid - 0.5), levels_black, levels_white, 0.0, 1.0 );
-		if (bright > inked.z && inked.y != 0.0) bright = inked.z;
+		sat = map(sat + (levels_mid - 0.5), levels_black, levels_white, 0.0, 1.0 );
+		if (sat > inked.z && inked.y != 0.0) sat = inked.z;
 
 		vec4 cp = ink;
-		cp *= bright * opacity;
+		cp *= sat * opacity;
 		return cp;
 	} else {
 		return vec4(0.0,0.0,0.0,0.0);
@@ -45838,13 +45883,7 @@ void main(void) {
     		// filter.blendMode = PIXI.BLEND_MODES.SCREEN
     		sprite.blendMode = BLEND_MODES$1.SCREEN;
 
-    		stage.addChild(sprite);
-
-    		// container = new PIXI.Container()
-    		// container.addChild( sprite )
-    		// container.blendMode = PIXI.BLEND_MODES.ADD
-    		// container.filters = [getBlendFilter(PIXI.BLEND_MODES.SCREEN)]
-    		// stage.addChild( container )
+    		group.addChild(sprite);
     		visualise();
     	}
 
@@ -45926,7 +45965,7 @@ void main(void) {
     	let viz;
     	let invert = false;
     	let types = ["picker", "cyan", "magenta", "yellow", "key", "red", "green", "blue"];
-    	const writable_props = ["image", "stage", "mode", "uniforms", "index"];
+    	const writable_props = ["image", "stage", "mode", "uniforms", "index", "group"];
 
     	Object_1.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Layer> was created with unknown prop '${key}'`);
@@ -45960,6 +45999,7 @@ void main(void) {
     		if ("mode" in $$props) $$invalidate(11, mode = $$props.mode);
     		if ("uniforms" in $$props) $$invalidate(8, uniforms = $$props.uniforms);
     		if ("index" in $$props) $$invalidate(12, index = $$props.index);
+    		if ("group" in $$props) $$invalidate(13, group = $$props.group);
     	};
 
     	$$self.$capture_state = () => ({
@@ -45974,6 +46014,7 @@ void main(void) {
     		mode,
     		uniforms,
     		index,
+    		group,
     		sprite,
     		slider,
     		pair,
@@ -45998,6 +46039,7 @@ void main(void) {
     		if ("mode" in $$props) $$invalidate(11, mode = $$props.mode);
     		if ("uniforms" in $$props) $$invalidate(8, uniforms = $$props.uniforms);
     		if ("index" in $$props) $$invalidate(12, index = $$props.index);
+    		if ("group" in $$props) $$invalidate(13, group = $$props.group);
     		if ("sprite" in $$props) sprite = $$props.sprite;
     		if ("ui" in $$props) $$invalidate(0, ui = $$props.ui);
     		if ("colour" in $$props) $$invalidate(1, colour = $$props.colour);
@@ -46006,7 +46048,7 @@ void main(void) {
     		if ("viz" in $$props) $$invalidate(5, viz = $$props.viz);
     		if ("invert" in $$props) $$invalidate(3, invert = $$props.invert);
     		if ("types" in $$props) $$invalidate(7, types = $$props.types);
-    		if ("ink" in $$props) $$invalidate(13, ink = $$props.ink);
+    		if ("ink" in $$props) $$invalidate(14, ink = $$props.ink);
     		if ("flattened" in $$props) flattened = $$props.flattened;
     	};
 
@@ -46017,7 +46059,7 @@ void main(void) {
     	$$self.$$.update = () => {
     		if ($$self.$$.dirty[0] & /*colour*/ 2) {
     			// let colour = colours.find( c => c.name == 'MINT') 
-    			$$invalidate(13, ink = [
+    			$$invalidate(14, ink = [
     				parseFloat((colour?.rgb || "").split(",")[0]) / 255,
     				parseFloat((colour?.rgb || "").split(",")[1]) / 255,
     				parseFloat((colour?.rgb || "").split(",")[2]) / 255,
@@ -46025,7 +46067,7 @@ void main(void) {
     			]);
     		}
 
-    		if ($$self.$$.dirty[0] & /*ui, ink, invert, type*/ 8205) {
+    		if ($$self.$$.dirty[0] & /*ui, ink, invert, type*/ 16397) {
     			setUniforms();
     		}
 
@@ -46051,6 +46093,7 @@ void main(void) {
     		stage,
     		mode,
     		index,
+    		group,
     		ink,
     		div0_binding,
     		select_1_change_handler,
@@ -46076,7 +46119,8 @@ void main(void) {
     				stage: 10,
     				mode: 11,
     				uniforms: 8,
-    				index: 12
+    				index: 12,
+    				group: 13
     			},
     			[-1, -1]
     		);
@@ -46101,6 +46145,10 @@ void main(void) {
 
     		if (/*mode*/ ctx[11] === undefined && !("mode" in props)) {
     			console.warn("<Layer> was created without expected prop 'mode'");
+    		}
+
+    		if (/*group*/ ctx[13] === undefined && !("group" in props)) {
+    			console.warn("<Layer> was created without expected prop 'group'");
     		}
     	}
 
@@ -46141,6 +46189,14 @@ void main(void) {
     	}
 
     	set index(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get group() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set group(value) {
     		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
@@ -46189,6 +46245,465 @@ void main(void) {
         });
     }
 
+    var colorName = {
+    	"aliceblue": [240, 248, 255],
+    	"antiquewhite": [250, 235, 215],
+    	"aqua": [0, 255, 255],
+    	"aquamarine": [127, 255, 212],
+    	"azure": [240, 255, 255],
+    	"beige": [245, 245, 220],
+    	"bisque": [255, 228, 196],
+    	"black": [0, 0, 0],
+    	"blanchedalmond": [255, 235, 205],
+    	"blue": [0, 0, 255],
+    	"blueviolet": [138, 43, 226],
+    	"brown": [165, 42, 42],
+    	"burlywood": [222, 184, 135],
+    	"cadetblue": [95, 158, 160],
+    	"chartreuse": [127, 255, 0],
+    	"chocolate": [210, 105, 30],
+    	"coral": [255, 127, 80],
+    	"cornflowerblue": [100, 149, 237],
+    	"cornsilk": [255, 248, 220],
+    	"crimson": [220, 20, 60],
+    	"cyan": [0, 255, 255],
+    	"darkblue": [0, 0, 139],
+    	"darkcyan": [0, 139, 139],
+    	"darkgoldenrod": [184, 134, 11],
+    	"darkgray": [169, 169, 169],
+    	"darkgreen": [0, 100, 0],
+    	"darkgrey": [169, 169, 169],
+    	"darkkhaki": [189, 183, 107],
+    	"darkmagenta": [139, 0, 139],
+    	"darkolivegreen": [85, 107, 47],
+    	"darkorange": [255, 140, 0],
+    	"darkorchid": [153, 50, 204],
+    	"darkred": [139, 0, 0],
+    	"darksalmon": [233, 150, 122],
+    	"darkseagreen": [143, 188, 143],
+    	"darkslateblue": [72, 61, 139],
+    	"darkslategray": [47, 79, 79],
+    	"darkslategrey": [47, 79, 79],
+    	"darkturquoise": [0, 206, 209],
+    	"darkviolet": [148, 0, 211],
+    	"deeppink": [255, 20, 147],
+    	"deepskyblue": [0, 191, 255],
+    	"dimgray": [105, 105, 105],
+    	"dimgrey": [105, 105, 105],
+    	"dodgerblue": [30, 144, 255],
+    	"firebrick": [178, 34, 34],
+    	"floralwhite": [255, 250, 240],
+    	"forestgreen": [34, 139, 34],
+    	"fuchsia": [255, 0, 255],
+    	"gainsboro": [220, 220, 220],
+    	"ghostwhite": [248, 248, 255],
+    	"gold": [255, 215, 0],
+    	"goldenrod": [218, 165, 32],
+    	"gray": [128, 128, 128],
+    	"green": [0, 128, 0],
+    	"greenyellow": [173, 255, 47],
+    	"grey": [128, 128, 128],
+    	"honeydew": [240, 255, 240],
+    	"hotpink": [255, 105, 180],
+    	"indianred": [205, 92, 92],
+    	"indigo": [75, 0, 130],
+    	"ivory": [255, 255, 240],
+    	"khaki": [240, 230, 140],
+    	"lavender": [230, 230, 250],
+    	"lavenderblush": [255, 240, 245],
+    	"lawngreen": [124, 252, 0],
+    	"lemonchiffon": [255, 250, 205],
+    	"lightblue": [173, 216, 230],
+    	"lightcoral": [240, 128, 128],
+    	"lightcyan": [224, 255, 255],
+    	"lightgoldenrodyellow": [250, 250, 210],
+    	"lightgray": [211, 211, 211],
+    	"lightgreen": [144, 238, 144],
+    	"lightgrey": [211, 211, 211],
+    	"lightpink": [255, 182, 193],
+    	"lightsalmon": [255, 160, 122],
+    	"lightseagreen": [32, 178, 170],
+    	"lightskyblue": [135, 206, 250],
+    	"lightslategray": [119, 136, 153],
+    	"lightslategrey": [119, 136, 153],
+    	"lightsteelblue": [176, 196, 222],
+    	"lightyellow": [255, 255, 224],
+    	"lime": [0, 255, 0],
+    	"limegreen": [50, 205, 50],
+    	"linen": [250, 240, 230],
+    	"magenta": [255, 0, 255],
+    	"maroon": [128, 0, 0],
+    	"mediumaquamarine": [102, 205, 170],
+    	"mediumblue": [0, 0, 205],
+    	"mediumorchid": [186, 85, 211],
+    	"mediumpurple": [147, 112, 219],
+    	"mediumseagreen": [60, 179, 113],
+    	"mediumslateblue": [123, 104, 238],
+    	"mediumspringgreen": [0, 250, 154],
+    	"mediumturquoise": [72, 209, 204],
+    	"mediumvioletred": [199, 21, 133],
+    	"midnightblue": [25, 25, 112],
+    	"mintcream": [245, 255, 250],
+    	"mistyrose": [255, 228, 225],
+    	"moccasin": [255, 228, 181],
+    	"navajowhite": [255, 222, 173],
+    	"navy": [0, 0, 128],
+    	"oldlace": [253, 245, 230],
+    	"olive": [128, 128, 0],
+    	"olivedrab": [107, 142, 35],
+    	"orange": [255, 165, 0],
+    	"orangered": [255, 69, 0],
+    	"orchid": [218, 112, 214],
+    	"palegoldenrod": [238, 232, 170],
+    	"palegreen": [152, 251, 152],
+    	"paleturquoise": [175, 238, 238],
+    	"palevioletred": [219, 112, 147],
+    	"papayawhip": [255, 239, 213],
+    	"peachpuff": [255, 218, 185],
+    	"peru": [205, 133, 63],
+    	"pink": [255, 192, 203],
+    	"plum": [221, 160, 221],
+    	"powderblue": [176, 224, 230],
+    	"purple": [128, 0, 128],
+    	"rebeccapurple": [102, 51, 153],
+    	"red": [255, 0, 0],
+    	"rosybrown": [188, 143, 143],
+    	"royalblue": [65, 105, 225],
+    	"saddlebrown": [139, 69, 19],
+    	"salmon": [250, 128, 114],
+    	"sandybrown": [244, 164, 96],
+    	"seagreen": [46, 139, 87],
+    	"seashell": [255, 245, 238],
+    	"sienna": [160, 82, 45],
+    	"silver": [192, 192, 192],
+    	"skyblue": [135, 206, 235],
+    	"slateblue": [106, 90, 205],
+    	"slategray": [112, 128, 144],
+    	"slategrey": [112, 128, 144],
+    	"snow": [255, 250, 250],
+    	"springgreen": [0, 255, 127],
+    	"steelblue": [70, 130, 180],
+    	"tan": [210, 180, 140],
+    	"teal": [0, 128, 128],
+    	"thistle": [216, 191, 216],
+    	"tomato": [255, 99, 71],
+    	"turquoise": [64, 224, 208],
+    	"violet": [238, 130, 238],
+    	"wheat": [245, 222, 179],
+    	"white": [255, 255, 255],
+    	"whitesmoke": [245, 245, 245],
+    	"yellow": [255, 255, 0],
+    	"yellowgreen": [154, 205, 50]
+    };
+
+    var isArrayish = function isArrayish(obj) {
+    	if (!obj || typeof obj === 'string') {
+    		return false;
+    	}
+
+    	return obj instanceof Array || Array.isArray(obj) ||
+    		(obj.length >= 0 && (obj.splice instanceof Function ||
+    			(Object.getOwnPropertyDescriptor(obj, (obj.length - 1)) && obj.constructor.name !== 'String')));
+    };
+
+    var simpleSwizzle = createCommonjsModule(function (module) {
+
+
+
+    var concat = Array.prototype.concat;
+    var slice = Array.prototype.slice;
+
+    var swizzle = module.exports = function swizzle(args) {
+    	var results = [];
+
+    	for (var i = 0, len = args.length; i < len; i++) {
+    		var arg = args[i];
+
+    		if (isArrayish(arg)) {
+    			// http://jsperf.com/javascript-array-concat-vs-push/98
+    			results = concat.call(results, slice.call(arg));
+    		} else {
+    			results.push(arg);
+    		}
+    	}
+
+    	return results;
+    };
+
+    swizzle.wrap = function (fn) {
+    	return function () {
+    		return fn(swizzle(arguments));
+    	};
+    };
+    });
+
+    /* MIT license */
+
+    var colorString = createCommonjsModule(function (module) {
+    var reverseNames = {};
+
+    // create a list of reverse color names
+    for (var name in colorName) {
+    	if (colorName.hasOwnProperty(name)) {
+    		reverseNames[colorName[name]] = name;
+    	}
+    }
+
+    var cs = module.exports = {
+    	to: {},
+    	get: {}
+    };
+
+    cs.get = function (string) {
+    	var prefix = string.substring(0, 3).toLowerCase();
+    	var val;
+    	var model;
+    	switch (prefix) {
+    		case 'hsl':
+    			val = cs.get.hsl(string);
+    			model = 'hsl';
+    			break;
+    		case 'hwb':
+    			val = cs.get.hwb(string);
+    			model = 'hwb';
+    			break;
+    		default:
+    			val = cs.get.rgb(string);
+    			model = 'rgb';
+    			break;
+    	}
+
+    	if (!val) {
+    		return null;
+    	}
+
+    	return {model: model, value: val};
+    };
+
+    cs.get.rgb = function (string) {
+    	if (!string) {
+    		return null;
+    	}
+
+    	var abbr = /^#([a-f0-9]{3,4})$/i;
+    	var hex = /^#([a-f0-9]{6})([a-f0-9]{2})?$/i;
+    	var rgba = /^rgba?\(\s*([+-]?\d+)\s*,\s*([+-]?\d+)\s*,\s*([+-]?\d+)\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)$/;
+    	var per = /^rgba?\(\s*([+-]?[\d\.]+)\%\s*,\s*([+-]?[\d\.]+)\%\s*,\s*([+-]?[\d\.]+)\%\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)$/;
+    	var keyword = /(\D+)/;
+
+    	var rgb = [0, 0, 0, 1];
+    	var match;
+    	var i;
+    	var hexAlpha;
+
+    	if (match = string.match(hex)) {
+    		hexAlpha = match[2];
+    		match = match[1];
+
+    		for (i = 0; i < 3; i++) {
+    			// https://jsperf.com/slice-vs-substr-vs-substring-methods-long-string/19
+    			var i2 = i * 2;
+    			rgb[i] = parseInt(match.slice(i2, i2 + 2), 16);
+    		}
+
+    		if (hexAlpha) {
+    			rgb[3] = parseInt(hexAlpha, 16) / 255;
+    		}
+    	} else if (match = string.match(abbr)) {
+    		match = match[1];
+    		hexAlpha = match[3];
+
+    		for (i = 0; i < 3; i++) {
+    			rgb[i] = parseInt(match[i] + match[i], 16);
+    		}
+
+    		if (hexAlpha) {
+    			rgb[3] = parseInt(hexAlpha + hexAlpha, 16) / 255;
+    		}
+    	} else if (match = string.match(rgba)) {
+    		for (i = 0; i < 3; i++) {
+    			rgb[i] = parseInt(match[i + 1], 0);
+    		}
+
+    		if (match[4]) {
+    			rgb[3] = parseFloat(match[4]);
+    		}
+    	} else if (match = string.match(per)) {
+    		for (i = 0; i < 3; i++) {
+    			rgb[i] = Math.round(parseFloat(match[i + 1]) * 2.55);
+    		}
+
+    		if (match[4]) {
+    			rgb[3] = parseFloat(match[4]);
+    		}
+    	} else if (match = string.match(keyword)) {
+    		if (match[1] === 'transparent') {
+    			return [0, 0, 0, 0];
+    		}
+
+    		rgb = colorName[match[1]];
+
+    		if (!rgb) {
+    			return null;
+    		}
+
+    		rgb[3] = 1;
+
+    		return rgb;
+    	} else {
+    		return null;
+    	}
+
+    	for (i = 0; i < 3; i++) {
+    		rgb[i] = clamp(rgb[i], 0, 255);
+    	}
+    	rgb[3] = clamp(rgb[3], 0, 1);
+
+    	return rgb;
+    };
+
+    cs.get.hsl = function (string) {
+    	if (!string) {
+    		return null;
+    	}
+
+    	var hsl = /^hsla?\(\s*([+-]?(?:\d{0,3}\.)?\d+)(?:deg)?\s*,\s*([+-]?[\d\.]+)%\s*,\s*([+-]?[\d\.]+)%\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)$/;
+    	var match = string.match(hsl);
+
+    	if (match) {
+    		var alpha = parseFloat(match[4]);
+    		var h = (parseFloat(match[1]) + 360) % 360;
+    		var s = clamp(parseFloat(match[2]), 0, 100);
+    		var l = clamp(parseFloat(match[3]), 0, 100);
+    		var a = clamp(isNaN(alpha) ? 1 : alpha, 0, 1);
+
+    		return [h, s, l, a];
+    	}
+
+    	return null;
+    };
+
+    cs.get.hwb = function (string) {
+    	if (!string) {
+    		return null;
+    	}
+
+    	var hwb = /^hwb\(\s*([+-]?\d{0,3}(?:\.\d+)?)(?:deg)?\s*,\s*([+-]?[\d\.]+)%\s*,\s*([+-]?[\d\.]+)%\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)$/;
+    	var match = string.match(hwb);
+
+    	if (match) {
+    		var alpha = parseFloat(match[4]);
+    		var h = ((parseFloat(match[1]) % 360) + 360) % 360;
+    		var w = clamp(parseFloat(match[2]), 0, 100);
+    		var b = clamp(parseFloat(match[3]), 0, 100);
+    		var a = clamp(isNaN(alpha) ? 1 : alpha, 0, 1);
+    		return [h, w, b, a];
+    	}
+
+    	return null;
+    };
+
+    cs.to.hex = function () {
+    	var rgba = simpleSwizzle(arguments);
+
+    	return (
+    		'#' +
+    		hexDouble(rgba[0]) +
+    		hexDouble(rgba[1]) +
+    		hexDouble(rgba[2]) +
+    		(rgba[3] < 1
+    			? (hexDouble(Math.round(rgba[3] * 255)))
+    			: '')
+    	);
+    };
+
+    cs.to.rgb = function () {
+    	var rgba = simpleSwizzle(arguments);
+
+    	return rgba.length < 4 || rgba[3] === 1
+    		? 'rgb(' + Math.round(rgba[0]) + ', ' + Math.round(rgba[1]) + ', ' + Math.round(rgba[2]) + ')'
+    		: 'rgba(' + Math.round(rgba[0]) + ', ' + Math.round(rgba[1]) + ', ' + Math.round(rgba[2]) + ', ' + rgba[3] + ')';
+    };
+
+    cs.to.rgb.percent = function () {
+    	var rgba = simpleSwizzle(arguments);
+
+    	var r = Math.round(rgba[0] / 255 * 100);
+    	var g = Math.round(rgba[1] / 255 * 100);
+    	var b = Math.round(rgba[2] / 255 * 100);
+
+    	return rgba.length < 4 || rgba[3] === 1
+    		? 'rgb(' + r + '%, ' + g + '%, ' + b + '%)'
+    		: 'rgba(' + r + '%, ' + g + '%, ' + b + '%, ' + rgba[3] + ')';
+    };
+
+    cs.to.hsl = function () {
+    	var hsla = simpleSwizzle(arguments);
+    	return hsla.length < 4 || hsla[3] === 1
+    		? 'hsl(' + hsla[0] + ', ' + hsla[1] + '%, ' + hsla[2] + '%)'
+    		: 'hsla(' + hsla[0] + ', ' + hsla[1] + '%, ' + hsla[2] + '%, ' + hsla[3] + ')';
+    };
+
+    // hwb is a bit different than rgb(a) & hsl(a) since there is no alpha specific syntax
+    // (hwb have alpha optional & 1 is default value)
+    cs.to.hwb = function () {
+    	var hwba = simpleSwizzle(arguments);
+
+    	var a = '';
+    	if (hwba.length >= 4 && hwba[3] !== 1) {
+    		a = ', ' + hwba[3];
+    	}
+
+    	return 'hwb(' + hwba[0] + ', ' + hwba[1] + '%, ' + hwba[2] + '%' + a + ')';
+    };
+
+    cs.to.keyword = function (rgb) {
+    	return reverseNames[rgb.slice(0, 3)];
+    };
+
+    // helpers
+    function clamp(num, min, max) {
+    	return Math.min(Math.max(min, num), max);
+    }
+
+    function hexDouble(num) {
+    	var str = num.toString(16).toUpperCase();
+    	return (str.length < 2) ? '0' + str : str;
+    }
+    });
+
+    var rectd = {
+    	neu: (x, y, width, height) => ({x,y,width,height}),
+    	shrinkBy: (r, px) => {
+    		if (!px) return r
+    		r.x += px;
+    		r.y += px;
+    		r.width += px * -2;
+    		r.height += px * -2;
+    		return r
+    	},
+    	fitInto: (a, b, offset) => {
+    		let ra = a.width / a.height;
+    		let rb = b.width / b.height;
+    		if (!offset) offset = 0.5;
+
+    		console.log(ra, rb);
+
+    		let width = ra > rb ? b.width : a.width * (b.height / a.height);
+    		let height = ra > rb ? a.height * (b.width / a.width) : b.height;
+    		let x = b.x + ( ra > rb ? 0 : (b.width - width) * offset);
+    		let y = b.y + ( ra > rb ? (b.height - height) * offset : 0);
+
+    		return { x, y, width, height }
+    	},
+    	auto: (r, obj) => {
+    		obj.x = r.x;
+    		obj.y = r.y;
+    		obj.width = r.width;
+    		obj.height = r.height;
+    	}
+    };
+
     /* src/App.svelte generated by Svelte v3.38.3 */
 
     const { console: console_1 } = globals;
@@ -46196,23 +46711,35 @@ void main(void) {
 
     function get_each_context(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[43] = list[i];
-    	child_ctx[44] = list;
-    	child_ctx[45] = i;
+    	child_ctx[60] = list[i];
+    	child_ctx[61] = list;
+    	child_ctx[62] = i;
     	return child_ctx;
     }
 
     function get_each_context_1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[46] = list[i];
-    	child_ctx[48] = i;
+    	child_ctx[63] = list[i];
     	return child_ctx;
     }
 
-    // (244:6) {:else}
+    function get_each_context_2(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[12] = list[i];
+    	return child_ctx;
+    }
+
+    function get_each_context_3(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[68] = list[i];
+    	child_ctx[70] = i;
+    	return child_ctx;
+    }
+
+    // (336:6) {:else}
     function create_else_block(ctx) {
     	let div;
-    	let t_value = /*handle*/ ctx[46].name + "";
+    	let t_value = /*handle*/ ctx[68].name + "";
     	let t;
 
     	const block = {
@@ -46220,14 +46747,14 @@ void main(void) {
     			div = element("div");
     			t = text(t_value);
     			attr_dev(div, "class", " minh8em flex row-center-center");
-    			add_location(div, file, 244, 7, 5071);
+    			add_location(div, file, 336, 7, 7514);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
     			append_dev(div, t);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*handles*/ 1 && t_value !== (t_value = /*handle*/ ctx[46].name + "")) set_data_dev(t, t_value);
+    			if (dirty[0] & /*handles*/ 2 && t_value !== (t_value = /*handle*/ ctx[68].name + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
@@ -46238,14 +46765,14 @@ void main(void) {
     		block,
     		id: create_else_block.name,
     		type: "else",
-    		source: "(244:6) {:else}",
+    		source: "(336:6) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (238:6) {#if srcs[handle.name]}
+    // (330:6) {#if srcs[handle.name]}
     function create_if_block_1(ctx) {
     	let img;
     	let img_src_value;
@@ -46257,9 +46784,9 @@ void main(void) {
     		c: function create() {
     			img = element("img");
     			attr_dev(img, "class", "pointer");
-    			if (img.src !== (img_src_value = /*srcs*/ ctx[1][/*handle*/ ctx[46].name])) attr_dev(img, "src", img_src_value);
-    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[46].name);
-    			add_location(img, file, 238, 8, 4921);
+    			if (img.src !== (img_src_value = /*srcs*/ ctx[2][/*handle*/ ctx[68].name].url)) attr_dev(img, "src", img_src_value);
+    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[68].name);
+    			add_location(img, file, 330, 8, 7360);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, img, anchor);
@@ -46270,11 +46797,11 @@ void main(void) {
     			}
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*srcs, handles*/ 3 && img.src !== (img_src_value = /*srcs*/ ctx[1][/*handle*/ ctx[46].name])) {
+    			if (dirty[0] & /*srcs, handles*/ 6 && img.src !== (img_src_value = /*srcs*/ ctx[2][/*handle*/ ctx[68].name].url)) {
     				attr_dev(img, "src", img_src_value);
     			}
 
-    			if (dirty[0] & /*handles*/ 1 && img_alt_value !== (img_alt_value = /*handle*/ ctx[46].name)) {
+    			if (dirty[0] & /*handles*/ 2 && img_alt_value !== (img_alt_value = /*handle*/ ctx[68].name)) {
     				attr_dev(img, "alt", img_alt_value);
     			}
     		},
@@ -46289,15 +46816,15 @@ void main(void) {
     		block,
     		id: create_if_block_1.name,
     		type: "if",
-    		source: "(238:6) {#if srcs[handle.name]}",
+    		source: "(330:6) {#if srcs[handle.name]}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (221:4) {#each handles as handle, i}
-    function create_each_block_1(ctx) {
+    // (313:4) {#each handles.reverse() as handle, i}
+    function create_each_block_3(ctx) {
     	let div1;
     	let div0;
     	let button0;
@@ -46309,16 +46836,16 @@ void main(void) {
     	let mounted;
     	let dispose;
 
-    	function click_handler_3(...args) {
-    		return /*click_handler_3*/ ctx[20](/*handle*/ ctx[46], ...args);
+    	function click_handler(...args) {
+    		return /*click_handler*/ ctx[23](/*handle*/ ctx[68], ...args);
     	}
 
-    	function click_handler_4(...args) {
-    		return /*click_handler_4*/ ctx[21](/*handle*/ ctx[46], ...args);
+    	function click_handler_1(...args) {
+    		return /*click_handler_1*/ ctx[24](/*handle*/ ctx[68], ...args);
     	}
 
     	function select_block_type(ctx, dirty) {
-    		if (/*srcs*/ ctx[1][/*handle*/ ctx[46].name]) return create_if_block_1;
+    		if (/*srcs*/ ctx[2][/*handle*/ ctx[68].name]) return create_if_block_1;
     		return create_else_block;
     	}
 
@@ -46336,15 +46863,15 @@ void main(void) {
     			t2 = text("✕");
     			t3 = space();
     			if_block.c();
-    			attr_dev(button0, "class", /*classes*/ ctx[16].miniButtons);
-    			add_location(button0, file, 226, 7, 4619);
-    			attr_dev(button1, "class", /*classes*/ ctx[16].miniButtons);
-    			add_location(button1, file, 231, 7, 4747);
+    			attr_dev(button0, "class", /*classes*/ ctx[21].miniButtons);
+    			add_location(button0, file, 318, 7, 7058);
+    			attr_dev(button1, "class", /*classes*/ ctx[21].miniButtons);
+    			add_location(button1, file, 323, 7, 7186);
     			attr_dev(div0, "class", "overlay fill flex grow row-flex-end-flex-start z-index2");
-    			add_location(div0, file, 224, 6, 4479);
+    			add_location(div0, file, 316, 6, 6918);
     			attr_dev(div1, "class", "rel bb1-solid file");
-    			toggle_class(div1, "bt1-solid", /*i*/ ctx[48] == 0);
-    			add_location(div1, file, 221, 5, 4404);
+    			toggle_class(div1, "bt1-solid", /*i*/ ctx[70] == 0);
+    			add_location(div1, file, 313, 5, 6843);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div1, anchor);
@@ -46359,8 +46886,8 @@ void main(void) {
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(button0, "click", click_handler_3, false, false, false),
-    					listen_dev(button1, "click", click_handler_4, false, false, false)
+    					listen_dev(button0, "click", click_handler, false, false, false),
+    					listen_dev(button1, "click", click_handler_1, false, false, false)
     				];
 
     				mounted = true;
@@ -46391,16 +46918,16 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block_1.name,
+    		id: create_each_block_3.name,
     		type: "each",
-    		source: "(221:4) {#each handles as handle, i}",
+    		source: "(313:4) {#each handles.reverse() as handle, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (254:4) {#if handles.length == 0 }
+    // (346:4) {#if handles.length == 0 }
     function create_if_block(ctx) {
     	let div;
 
@@ -46409,7 +46936,7 @@ void main(void) {
     			div = element("div");
     			div.textContent = "No files";
     			attr_dev(div, "class", "p1");
-    			add_location(div, file, 254, 5, 5241);
+    			add_location(div, file, 346, 5, 7684);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -46423,57 +46950,139 @@ void main(void) {
     		block,
     		id: create_if_block.name,
     		type: "if",
-    		source: "(254:4) {#if handles.length == 0 }",
+    		source: "(346:4) {#if handles.length == 0 }",
     		ctx
     	});
 
     	return block;
     }
 
-    // (261:4) {#each layers as layer, index}
+    // (360:7) {#each options.backgrounds as bg}
+    function create_each_block_2(ctx) {
+    	let option;
+    	let t_value = /*bg*/ ctx[12].name + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			option = element("option");
+    			t = text(t_value);
+    			option.__value = /*bg*/ ctx[12].name;
+    			option.value = option.__value;
+    			attr_dev(option, "name", /*bg*/ ctx[12].name);
+    			add_location(option, file, 360, 8, 8112);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t);
+    		},
+    		p: noop$1,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(option);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_2.name,
+    		type: "each",
+    		source: "(360:7) {#each options.backgrounds as bg}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (367:7) {#each options.sizes as sz}
+    function create_each_block_1(ctx) {
+    	let option;
+    	let t_value = /*sz*/ ctx[63].name + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			option = element("option");
+    			t = text(t_value);
+    			option.__value = /*sz*/ ctx[63].name;
+    			option.value = option.__value;
+    			attr_dev(option, "name", /*sz*/ ctx[63].name);
+    			add_location(option, file, 367, 8, 8330);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t);
+    		},
+    		p: noop$1,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(option);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_1.name,
+    		type: "each",
+    		source: "(367:7) {#each options.sizes as sz}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (393:4) {#each project.layers as layer, index}
     function create_each_block(ctx) {
     	let layer;
+    	let updating_group;
     	let updating_layer;
     	let updating_mode;
     	let updating_stage;
     	let updating_image;
     	let current;
 
+    	function layer_group_binding(value) {
+    		/*layer_group_binding*/ ctx[29](value);
+    	}
+
     	function layer_layer_binding(value) {
-    		/*layer_layer_binding*/ ctx[22](value, /*layer*/ ctx[43], /*each_value*/ ctx[44], /*index*/ ctx[45]);
+    		/*layer_layer_binding*/ ctx[30](value, /*layer*/ ctx[60], /*each_value*/ ctx[61], /*index*/ ctx[62]);
     	}
 
     	function layer_mode_binding(value) {
-    		/*layer_mode_binding*/ ctx[23](value);
+    		/*layer_mode_binding*/ ctx[31](value);
     	}
 
     	function layer_stage_binding(value) {
-    		/*layer_stage_binding*/ ctx[24](value);
+    		/*layer_stage_binding*/ ctx[32](value);
     	}
 
     	function layer_image_binding(value) {
-    		/*layer_image_binding*/ ctx[25](value);
+    		/*layer_image_binding*/ ctx[33](value);
     	}
 
-    	let layer_props = { index: /*index*/ ctx[45] };
+    	let layer_props = { index: /*index*/ ctx[62] };
 
-    	if (/*layer*/ ctx[43] !== void 0) {
-    		layer_props.layer = /*layer*/ ctx[43];
+    	if (/*group*/ ctx[9] !== void 0) {
+    		layer_props.group = /*group*/ ctx[9];
     	}
 
-    	if (/*mode*/ ctx[6] !== void 0) {
-    		layer_props.mode = /*mode*/ ctx[6];
+    	if (/*layer*/ ctx[60] !== void 0) {
+    		layer_props.layer = /*layer*/ ctx[60];
     	}
 
-    	if (/*stage*/ ctx[4] !== void 0) {
-    		layer_props.stage = /*stage*/ ctx[4];
+    	if (/*mode*/ ctx[8] !== void 0) {
+    		layer_props.mode = /*mode*/ ctx[8];
     	}
 
-    	if (/*image*/ ctx[5] !== void 0) {
-    		layer_props.image = /*image*/ ctx[5];
+    	if (/*stage*/ ctx[6] !== void 0) {
+    		layer_props.stage = /*stage*/ ctx[6];
+    	}
+
+    	if (/*image*/ ctx[7] !== void 0) {
+    		layer_props.image = /*image*/ ctx[7];
     	}
 
     	layer = new Layer({ props: layer_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(layer, "group", layer_group_binding));
     	binding_callbacks.push(() => bind$1(layer, "layer", layer_layer_binding));
     	binding_callbacks.push(() => bind$1(layer, "mode", layer_mode_binding));
     	binding_callbacks.push(() => bind$1(layer, "stage", layer_stage_binding));
@@ -46491,27 +47100,33 @@ void main(void) {
     			ctx = new_ctx;
     			const layer_changes = {};
 
-    			if (!updating_layer && dirty[0] & /*layers*/ 128) {
+    			if (!updating_group && dirty[0] & /*group*/ 512) {
+    				updating_group = true;
+    				layer_changes.group = /*group*/ ctx[9];
+    				add_flush_callback(() => updating_group = false);
+    			}
+
+    			if (!updating_layer && dirty[0] & /*project*/ 1) {
     				updating_layer = true;
-    				layer_changes.layer = /*layer*/ ctx[43];
+    				layer_changes.layer = /*layer*/ ctx[60];
     				add_flush_callback(() => updating_layer = false);
     			}
 
-    			if (!updating_mode && dirty[0] & /*mode*/ 64) {
+    			if (!updating_mode && dirty[0] & /*mode*/ 256) {
     				updating_mode = true;
-    				layer_changes.mode = /*mode*/ ctx[6];
+    				layer_changes.mode = /*mode*/ ctx[8];
     				add_flush_callback(() => updating_mode = false);
     			}
 
-    			if (!updating_stage && dirty[0] & /*stage*/ 16) {
+    			if (!updating_stage && dirty[0] & /*stage*/ 64) {
     				updating_stage = true;
-    				layer_changes.stage = /*stage*/ ctx[4];
+    				layer_changes.stage = /*stage*/ ctx[6];
     				add_flush_callback(() => updating_stage = false);
     			}
 
-    			if (!updating_image && dirty[0] & /*image*/ 32) {
+    			if (!updating_image && dirty[0] & /*image*/ 128) {
     				updating_image = true;
-    				layer_changes.image = /*image*/ ctx[5];
+    				layer_changes.image = /*image*/ ctx[7];
     				add_flush_callback(() => updating_image = false);
     			}
 
@@ -46535,7 +47150,7 @@ void main(void) {
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(261:4) {#each layers as layer, index}",
+    		source: "(393:4) {#each project.layers as layer, index}",
     		ctx
     	});
 
@@ -46544,36 +47159,72 @@ void main(void) {
 
     function create_fragment(ctx) {
     	let main_1;
-    	let div1;
+    	let div5;
     	let header;
     	let t0;
+    	let sidebar;
+    	let section0;
+    	let div0;
     	let button0;
+    	let t1;
     	let t2;
     	let button1;
     	let t4;
     	let button2;
     	let t6;
-    	let button3;
+    	let t7;
     	let t8;
-    	let sidebar;
-    	let section0;
-    	let div0;
-    	let button4;
+    	let section1;
     	let t9;
     	let t10;
-    	let button5;
+    	let section2;
+    	let div4;
+    	let div1;
+    	let t11_value = /*calculate*/ ctx[11].width + "";
+    	let t11;
     	let t12;
+    	let t13_value = /*calculate*/ ctx[11].height + "";
     	let t13;
     	let t14;
-    	let section1;
+    	let div2;
+    	let select0;
     	let t15;
-    	let section2;
+    	let div3;
+    	let select1;
     	let t16;
+    	let input0;
+    	let t17;
+    	let input1;
+    	let input1_max_value;
+    	let t18;
+    	let button3;
+    	let t20;
+    	let t21;
     	let section3;
+    	let t23;
+    	let section4;
+    	let div6;
     	let current;
     	let mounted;
     	let dispose;
-    	let each_value_1 = /*handles*/ ctx[0];
+    	let each_value_3 = /*handles*/ ctx[1].reverse();
+    	validate_each_argument(each_value_3);
+    	let each_blocks_3 = [];
+
+    	for (let i = 0; i < each_value_3.length; i += 1) {
+    		each_blocks_3[i] = create_each_block_3(get_each_context_3(ctx, each_value_3, i));
+    	}
+
+    	let if_block = /*handles*/ ctx[1].length == 0 && create_if_block(ctx);
+    	let each_value_2 = /*options*/ ctx[13].backgrounds;
+    	validate_each_argument(each_value_2);
+    	let each_blocks_2 = [];
+
+    	for (let i = 0; i < each_value_2.length; i += 1) {
+    		each_blocks_2[i] = create_each_block_2(get_each_context_2(ctx, each_value_2, i));
+    	}
+
+    	let each_value_1 = /*options*/ ctx[13].sizes;
     	validate_each_argument(each_value_1);
     	let each_blocks_1 = [];
 
@@ -46581,8 +47232,7 @@ void main(void) {
     		each_blocks_1[i] = create_each_block_1(get_each_context_1(ctx, each_value_1, i));
     	}
 
-    	let if_block = /*handles*/ ctx[0].length == 0 && create_if_block(ctx);
-    	let each_value = /*layers*/ ctx[7];
+    	let each_value = /*project*/ ctx[0].layers;
     	validate_each_argument(each_value);
     	let each_blocks = [];
 
@@ -46597,150 +47247,296 @@ void main(void) {
     	const block = {
     		c: function create() {
     			main_1 = element("main");
-    			div1 = element("div");
+    			div5 = element("div");
     			header = element("header");
-    			t0 = text("RISO\n\t\t\t");
-    			button0 = element("button");
-    			button0.textContent = "Load";
-    			t2 = space();
-    			button1 = element("button");
-    			button1.textContent = "new layer";
-    			t4 = space();
-    			button2 = element("button");
-    			button2.textContent = "view";
-    			t6 = space();
-    			button3 = element("button");
-    			button3.textContent = "background";
-    			t8 = space();
+    			t0 = space();
     			sidebar = element("sidebar");
     			section0 = element("section");
     			div0 = element("div");
-    			button4 = element("button");
-    			t9 = text("Sync files");
+    			button0 = element("button");
+    			t1 = text("Sync files");
+    			t2 = space();
+    			button1 = element("button");
+    			button1.textContent = "Add files";
+    			t4 = space();
+    			button2 = element("button");
+    			button2.textContent = "Clear all";
+    			t6 = space();
+
+    			for (let i = 0; i < each_blocks_3.length; i += 1) {
+    				each_blocks_3[i].c();
+    			}
+
+    			t7 = space();
+    			if (if_block) if_block.c();
+    			t8 = space();
+    			section1 = element("section");
+    			t9 = text("PROJECTS");
     			t10 = space();
-    			button5 = element("button");
-    			button5.textContent = "Add files";
-    			t12 = space();
+    			section2 = element("section");
+    			div4 = element("div");
+    			div1 = element("div");
+    			t11 = text(t11_value);
+    			t12 = text(" x ");
+    			t13 = text(t13_value);
+    			t14 = space();
+    			div2 = element("div");
+    			select0 = element("select");
+
+    			for (let i = 0; i < each_blocks_2.length; i += 1) {
+    				each_blocks_2[i].c();
+    			}
+
+    			t15 = space();
+    			div3 = element("div");
+    			select1 = element("select");
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
     				each_blocks_1[i].c();
     			}
 
-    			t13 = space();
-    			if (if_block) if_block.c();
-    			t14 = space();
-    			section1 = element("section");
-    			t15 = space();
-    			section2 = element("section");
+    			t16 = space();
+    			input0 = element("input");
+    			t17 = space();
+    			input1 = element("input");
+    			t18 = space();
+    			button3 = element("button");
+    			button3.textContent = "Add layer";
+    			t20 = space();
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
-    			t16 = space();
+    			t21 = space();
     			section3 = element("section");
-    			add_location(button0, file, 199, 3, 3708);
-    			add_location(button1, file, 200, 3, 3754);
-    			toggle_class(button2, "filled", /*mode*/ ctx[6]);
-    			add_location(button2, file, 201, 3, 3833);
-    			add_location(button3, file, 202, 3, 3930);
+    			section3.textContent = "Hello";
+    			t23 = space();
+    			section4 = element("section");
+    			div6 = element("div");
     			attr_dev(header, "class", "bb1-solid p1 br1-solid");
-    			add_location(header, file, 197, 2, 3657);
-    			button4.disabled = /*isSynced*/ ctx[8];
-    			attr_dev(button4, "class", "w100pc");
-    			add_location(button4, file, 208, 5, 4137);
-    			attr_dev(button5, "class", "w100pc mt1");
-    			add_location(button5, file, 214, 5, 4259);
+    			add_location(header, file, 289, 2, 6293);
+    			button0.disabled = /*isSynced*/ ctx[10];
+    			attr_dev(button0, "class", "w100pc");
+    			add_location(button0, file, 295, 5, 6460);
+    			attr_dev(button1, "class", "w100pc mt1");
+    			add_location(button1, file, 301, 5, 6583);
+    			attr_dev(button2, "class", "w100pc mt1");
+    			add_location(button2, file, 306, 5, 6684);
     			attr_dev(div0, "class", "p1");
-    			add_location(div0, file, 207, 4, 4115);
-    			attr_dev(section0, "class", /*classes*/ ctx[16].lanes);
-    			add_location(section0, file, 206, 3, 4079);
-    			attr_dev(section1, "class", /*classes*/ ctx[16].lanes);
-    			add_location(section1, file, 257, 3, 5299);
-    			attr_dev(section2, "class", /*classes*/ ctx[16].lanes + " p1");
-    			add_location(section2, file, 259, 3, 5348);
+    			add_location(div0, file, 294, 4, 6438);
+    			attr_dev(section0, "class", /*classes*/ ctx[21].lanes);
+    			add_location(section0, file, 293, 3, 6402);
+    			attr_dev(section1, "class", /*classes*/ ctx[21].lanes + " basis0pc");
+    			add_location(section1, file, 349, 3, 7742);
+    			add_location(div1, file, 354, 5, 7920);
+    			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[25].call(select0));
+    			add_location(select0, file, 358, 6, 8015);
+    			attr_dev(div2, "class", "select");
+    			add_location(div2, file, 357, 5, 7988);
+    			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[26].call(select1));
+    			add_location(select1, file, 365, 6, 8245);
+    			attr_dev(div3, "class", "select");
+    			add_location(div3, file, 364, 5, 8218);
+    			attr_dev(input0, "min", 150);
+    			attr_dev(input0, "max", 600);
+    			attr_dev(input0, "step", 50);
+    			attr_dev(input0, "type", "number");
+    			attr_dev(input0, "placeholder", "DPI");
+    			add_location(input0, file, 371, 5, 8436);
+    			attr_dev(input1, "min", 0);
+    			attr_dev(input1, "max", input1_max_value = Math.max(/*_uniforms*/ ctx[3].size[0], /*_uniforms*/ ctx[3].size[1]) * 0.4);
+    			attr_dev(input1, "step", 1);
+    			attr_dev(input1, "type", "number");
+    			attr_dev(input1, "placeholder", "Margin");
+    			add_location(input1, file, 378, 5, 8584);
+    			attr_dev(button3, "class", "w100pc");
+    			add_location(button3, file, 385, 5, 8787);
+    			attr_dev(div4, "class", "p1 flex column cmb1");
+    			add_location(div4, file, 353, 4, 7881);
+    			attr_dev(section2, "id", "layers");
+    			attr_dev(section2, "class", /*classes*/ ctx[21].lanes + " basis20pc");
+    			add_location(section2, file, 352, 3, 7818);
+    			attr_dev(section3, "class", "no-basis w2em br1-solid");
+    			add_location(section3, file, 402, 3, 9155);
     			attr_dev(sidebar, "class", "flex row grow overflow-hidden");
-    			add_location(sidebar, file, 204, 2, 4024);
-    			attr_dev(div1, "class", "basis30pc minw42em maxw52em flex column-stretch-stretch grow minh100vh maxh100vh");
-    			add_location(div1, file, 196, 1, 3560);
-    			attr_dev(section3, "class", "basis70pc  p0 grow flex row-center-center overflow-auto");
-    			add_location(section3, file, 271, 1, 5602);
-    			attr_dev(main_1, "class", "flex row-stretch-stretch bg");
-    			add_location(main_1, file, 193, 0, 3490);
+    			add_location(sidebar, file, 291, 2, 6347);
+    			attr_dev(div5, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh");
+    			add_location(div5, file, 288, 1, 6196);
+    			attr_dev(div6, "class", "flex p4");
+    			add_location(div6, file, 411, 2, 9454);
+    			attr_dev(section4, "class", "basis70pc minw50em pointer grow flex row-center-flex-start overflow-auto maxh100vh overflow-auto");
+    			add_location(section4, file, 407, 1, 9243);
+    			attr_dev(main_1, "class", "flex row-stretch-stretch bg overflow-auto");
+    			add_location(main_1, file, 285, 0, 6112);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, main_1, anchor);
-    			append_dev(main_1, div1);
-    			append_dev(div1, header);
-    			append_dev(header, t0);
-    			append_dev(header, button0);
-    			append_dev(header, t2);
-    			append_dev(header, button1);
-    			append_dev(header, t4);
-    			append_dev(header, button2);
-    			append_dev(header, t6);
-    			append_dev(header, button3);
-    			append_dev(div1, t8);
-    			append_dev(div1, sidebar);
+    			append_dev(main_1, div5);
+    			append_dev(div5, header);
+    			append_dev(div5, t0);
+    			append_dev(div5, sidebar);
     			append_dev(sidebar, section0);
     			append_dev(section0, div0);
-    			append_dev(div0, button4);
-    			append_dev(button4, t9);
-    			append_dev(div0, t10);
-    			append_dev(div0, button5);
-    			append_dev(section0, t12);
+    			append_dev(div0, button0);
+    			append_dev(button0, t1);
+    			append_dev(div0, t2);
+    			append_dev(div0, button1);
+    			append_dev(div0, t4);
+    			append_dev(div0, button2);
+    			append_dev(section0, t6);
 
-    			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				each_blocks_1[i].m(section0, null);
+    			for (let i = 0; i < each_blocks_3.length; i += 1) {
+    				each_blocks_3[i].m(section0, null);
     			}
 
-    			append_dev(section0, t13);
+    			append_dev(section0, t7);
     			if (if_block) if_block.m(section0, null);
-    			append_dev(sidebar, t14);
+    			append_dev(sidebar, t8);
     			append_dev(sidebar, section1);
-    			append_dev(sidebar, t15);
+    			append_dev(section1, t9);
+    			append_dev(sidebar, t10);
     			append_dev(sidebar, section2);
+    			append_dev(section2, div4);
+    			append_dev(div4, div1);
+    			append_dev(div1, t11);
+    			append_dev(div1, t12);
+    			append_dev(div1, t13);
+    			append_dev(div4, t14);
+    			append_dev(div4, div2);
+    			append_dev(div2, select0);
+
+    			for (let i = 0; i < each_blocks_2.length; i += 1) {
+    				each_blocks_2[i].m(select0, null);
+    			}
+
+    			select_option(select0, /*project*/ ctx[0].config.background);
+    			append_dev(div4, t15);
+    			append_dev(div4, div3);
+    			append_dev(div3, select1);
+
+    			for (let i = 0; i < each_blocks_1.length; i += 1) {
+    				each_blocks_1[i].m(select1, null);
+    			}
+
+    			select_option(select1, /*project*/ ctx[0].config.size);
+    			append_dev(div4, t16);
+    			append_dev(div4, input0);
+    			set_input_value(input0, /*project*/ ctx[0].config.dpi);
+    			append_dev(div4, t17);
+    			append_dev(div4, input1);
+    			set_input_value(input1, /*project*/ ctx[0].config.margin);
+    			append_dev(div4, t18);
+    			append_dev(div4, button3);
+    			append_dev(section2, t20);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].m(section2, null);
     			}
 
-    			append_dev(main_1, t16);
-    			append_dev(main_1, section3);
-    			/*section3_binding*/ ctx[26](section3);
-    			/*main_1_binding*/ ctx[27](main_1);
+    			append_dev(sidebar, t21);
+    			append_dev(sidebar, section3);
+    			append_dev(main_1, t23);
+    			append_dev(main_1, section4);
+    			append_dev(section4, div6);
+    			/*div6_binding*/ ctx[34](div6);
+    			/*main_1_binding*/ ctx[37](main_1);
     			current = true;
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(button0, "click", /*loadFiles*/ ctx[13], false, false, false),
-    					listen_dev(button1, "click", click_handler, false, false, false),
-    					listen_dev(button1, "click", /*add*/ ctx[10], false, false, false),
-    					listen_dev(button2, "click", click_handler_1, false, false, false),
-    					listen_dev(button2, "click", /*toggle*/ ctx[9], false, false, false),
+    					listen_dev(button0, "click", /*requestAll*/ ctx[17], false, false, false),
+    					listen_dev(button1, "click", /*accessFiles*/ ctx[18], false, false, false),
+    					listen_dev(button2, "click", /*clearAllHandles*/ ctx[20], false, false, false),
+    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[25]),
+    					listen_dev(select1, "change", /*select1_change_handler*/ ctx[26]),
+    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[27]),
+    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[28]),
     					listen_dev(button3, "click", click_handler_2, false, false, false),
-    					listen_dev(button3, "click", /*invert*/ ctx[11], false, false, false),
-    					listen_dev(button4, "click", /*loadFiles*/ ctx[13], false, false, false),
-    					listen_dev(button5, "click", /*accessFiles*/ ctx[14], false, false, false)
+    					listen_dev(button3, "click", /*addLayer*/ ctx[15], false, false, false),
+    					listen_dev(section4, "mousedown", /*mousedown_handler*/ ctx[35], false, false, false),
+    					listen_dev(section4, "mouseup", /*mouseup_handler*/ ctx[36], false, false, false)
     				];
 
     				mounted = true;
     			}
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*mode*/ 64) {
-    				toggle_class(button2, "filled", /*mode*/ ctx[6]);
+    			if (!current || dirty[0] & /*isSynced*/ 1024) {
+    				prop_dev(button0, "disabled", /*isSynced*/ ctx[10]);
     			}
 
-    			if (!current || dirty[0] & /*isSynced*/ 256) {
-    				prop_dev(button4, "disabled", /*isSynced*/ ctx[8]);
+    			if (dirty[0] & /*srcs, handles, classes, removeHandle, requestFile*/ 2686982) {
+    				each_value_3 = /*handles*/ ctx[1].reverse();
+    				validate_each_argument(each_value_3);
+    				let i;
+
+    				for (i = 0; i < each_value_3.length; i += 1) {
+    					const child_ctx = get_each_context_3(ctx, each_value_3, i);
+
+    					if (each_blocks_3[i]) {
+    						each_blocks_3[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks_3[i] = create_each_block_3(child_ctx);
+    						each_blocks_3[i].c();
+    						each_blocks_3[i].m(section0, t7);
+    					}
+    				}
+
+    				for (; i < each_blocks_3.length; i += 1) {
+    					each_blocks_3[i].d(1);
+    				}
+
+    				each_blocks_3.length = each_value_3.length;
     			}
 
-    			if (dirty[0] & /*srcs, handles, classes, removeHandle, requestFile*/ 102403) {
-    				each_value_1 = /*handles*/ ctx[0];
+    			if (/*handles*/ ctx[1].length == 0) {
+    				if (if_block) ; else {
+    					if_block = create_if_block(ctx);
+    					if_block.c();
+    					if_block.m(section0, null);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+
+    			if ((!current || dirty[0] & /*calculate*/ 2048) && t11_value !== (t11_value = /*calculate*/ ctx[11].width + "")) set_data_dev(t11, t11_value);
+    			if ((!current || dirty[0] & /*calculate*/ 2048) && t13_value !== (t13_value = /*calculate*/ ctx[11].height + "")) set_data_dev(t13, t13_value);
+
+    			if (dirty[0] & /*options*/ 8192) {
+    				each_value_2 = /*options*/ ctx[13].backgrounds;
+    				validate_each_argument(each_value_2);
+    				let i;
+
+    				for (i = 0; i < each_value_2.length; i += 1) {
+    					const child_ctx = get_each_context_2(ctx, each_value_2, i);
+
+    					if (each_blocks_2[i]) {
+    						each_blocks_2[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks_2[i] = create_each_block_2(child_ctx);
+    						each_blocks_2[i].c();
+    						each_blocks_2[i].m(select0, null);
+    					}
+    				}
+
+    				for (; i < each_blocks_2.length; i += 1) {
+    					each_blocks_2[i].d(1);
+    				}
+
+    				each_blocks_2.length = each_value_2.length;
+    			}
+
+    			if (dirty[0] & /*project, options*/ 8193) {
+    				select_option(select0, /*project*/ ctx[0].config.background);
+    			}
+
+    			if (dirty[0] & /*options*/ 8192) {
+    				each_value_1 = /*options*/ ctx[13].sizes;
     				validate_each_argument(each_value_1);
     				let i;
 
@@ -46752,7 +47548,7 @@ void main(void) {
     					} else {
     						each_blocks_1[i] = create_each_block_1(child_ctx);
     						each_blocks_1[i].c();
-    						each_blocks_1[i].m(section0, t13);
+    						each_blocks_1[i].m(select1, null);
     					}
     				}
 
@@ -46763,19 +47559,24 @@ void main(void) {
     				each_blocks_1.length = each_value_1.length;
     			}
 
-    			if (/*handles*/ ctx[0].length == 0) {
-    				if (if_block) ; else {
-    					if_block = create_if_block(ctx);
-    					if_block.c();
-    					if_block.m(section0, null);
-    				}
-    			} else if (if_block) {
-    				if_block.d(1);
-    				if_block = null;
+    			if (dirty[0] & /*project, options*/ 8193) {
+    				select_option(select1, /*project*/ ctx[0].config.size);
     			}
 
-    			if (dirty[0] & /*layers, mode, stage, image*/ 240) {
-    				each_value = /*layers*/ ctx[7];
+    			if (dirty[0] & /*project, options*/ 8193 && to_number(input0.value) !== /*project*/ ctx[0].config.dpi) {
+    				set_input_value(input0, /*project*/ ctx[0].config.dpi);
+    			}
+
+    			if (!current || dirty[0] & /*_uniforms*/ 8 && input1_max_value !== (input1_max_value = Math.max(/*_uniforms*/ ctx[3].size[0], /*_uniforms*/ ctx[3].size[1]) * 0.4)) {
+    				attr_dev(input1, "max", input1_max_value);
+    			}
+
+    			if (dirty[0] & /*project, options*/ 8193 && to_number(input1.value) !== /*project*/ ctx[0].config.margin) {
+    				set_input_value(input1, /*project*/ ctx[0].config.margin);
+    			}
+
+    			if (dirty[0] & /*group, project, mode, stage, image*/ 961) {
+    				each_value = /*project*/ ctx[0].layers;
     				validate_each_argument(each_value);
     				let i;
 
@@ -46822,11 +47623,13 @@ void main(void) {
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(main_1);
-    			destroy_each(each_blocks_1, detaching);
+    			destroy_each(each_blocks_3, detaching);
     			if (if_block) if_block.d();
+    			destroy_each(each_blocks_2, detaching);
+    			destroy_each(each_blocks_1, detaching);
     			destroy_each(each_blocks, detaching);
-    			/*section3_binding*/ ctx[26](null);
-    			/*main_1_binding*/ ctx[27](null);
+    			/*div6_binding*/ ctx[34](null);
+    			/*main_1_binding*/ ctx[37](null);
     			mounted = false;
     			run_all(dispose);
     		}
@@ -46845,118 +47648,208 @@ void main(void) {
 
     const KEY = "RISOGRAPHINATOR";
 
+    // --------- App --------------
     function selectImage(e) {
     	console.log("IMAGE CLICKED!", e);
     }
 
-    const click_handler = e => e.target.blur();
-    const click_handler_1 = e => e.target.blur();
     const click_handler_2 = e => e.target.blur();
 
     function instance($$self, $$props, $$invalidate) {
+    	let _uniforms;
+    	let calculate;
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots("App", slots, []);
-    	let main, editor, app, stage, image, loader, ticker, mode, raw, bg;
-    	let { src = "sources/002.png" } = $$props;
-    	let { project = { layers: [], config: {}, files: [] } } = $$props;
-    	let layers = [];
+    	let main, editor, app, stage, image, loader, ticker, mode, raw, bg, group;
+    	let { src = "sources/swiss.png" } = $$props;
+
+    	const gen = {
+    		bg: (name, colour, grain) => ({
+    			name,
+    			colour: colorString.get.hsl(colour),
+    			grain
+    		}),
+    		size: (name, width, height) => ({ name, xy: [width, height] })
+    	};
+
+    	let options = {
+    		backgrounds: [
+    			gen.bg("Ultra black", `hsl(0, 0%, 5%)`, 0.5),
+    			gen.bg("Blue black", `hsl(200, 60%, 10%)`, 0.5),
+    			gen.bg("Bone white", `hsl(0, 0%, 98%)`, 0.1),
+    			gen.bg("Warm white", `hsl(50, 90%, 97%)`, 0.1)
+    		],
+    		sizes: [
+    			gen.size("A4 (landscape)", 297, 210),
+    			gen.size("A4 (portrait)", 210, 297),
+    			gen.size("A3 (landscape)", 420, 297),
+    			gen.size("A3 (portrait)", 297, 420),
+    			gen.size("A2 (landscape)", 594, 420),
+    			gen.size("A2 (portrait)", 420, 594)
+    		]
+    	};
+
+    	let { project = {
+    		layers: [],
+    		config: {
+    			background: options.backgrounds[0].name,
+    			size: options.sizes[0].name,
+    			dpi: 300,
+    			margin: 0
+    		},
+    		files: ["sources/swiss.png"]
+    	} } = $$props;
+
     	onMount(setup);
     	let uniforms = {};
 
-    	function setUniforms(bg) {
-    		uniforms.invert = bg;
+    	function setUniforms(unis) {
+    		uniforms.hsla = unis.hsla;
+    		uniforms.size = unis.size;
     	}
 
-    	function background() {
-    		bg = new Sprite$1(image.texture);
+    	const mm2px = mm => Math.round(project.config.dpi / 25.4 * mm);
+    	let fit = {};
+
+    	async function update(config) {
+    		if (app?.renderer) {
+    			console.log("[Project] update sizes");
+    			const { width, height } = calculate;
+    			await app.renderer.resize(width, height);
+    			const print = rectd.neu(0, 0, image.data.width, image.data.height);
+    			const inner = rectd.shrinkBy(rectd.neu(0, 0, width, height), mm2px(project.config.margin));
+    			fit = rectd.fitInto(print, inner);
+    			rectd.auto(fit, group);
+    		}
+    	}
+
+    	function createBackground() {
+    		$$invalidate(12, bg = new Sprite$1(image.texture));
 
     		const fragment = `
+${lib}
 uniform bool invert;
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
+uniform vec4 hsla;
 
 void main(void) {
 
-	vec3 color = vec3(texture2D(uSampler, vTextureCoord));
-	gl_FragColor = (!invert) ? vec4(1.0) : vec4(0.0);
+	vec3 bg3 = vec3(hsla.x / 360.0, hsla.y / 100.0, hsla.z / 100.0);
+	vec4 bg4 = vec4( hsl2rgb( bg3 ), 1.0 );
+	gl_FragColor = bg4;
 
 }`;
 
     		let filter = new Filter(null, fragment, uniforms);
-    		bg.filters = [filter];
+    		$$invalidate(12, bg.filters = [filter], bg);
     		stage.addChild(bg);
+    		window.group = $$invalidate(9, group = new Container());
+    		stage.addChild(group);
     	}
 
     	function loaded(obj, resources) {
-    		$$invalidate(5, image = resources[src]);
+    		$$invalidate(7, image = resources[src]);
 
-    		app = new Application({
-    				width: image.data.width,
-    				height: image.data.height,
+    		window.app = app = new Application({
+    				width: calculate.width,
+    				height: calculate.height,
     				antialias: false,
     				transparent: true,
     				resolution: 1,
     				forceCanvas: true
     			});
 
-    		$$invalidate(4, stage = app.stage);
-
-    		// stage.addChild(bg)
-    		// app.renderer.backgroundColor = 0x000000
+    		$$invalidate(6, stage = app.stage);
     		editor.appendChild(app.view);
-
-    		add();
-    		background();
+    		addLayer();
+    		createBackground();
     		raw = new Sprite$1(image.texture);
     	}
 
-    	function toggle() {
-    		$$invalidate(6, mode = !mode);
-    		mode ? stage.addChild(raw) : stage.removeChild(raw);
+    	function togglePreview(b) {
+    		$$invalidate(8, mode = b);
+
+    		if (mode) {
+    			rectd.auto(fit, raw);
+    			stage.addChild(raw);
+    		} else {
+    			stage.removeChild(raw);
+    		}
     	}
 
-    	function add() {
-    		let cp = layers;
-    		$$invalidate(7, layers = []);
+    	function addLayer() {
+    		let cp = project.layers;
+    		$$invalidate(0, project.layers = [], project);
     		cp.push({});
-    		$$invalidate(7, layers = cp);
+    		$$invalidate(0, project.layers = cp, project);
     	}
 
     	let BG = false;
 
     	function invert() {
-    		$$invalidate(19, BG = !BG);
+    		BG = !BG;
+    	}
+
+    	async function loadImages() {
+    		console.log("LOADING IMAGES");
+    		if (!loader) loader = new Loader();
+    		await loader.reset();
+    		for (const file of project.files) loader.add(file, { crossOrigin: "anonymous" });
+    		loader.load(loaded);
     	}
 
     	async function setup() {
-    		loader = new Loader();
-    		loader.add(src, { crossOrigin: "anonymous" });
-    		loader.load(loaded);
-    		$$invalidate(0, handles = await get(FILES_KEY));
+    		await loadImages();
+    		await loadDb();
+    		await requestAll();
     	}
 
-    	async function requestFile(handle) {
-    		let opts = { mode: "read" };
-    		let permission = await handle.queryPermission(opts);
-    		if (permission != "granted") permission = await handle.requestPermission(opts);
-
-    		if (permission == "granted") {
-    			const file = await handle.getFile();
-    			$$invalidate(1, srcs[handle.name] = URL.createObjectURL(file), srcs);
-    		} else {
-    			window.alert(`Could not load ${handle.name}!`);
+    	let handles = [
+    		{
+    			name: "color_test.png",
+    			url: "sources/swiss.png",
+    			static: true
     		}
-    	}
+    	];
 
-    	async function loadFiles() {
-    		$$invalidate(0, handles = await get(FILES_KEY));
-    		for (const handle of handles) requestFile(handle);
-    	}
-
-    	let handles = [];
     	let srcs = {};
     	const FILES_KEY = `${KEY}_FILES`;
     	const PROJECTS_KEY = `${KEY}_PROJECTS`;
+
+    	async function requestFile(handle) {
+    		if (handle.static) {
+    			$$invalidate(2, srcs[handle.name] = handle, srcs);
+    		} else {
+    			let opts = { mode: "read" };
+    			let permission = await handle.queryPermission(opts);
+    			if (permission != "granted") permission = await handle.requestPermission(opts);
+
+    			if (permission == "granted") {
+    				const file = await handle.getFile();
+
+    				$$invalidate(
+    					2,
+    					srcs[handle.name] = {
+    						name: handle.name,
+    						url: URL.createObjectURL(file)
+    					},
+    					srcs
+    				);
+    			} else {
+    				window.alert(`Could not load ${handle.name}!`);
+    			}
+    		}
+    	}
+
+    	async function loadDb() {
+    		$$invalidate(1, handles = handles.concat(await get(FILES_KEY) || []));
+    	}
+
+    	async function requestAll() {
+    		await loadDb();
+    		for (const handle of handles) requestFile(handle);
+    	}
 
     	async function accessFiles(e) {
     		let neu = await window.showOpenFilePicker({
@@ -46972,18 +47865,18 @@ void main(void) {
     			multiple: true
     		});
 
-    		$$invalidate(0, handles = handles.concat(neu));
-    		await set(FILES_KEY, handles);
-    		await loadFiles();
+    		$$invalidate(1, handles = handles.concat(neu));
+    		await set(FILES_KEY, handles.filter(h => !h.static));
+    		await requestAll();
     	}
 
     	let isSynced = false;
 
-    	function checkSync(handles, srcs) {
-    		$$invalidate(8, isSynced = true);
+    	function syncSrcs(handles, srcs) {
+    		$$invalidate(10, isSynced = true);
 
     		for (const handle of handles) {
-    			if (!srcs[handle.name]) $$invalidate(8, isSynced = false);
+    			if (!srcs[handle.name]) $$invalidate(10, isSynced = false);
     		}
     	}
 
@@ -46993,11 +47886,17 @@ void main(void) {
     	async function removeHandle(handle) {
     		if (!window.confirm(`Remove ${handle.name} from bin?`)) return;
     		let cp = handles;
-    		$$invalidate(0, handles = []);
+    		$$invalidate(1, handles = []);
     		const idx = cp.indexOf(handle);
     		if (idx != -1) cp.splice(idx, 1);
-    		$$invalidate(0, handles = cp);
-    		await set(FILES_KEY, handles);
+    		$$invalidate(1, handles = cp);
+    		await set(FILES_KEY, handles.filter(h => !h.static));
+    	}
+
+    	async function clearAllHandles(handle) {
+    		if (!window.confirm(`Remove all files from bin?`)) return;
+    		$$invalidate(1, handles = handles.filter(h => h.static));
+    		await set(FILES_KEY, []);
     	}
 
     	let classes = {
@@ -47011,46 +47910,78 @@ void main(void) {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<App> was created with unknown prop '${key}'`);
     	});
 
-    	const click_handler_3 = (handle, e) => requestFile(handle);
-    	const click_handler_4 = (handle, e) => removeHandle(handle);
+    	const click_handler = (handle, e) => requestFile(handle);
+    	const click_handler_1 = (handle, e) => removeHandle(handle);
+
+    	function select0_change_handler() {
+    		project.config.background = select_value(this);
+    		$$invalidate(0, project);
+    		$$invalidate(13, options);
+    	}
+
+    	function select1_change_handler() {
+    		project.config.size = select_value(this);
+    		$$invalidate(0, project);
+    		$$invalidate(13, options);
+    	}
+
+    	function input0_input_handler() {
+    		project.config.dpi = to_number(this.value);
+    		$$invalidate(0, project);
+    		$$invalidate(13, options);
+    	}
+
+    	function input1_input_handler() {
+    		project.config.margin = to_number(this.value);
+    		$$invalidate(0, project);
+    		$$invalidate(13, options);
+    	}
+
+    	function layer_group_binding(value) {
+    		group = value;
+    		$$invalidate(9, group);
+    	}
 
     	function layer_layer_binding(value, layer, each_value, index) {
     		each_value[index] = value;
-    		$$invalidate(7, layers);
+    		$$invalidate(0, project);
     	}
 
     	function layer_mode_binding(value) {
     		mode = value;
-    		$$invalidate(6, mode);
+    		$$invalidate(8, mode);
     	}
 
     	function layer_stage_binding(value) {
     		stage = value;
-    		$$invalidate(4, stage);
+    		$$invalidate(6, stage);
     	}
 
     	function layer_image_binding(value) {
     		image = value;
-    		$$invalidate(5, image);
+    		$$invalidate(7, image);
     	}
 
-    	function section3_binding($$value) {
+    	function div6_binding($$value) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			editor = $$value;
-    			$$invalidate(3, editor);
+    			$$invalidate(5, editor);
     		});
     	}
+
+    	const mousedown_handler = e => togglePreview(true);
+    	const mouseup_handler = e => togglePreview(false);
 
     	function main_1_binding($$value) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			main = $$value;
-    			$$invalidate(2, main);
+    			$$invalidate(4, main);
     		});
     	}
 
     	$$self.$$set = $$props => {
-    		if ("src" in $$props) $$invalidate(17, src = $$props.src);
-    		if ("project" in $$props) $$invalidate(18, project = $$props.project);
+    		if ("src" in $$props) $$invalidate(22, src = $$props.src);
+    		if ("project" in $$props) $$invalidate(0, project = $$props.project);
     	};
 
     	$$self.$capture_state = () => ({
@@ -47060,6 +47991,8 @@ void main(void) {
     		Layer,
     		get,
     		set,
+    		colorString,
+    		rectd,
     		main,
     		editor,
     		app,
@@ -47070,57 +48003,71 @@ void main(void) {
     		mode,
     		raw,
     		bg,
+    		group,
     		src,
+    		gen,
+    		options,
     		project,
-    		layers,
     		uniforms,
     		setUniforms,
-    		background,
+    		mm2px,
+    		fit,
+    		update,
+    		createBackground,
     		loaded,
-    		toggle,
-    		add,
+    		togglePreview,
+    		addLayer,
     		BG,
     		invert,
-    		selectImage,
+    		loadImages,
     		setup,
-    		requestFile,
-    		loadFiles,
+    		selectImage,
     		handles,
     		srcs,
     		KEY,
     		FILES_KEY,
     		PROJECTS_KEY,
+    		requestFile,
+    		loadDb,
+    		requestAll,
     		accessFiles,
     		isSynced,
-    		checkSync,
+    		syncSrcs,
     		FILES,
     		PROJECTS,
     		removeHandle,
-    		classes
+    		clearAllHandles,
+    		classes,
+    		_uniforms,
+    		calculate
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ("main" in $$props) $$invalidate(2, main = $$props.main);
-    		if ("editor" in $$props) $$invalidate(3, editor = $$props.editor);
+    		if ("main" in $$props) $$invalidate(4, main = $$props.main);
+    		if ("editor" in $$props) $$invalidate(5, editor = $$props.editor);
     		if ("app" in $$props) app = $$props.app;
-    		if ("stage" in $$props) $$invalidate(4, stage = $$props.stage);
-    		if ("image" in $$props) $$invalidate(5, image = $$props.image);
+    		if ("stage" in $$props) $$invalidate(6, stage = $$props.stage);
+    		if ("image" in $$props) $$invalidate(7, image = $$props.image);
     		if ("loader" in $$props) loader = $$props.loader;
     		if ("ticker" in $$props) ticker = $$props.ticker;
-    		if ("mode" in $$props) $$invalidate(6, mode = $$props.mode);
+    		if ("mode" in $$props) $$invalidate(8, mode = $$props.mode);
     		if ("raw" in $$props) raw = $$props.raw;
-    		if ("bg" in $$props) bg = $$props.bg;
-    		if ("src" in $$props) $$invalidate(17, src = $$props.src);
-    		if ("project" in $$props) $$invalidate(18, project = $$props.project);
-    		if ("layers" in $$props) $$invalidate(7, layers = $$props.layers);
+    		if ("bg" in $$props) $$invalidate(12, bg = $$props.bg);
+    		if ("group" in $$props) $$invalidate(9, group = $$props.group);
+    		if ("src" in $$props) $$invalidate(22, src = $$props.src);
+    		if ("options" in $$props) $$invalidate(13, options = $$props.options);
+    		if ("project" in $$props) $$invalidate(0, project = $$props.project);
     		if ("uniforms" in $$props) uniforms = $$props.uniforms;
-    		if ("BG" in $$props) $$invalidate(19, BG = $$props.BG);
-    		if ("handles" in $$props) $$invalidate(0, handles = $$props.handles);
-    		if ("srcs" in $$props) $$invalidate(1, srcs = $$props.srcs);
-    		if ("isSynced" in $$props) $$invalidate(8, isSynced = $$props.isSynced);
+    		if ("fit" in $$props) fit = $$props.fit;
+    		if ("BG" in $$props) BG = $$props.BG;
+    		if ("handles" in $$props) $$invalidate(1, handles = $$props.handles);
+    		if ("srcs" in $$props) $$invalidate(2, srcs = $$props.srcs);
+    		if ("isSynced" in $$props) $$invalidate(10, isSynced = $$props.isSynced);
     		if ("FILES" in $$props) FILES = $$props.FILES;
     		if ("PROJECTS" in $$props) PROJECTS = $$props.PROJECTS;
-    		if ("classes" in $$props) $$invalidate(16, classes = $$props.classes);
+    		if ("classes" in $$props) $$invalidate(21, classes = $$props.classes);
+    		if ("_uniforms" in $$props) $$invalidate(3, _uniforms = $$props._uniforms);
+    		if ("calculate" in $$props) $$invalidate(11, calculate = $$props.calculate);
     	};
 
     	if ($$props && "$$inject" in $$props) {
@@ -47128,43 +48075,71 @@ void main(void) {
     	}
 
     	$$self.$$.update = () => {
-    		if ($$self.$$.dirty[0] & /*BG*/ 524288) {
-    			setUniforms(BG);
+    		if ($$self.$$.dirty[0] & /*project*/ 1) {
+    			$$invalidate(3, _uniforms = {
+    				hsla: options.backgrounds.find(b => b.name == project.config.background).colour,
+    				size: options.sizes.find(b => b.name == project.config.size).xy
+    			});
     		}
 
-    		if ($$self.$$.dirty[0] & /*handles, srcs*/ 3) {
-    			checkSync(handles, srcs);
+    		if ($$self.$$.dirty[0] & /*_uniforms*/ 8) {
+    			setUniforms(_uniforms);
+    		}
+
+    		if ($$self.$$.dirty[0] & /*_uniforms*/ 8) {
+    			$$invalidate(11, calculate = {
+    				width: mm2px(_uniforms.size[0]) * 0.25,
+    				height: mm2px(_uniforms.size[1]) * 0.25
+    			});
+    		}
+
+    		if ($$self.$$.dirty[0] & /*project*/ 1) {
+    			update(project.config);
+    		}
+
+    		if ($$self.$$.dirty[0] & /*handles, srcs*/ 6) {
+    			syncSrcs(handles, srcs);
     		}
     	};
 
     	return [
+    		project,
     		handles,
     		srcs,
+    		_uniforms,
     		main,
     		editor,
     		stage,
     		image,
     		mode,
-    		layers,
+    		group,
     		isSynced,
-    		toggle,
-    		add,
-    		invert,
+    		calculate,
+    		bg,
+    		options,
+    		togglePreview,
+    		addLayer,
     		requestFile,
-    		loadFiles,
+    		requestAll,
     		accessFiles,
     		removeHandle,
+    		clearAllHandles,
     		classes,
     		src,
-    		project,
-    		BG,
-    		click_handler_3,
-    		click_handler_4,
+    		click_handler,
+    		click_handler_1,
+    		select0_change_handler,
+    		select1_change_handler,
+    		input0_input_handler,
+    		input1_input_handler,
+    		layer_group_binding,
     		layer_layer_binding,
     		layer_mode_binding,
     		layer_stage_binding,
     		layer_image_binding,
-    		section3_binding,
+    		div6_binding,
+    		mousedown_handler,
+    		mouseup_handler,
     		main_1_binding
     	];
     }
@@ -47172,7 +48147,7 @@ void main(void) {
     class App extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init$1(this, options, instance, create_fragment, safe_not_equal, { src: 17, project: 18 }, [-1, -1]);
+    		init$1(this, options, instance, create_fragment, safe_not_equal, { src: 22, project: 0 }, [-1, -1, -1]);
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,

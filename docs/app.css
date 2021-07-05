@@ -56485,3 +56485,7 @@ html .file .overlay, body .file .overlay {
 
 html .file:hover .overlay, body .file:hover .overlay {
   display: flex; }
+
+html #layers > *, body #layers > * {
+  padding: 1em;
+  border-bottom: 1px solid var(--color); }
