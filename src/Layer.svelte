@@ -246,19 +246,50 @@ void main(void) {
 	let viz
 	let invert = false
 
-	let types = ['custom', '(c)myk', 'c(m)yk', 'cm(y)k', 'cmy(k)', '(r)gb', 'r(g)b', 'rg(b)']
+	let types = ['picker', 'cyan', 'magenta', 'yellow', 'key', 'red', 'green', 'blue']
 
 </script>
 
-<div class="flex column w16em p1">
+<div class="flex column">
 	<div class="viz b1-solid p0 mb0-5" style="line-height:0px" bind:this={viz} />
 	<div class="mb0-5">
-		<div class="select w100pc mb0-2">
-			<select bind:value={type}>
-				{#each types as t,i}
-					<option value={i} name={t}>{t}</option>
-				{/each}
-			</select>
+		<div class="flex row-stretch-stretch grow w100pc">
+			<div class="basis5em h100pc select">
+				<select class="br0-solid" bind:value={type} style="letter-spacing: 4em">
+					{#each types as t,i}
+						<option value={i} name={t}>{t}</option>
+					{/each}
+				</select>
+				<!-- ➡ ➜ → ➪ ↔ -->
+			</div>
+			<div class="flex no-basis h100pc grow ">
+				<span 
+					on:click={e => overlay = true}
+					class="select grow">
+					<span class="flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable">
+						{(colour?.name || '').toLowerCase()}
+					</span>
+				</span>
+				<div 
+					class="flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99"
+					class:none={ !overlay }>
+					{#each colours as c}
+						<div 
+							on:click={ e => select(c) }
+							style={`background-color:rgb(${c.rgb});margin-top:-1px`}
+							class="flex column pointer no-basis grow minw16em clickable minh0em">
+							<span 
+								class="inverted flex column p1">
+								<span>{c.name}</span>
+								<span>{c.japanese || '-'}</span>
+							</span>
+						</div>
+					{/each}
+					{#each new Array(10) as ii,i}
+						<span class="flex column pointer no-basis grow minw16em clickable h0em" style="line-height:0px;max-height:0px" />
+					{/each}
+				</div>
+			</div>
 		</div>
 		{#if type == 0}
 			{#each Object.entries(ui) as [name, two]}
@@ -268,7 +299,13 @@ void main(void) {
 							<span>{id.replace('_', ' ')}</span>
 							<span class="monospace">{o.value.toFixed(2)}</span>
 						</label>
-						<input type="range" bind:value={o.value} min={o.min} max={o.max} step={1.0/360} />
+						<input 
+							class=""
+							type="range" 
+							bind:value={o.value} 
+							min={o.min} 
+							max={o.max} 
+							step={1.0/360} />
 					</div>
 				{/each}
 			{/each}
@@ -279,36 +316,5 @@ void main(void) {
 		class:filled={invert}
 		class="p1 b1-solid mb0-5 clickable text-center">
 		invert
-	</div>
-	<div class="flex column mb1">
-		<div 
-			style={`background-color:rgb(${colour?.rgb})`}
-			class="align-left flex column b1-solid clickable rel mb2 ">
-			<span 
-				on:click={e => overlay = true}
-				class="flex column p0-5">
-				<span class="">{colour?.name}</span>
-				<span class="">{colour?.japanese || '~'}</span>
-			</span>
-			<div 
-				class="flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99"
-				class:none={ !overlay }>
-				{#each colours as c}
-					<div 
-						on:click={ e => select(c) }
-						style={`background-color:rgb(${c.rgb});margin-top:-1px`}
-						class="flex column pointer no-basis grow minw16em clickable minh0em">
-						<span 
-							class="inverted flex column p1">
-							<span>{c.name}</span>
-							<span>{c.japanese || '-'}</span>
-						</span>
-					</div>
-				{/each}
-				{#each new Array(10) as ii,i}
-					<span class="flex column pointer no-basis grow minw16em clickable h0em" style="line-height:0px;max-height:0px" />
-				{/each}
-			</div>
-		</div>
 	</div>
 </div>

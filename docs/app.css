@@ -48,7 +48,7 @@
   --bg-a: hsl( 300, 20%, 10% );
   --bg-b: hsl( 300, 20%, 15% );
   --bg-c: hsl( 300, 20%, 20% );
-  --bg-d: hsl( 300, 20%, 25% );
+  --bg-d: hsl( 0, 0%, 100%, 0.9 );
   --bg-e: hsl( 300, 20%, 30% );
   --color-a: hsl( 0, 90%, 75% );
   --color-b: hsl( 80, 90%, 75% );
@@ -56476,6 +56476,12 @@ a.color-e, select.color-e, button.color-e, .button.color-e {
     flex-basis: 100%;
     max-width: 100%; } }
 
-html canvas, body canvas {
+html canvas, html img, body canvas, body img {
   max-width: 100%;
   background: black; }
+
+html .file .overlay, body .file .overlay {
+  display: none; }
+
+html .file:hover .overlay, body .file:hover .overlay {
+  display: flex; }

@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@pixi/picture": "^3.0.1",
+    "idb-keyval": "^5.0.6",
     "pixi.js": "^6.0.4",
     "sirv-cli": "^1.0.0"
   }
