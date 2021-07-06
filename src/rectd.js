@@ -12,9 +12,6 @@ export default {
 		let ra = a.width / a.height
 		let rb = b.width / b.height
 		if (!offset) offset = 0.5
-
-		console.log(ra, rb)
-
 		let width = ra > rb ? b.width : a.width * (b.height / a.height)
 		let height = ra > rb ? a.height * (b.width / a.width) : b.height
 		let x = b.x + ( ra > rb ? 0 : (b.width - width) * offset)
@@ -27,5 +24,21 @@ export default {
 		obj.y = r.y
 		obj.width = r.width
 		obj.height = r.height
+		return obj
+	},
+	splitUp: (r, count) => {
+		const { x, y, width, height } = r
+		let ratio = width/height
+		let alt = ratio > 1
+		let short = (alt ? width : height ) / count
+		let out = []
+		for (let i = 0; i < count; i++) out.push({
+			x: alt ? short * i : 0,
+			y: alt ? 0 : short * i,
+			width: alt ? short : width,
+			height: alt ? height : short
+		})
+		return out
+
 	}
 }

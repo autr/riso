@@ -56480,6 +56480,13 @@ html canvas, html img, body canvas, body img {
   max-width: 100%;
   background: black; }
 
+html .palette canvas, body .palette canvas {
+  width: 100%;
+  position: absolute;
+  height: 100%;
+  top: 0;
+  left: 0; }
+
 html .file .overlay, body .file .overlay {
   display: none; }
 
