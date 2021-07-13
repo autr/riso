@@ -8,19 +8,38 @@
 
 	export let layer = {}
 	export let index = 0
-	export let container
-	export let images
-	export let target
 	export let solo = null
 	export let project = {}
+	export let pixi 
+	export let group
 
-	let group
+	let filter
 
 	function setDefaults( layer_ ) {
 		for ( const g of gui.config) if (!layer[g.name]) layer[g.name] = g.default
 	}
 
 	$: setDefaults(layer)
+
+
+	let id
+
+	function setStringId( layer_ ) {
+
+		const pad = num => (Math.round(num).toString().padStart(3, '0'))
+		let i = layer.type || 0
+		id = `L${index + 1}_`
+		id += `${(colours[layer.colour]?.name || '').replaceAll(' ', '')}_`
+		id += `${types[i].toUpperCase()[0]}`
+		const {hue_point, hue_width, hue_falloff} = layer
+		if (i ==0) id += `${pad(hue_point*360)}${pad(hue_width*100)}${pad(hue_falloff*100)}`
+		id += `_I${layer.invert ? 1 : 0}_`
+		const {levels_low, levels_mid, levels_high, opacity} = layer
+		id += `L${pad(levels_low*100)}${pad(levels_mid*100)}${pad(levels_high*100)}_`
+		id += `O${pad(opacity*100)}`
+	}
+
+	$: setStringId( layer )
 
 
 	onMount( setup )
@@ -32,12 +51,11 @@
 
 	    
 	    if (layer.solo == null) layer.solo = false
+	    if (layer.muted == undefined) layer.muted = false
+		if (layer.type == undefined) layer.type = 0
+		if (layer.colour == undefined) layer.colour = parseInt(Math.random() * colours.length)
 
-
-	    layer.muted = false
-		layer.type = 0
-		layer.colour = parseInt(Math.random() * colours.length)
-		layer.seed = Math.random();
+		layer.seed = Math.random()
 		layer.colours = colours.map( c => {
 	    	return c.rgb.split(',').map( l => {
 	    		return parseFloat((parseFloat(l) / 255).toFixed(3))
@@ -56,8 +74,9 @@ uniform sampler2D uSampler;`
 		let program = `
 float extract( vec3 hsv ) {
 
-	float width = hue_width;
-	float falloff = hue_falloff;
+	float width = hue_width * 0.5;
+	float balance = hue_balance;
+	float falloff = ( ( 1.0 - hue_width ) / 2.0 ) * hue_falloff;
 	float low = hue_point - width;
 	float high = hue_point + width;
 	float very_low = low - falloff;
@@ -67,8 +86,9 @@ float extract( vec3 hsv ) {
 
 	if ( within( hsv.x, very_low, very_high ) != 0 ) {
 
-		float sat = hsv.y;
+		float saturation = hsv.y;
 		float bright = hsv.z;
+		float final = ((1.0 - balance) * bright) + (balance * saturation);
 
 		int LOW = within( hsv.x, very_low, low );
 		int HIGH = within( hsv.x, high, very_high );
@@ -77,14 +97,14 @@ float extract( vec3 hsv ) {
 		if ( LOW != 0 ) {
 			if (LOW == 2) HUE += 1.0;
 			if (LOW == 3) HUE -= 1.0;
-			sat *= map( HUE, very_low, low, 0.0, 1.0 );
+			final *= map( HUE, very_low, low, 0.0, 1.0 );
 		} else if ( HIGH != 0 ) {
 			if (HIGH == 2) HUE += 1.0;
 			if (HIGH == 3) HUE -= 1.0;
-			sat *= map( HUE, high, very_high, 1.0, 0.0 );
+			final *= map( HUE, high, very_high, 1.0, 0.0 );
 		}
 
-		return map(sat + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 );
+		return final;
 
 	} else {
 		return 0.0;
@@ -104,7 +124,7 @@ void main(void) {
 	vec3 hsv = rgb2hsv( color );
 	vec3 ink = getInk();
 
-	if (solo) ink = vec3(1.0,1.0,1.0);
+	if (solo) ink = vec3(1.0,0.0,0.0);
 	float power = 0.0;
 
 	if (type == 0) {
@@ -120,24 +140,25 @@ void main(void) {
 		if (type == 7) power = color.b;
 	}
 
+	power = clamp( map(power + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 ), 0.0, 1.0);
 
-	// vec4 end = vec4(ink, 1.0);
-	// end *= power * opacity;
+	// float noiz = map( snoise(vec2(hsv.r * 0.1, hsv.g * 0.1)), 0.0, 1.0, opacity - 1.0, opacity);
 
-	float noiz = map( noise(vec2(hsv.z, hsv.x), 99999999.0 * seed), 0.0, 1.0, opacity - 0.2, opacity);
-
-	gl_FragColor = vec4(ink,1.0) * noiz * power;
+	if (solo) {
+		gl_FragColor = vec4(ink,1.0) * power * opacity;
+	} else {
+		gl_FragColor = vec4(ink,1.0) * power * opacity;
+	}
 
 }`
+
 		let fragment = window.fragment = `${lib}\n${header}\n${program}`
 
-		group = new PIXI.Container()
-		group.filters = [ new PIXI.Filter(null, fragment, layer) ]
-		container.addChild( group )
-	    // if (layer.flag) return
-		group.addChild( images )
 
-		// visualise()
+		filter = new PIXI.Filter(null, fragment, layer)
+
+		let noise = new PIXI.filters.NoiseFilter(1.0)
+		group.filters = [ filter ]
 
 	}
 
@@ -204,23 +225,33 @@ void main(void) {
 
 <div class="flex column">
 	<div class="mb0-5">
+
+
+		<!-- PALETTE -->
+
 		<div 
 			on:click={e => overlay = true}
 			class="h2em flex column mb1 w100pc b1-solid">
 			<Palette bind:layer={layer} />
 		</div>
-		> {solo} / S {layer.solo} / M {layer.muted}
+
+
+
+
 		<div class="mb1 flex row-space-between-center br1-solid">
 
 			<!-- TITLE -->
 			<span class=" sink h3em flex row-flex-start-center pl1 grow mr1">
-				L{(index + 1).toString().padStart(3, '0')}
+				L{(index + 1).toString()}
 			</span>
-
 
 			<!-- BUTTONS -->
 
 			<div class="flex row ">
+				<!-- <button 
+					on:click={ e => layer.invert = !layer.invert }
+					class:filled={layer.invert} 
+					class="{topRight}">I</button> -->
 				<button 
 					on:click={ e => layer.muted = !layer.muted }
 					class:filled={layer.muted} 
@@ -282,30 +313,45 @@ void main(void) {
 
 			</div>
 		</div>
-
 		{#each gui.config as ui}
-			<div class="flex column cmb0-2">
+			<div 
+				class="flex row-flex-end-center mt1 w100pc"
+				class:none={ !isNaN(ui.link) && ui.link != layer.type}>
+
 				{#if ui.label}
 
-					<label class="capitalize flex row-space-between-flex-start">
+					<label class="no-basis capitalize grow flex row-flex-start-flex-start">
 						<span>{ui.label}</span>
-						{#if ui.type =='float'}
-							<span class="monospace">{layer[ui.name].toFixed(2)}</span>
-						{/if}
+						<!-- {#if ui.type =='float'}
+							<span class="monospace">{layer[ui.name]}</span>
+						{/if} -->
 					</label>
 				{/if}
-				{#if ui.type == 'boolean'}
-					<input type="checkbox" bind:checked={layer[ui.name]} />
+				{#if ui.type == 'bool'}
+
+
+					<div 
+						on:click={e => layer[ui.name] = !layer[ui.name]}
+						class="br0-solid flex row-flex-end-center">
+						<span 
+							class="b1-solid rel checker w2em h2em block">
+							<span class:cross={layer[ui.name]} class="fill" />
+						</span>
+					</div>
 				{:else if ui.type == 'float'}
 					<input 
-						class="round radius1em"
+						class="no-basis grow maxw60pc w60pc minw60pc round ml2 radius1em"
 						type="range" 
 						bind:value={layer[ui.name]} 
-						min="0" 
+						min="-0.000001" 
 						max="1" 
-						step={1.0/360} />
+						step="0.001" />
 				{/if}
 			</div>
 		{/each}
+<!-- 
+		<div class="plr1 ptb0-5 fade mt2 monospace sink overflow-hidden">
+			<span class="normal">{id}</span>
+		</div> -->
 	</div>
 </div>

@@ -18,19 +18,19 @@ export default [
         "pantone": "3005 U"
     },
     {
-        "name": "GREEN",
+        "name": "GRN",
         "japanese": "グリーン",
         "rgb": "0, 169, 92",
         "pantone": "354 U"
     },
     {
-        "name": "MEDIUM BLUE",
+        "name": "MED BLUE",
         "japanese": "ミディアムブルー",
         "rgb": "50, 85, 164",
         "pantone": "286 U"
     },
     {
-        "name": "BRIGHT RED",
+        "name": "BRGHT RED",
         "japanese": "ブライトレッド",
         "rgb": "241, 80, 96",
         "pantone": "185 U"
@@ -60,7 +60,7 @@ export default [
         "pantone": "1245 U"
     },
     {
-        "name": "HUNTER GREEN",
+        "name": "HUNTR GRN",
         "japanese": "ハンターグリーン",
         "rgb": "64, 112, 96",
         "pantone": "342 U"
@@ -96,25 +96,25 @@ export default [
         "pantone": "ORANGE 021 U"
     },
     {
-        "name": "FLUORESCENT PINK",
+        "name": "FLUO PINK",
         "japanese": "蛍光ピンク",
         "rgb": "255, 72, 176",
         "pantone": "806 U"
     },
     {
-        "name": "LIGHT GRAY",
+        "name": "LGHT GRAY",
         "japanese": "ライトグレー",
         "rgb": "136, 137, 138",
         "pantone": "424 U"
     },
     {
-        "name": "FLATALLIC GOLD",
+        "name": "FLATLLC GOLD",
         "japanese": "フラッタリックゴールド",
         "rgb": "180, 143, 80",
         "pantone": ""
     },
     {
-        "name": "METALLIC GOLD",
+        "name": "METLLC GOLD",
         "japanese": "金",
         "rgb": "172, 147, 110",
         "pantone": "872 U"
@@ -126,13 +126,13 @@ export default [
         "pantone": "485 U"
     },
     {
-        "name": "FLUORESCENT ORANGE",
+        "name": "FLUO ORANGE",
         "japanese": "蛍光オレンジ",
         "rgb": "255, 116, 119",
         "pantone": "805 U"
     },
     {
-        "name": "CORNFLOWER",
+        "name": "CORNFLWR",
         "japanese": "コーンフラワー",
         "rgb": "98, 168, 229",
         "pantone": "292 U"
@@ -246,13 +246,13 @@ export default [
         "pantone": "570 U"
     },
     {
-        "name": "KELLY GREEN",
+        "name": "KELLY GRN",
         "japanese": "ケリーグリーン",
         "rgb": "103, 179, 70",
         "pantone": "368 U"
     },
     {
-        "name": "LIGHT TEAL",
+        "name": "LGHT TEAL",
         "japanese": "",
         "rgb": "0, 157, 165",
         "pantone": "320 U"
@@ -318,19 +318,19 @@ export default [
         "pantone": "186 U"
     },
     {
-        "name": "CRANBERRY",
+        "name": "CRNBRRY",
         "japanese": "",
         "rgb": "194, 79, 93",
         "pantone": "200 U"
     },
     {
-        "name": "MAROON",
+        "name": "MAROON",    
         "japanese": "",
         "rgb": "158, 76, 110",
         "pantone": "221 U"
     },
     {
-        "name": "RASPBERRY RED",
+        "name": "RSPBRY RED",
         "japanese": "",
         "rgb": "180, 75, 101",
         "pantone": "207 U"
@@ -342,7 +342,7 @@ export default [
         "pantone": "1807 U"
     },
     {
-        "name": "LIGHT LIME",
+        "name": "LGHT LIME",
         "japanese": "黄緑",
         "rgb": "227, 237, 85",
         "pantone": "387 U"
@@ -378,13 +378,13 @@ export default [
         "pantone": "1655 U"
     },
     {
-        "name": "BRIGHT OLIVE GREEN",
+        "name": "BRGHT OLIVE GRN",
         "japanese": "",
         "rgb": "180, 159, 41",
         "pantone": "103 U"
     },
     {
-        "name": "BRIGHT GOLD",
+        "name": "BRGHT GOLD",
         "japanese": "",
         "rgb": "186, 128, 50",
         "pantone": "131 U"
@@ -414,7 +414,7 @@ export default [
         "pantone": "231 U"
     },
     {
-        "name": "LIGHT MAUVE",
+        "name": "LGHT MAUVE",
         "japanese": "",
         "rgb": "230, 181, 201",
         "pantone": "7430 U"
@@ -462,25 +462,25 @@ export default [
         "pantone": "324 U"
     },
     {
-        "name": "CLEAR MEDIUM",
+        "name": "CLR MED",
         "japanese": "透明な培地",
         "rgb": "242,242,242",
         "pantone": ""
     },
     {
-        "name": "FLUORESCENT YELLOW",
+        "name": "FLUO YELLOW",
         "japanese": "蛍光イエロー",
         "rgb": "255, 233, 22",
         "pantone": "803 U"
     },
     {
-        "name": "FLUORESCENT RED",
+        "name": "FLUO RED",
         "japanese": "蛍光レッド",
         "rgb": "255, 76, 101",
         "pantone": "812 U"
     },
     {
-        "name": "FLUORESCENT GREEN",
+        "name": "FLUO GRN",
         "japanese": "蛍光グリーン",
         "rgb": "68, 214, 44",
         "pantone": "802 U"

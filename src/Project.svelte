@@ -17,18 +17,19 @@
 	let layers = window.layers = {
 		background: new PIXI.Graphics(),
 		container: new PIXI.Container(),
-		images: new PIXI.Container(),
+		groups: [],
 		processed: new PIXI.Container()
 	}
 
-	let pixi = {
+	let pixi = window.pixi = {
 		app: new PIXI.Application({
 			antialias: false,
 			transparent: true,
 			resolution: 1,
 			forceCanvas: true,
 			preserveDrawingBuffer: true
-		})
+		}),
+		loader: new PIXI.Loader()
 	}
 
 	// let thumb = new PIXI.Application({
@@ -46,7 +47,8 @@
 	export let project
 	export let files
 	export let handlers
-
+	export let IDX
+	export let THUMBS
 
 	let uniforms = {}
 
@@ -58,6 +60,7 @@
 	function setUniforms( unis ) {
 		uniforms.hsla = unis.hsla
 		uniforms.size = unis.size
+		uniforms.solo = solo != null
 	}
 
 	$: setUniforms( _uniforms )
@@ -87,6 +90,7 @@
 		layers.background.filters = [ new PIXI.Filter(null, `
 			${lib}
 			varying vec2 vTextureCoord;
+			uniform bool solo;
 			uniform sampler2D uSampler;
 			uniform vec4 hsla;
 
@@ -94,6 +98,7 @@
 
 				vec3 bg3 = vec3(hsla.x / 360.0, hsla.y / 100.0, hsla.z / 100.0);
 				vec4 bg4 = vec4( hsl2rgb( bg3 ), 1.0 );
+				if (solo) bg4 = vec4(0.0,0.0,0.0,0.0);
 				gl_FragColor = bg4;
 
 			}`, 
@@ -105,6 +110,7 @@
 		console.log(`[Project] 🎉  layers and background inited`)
 
 		await update( project.config )
+
 	}
 
 
@@ -118,59 +124,66 @@
 		}
 	}
 
-	function addLayer() {
+	async function addLayer() {
 		console.log('[Project] 🍰  adding layer ------------------------')
 		let cp = project.layers
 		project.layers = []
 		cp.push( { flag: true } )
 		project.layers = cp
+		await drawImages()
 	}
 
-	async function clearImages() {
-		
-		for (let i = layers.images.children.length - 1; i >= 0; i--) layers.images.removeChild(layers.images.children[i])
-	}
+	let thumbTimeout, thumbLookup
+
+	// async function renderThumbnail() {
+
+	// 	if (thumbTimeout) {
+	// 		clearTimeout( thumbTimeout )
+	// 		thumbTimeout = null
+	// 	}
+	// 	thumbTimeout = setTimeout( e => {
+
+	// 	}, 1000)
+
+
+
+	// }
 
 	async function renderThumbnail() {
-		let {width,height} = calculate
-		let ctx = thumbnail.getContext('2d')
-		thumbnail.width = width > height ? 140 : 100
-		thumbnail.height = width > height ? 100 : 140
-		ctx.drawImage( (new PIXI.Extract(pixi.app.renderer)).image(pixi.app.stage), 0, 0, thumbnail.width, thumbnail.height)
-		let data = thumbnail.toDataURL()
-		if (data != project.thumbnail) {
-			console.log('[Project] ⏱🌁  rendered thumbnail')
-			project.thumbnail = data
-		}
 
-		// await setPositions()
-
-
-
+		// console.log('doing render...')
+		// // await pixi.app.renderer.render(pixi.app.stage)
+		// let {width,height} = calculate
+		// let ctx = thumbnail.getContext('2d')
+		// thumbnail.width = width > height ? 140 : 100
+		// thumbnail.height = width > height ? 100 : 140
+		// ctx.drawImage( (new PIXI.Extract(pixi.app.renderer)).image(layers.processed), 0, 0, thumbnail.width, thumbnail.height)
+		// // let base64 = (new PIXI.Extract(pixi.app.renderer)).base64(layers.groups[0])
+		// THUMBS[IDX] = thumbnail.toDataURL()
+		// console.log('rendered?')
 	}
 
 	async function setup( files ) {
 
 
 		if (!files?.srcs) return
-		if (!loader) loader = new PIXI.Loader()
 
 		let list = project.files.filter( name => files.srcs[name] )
 		if (list.length != project.files.length) return
 
 		console.log('[Project] 💥  setup (reset)')
-		await loader.reset()
+		await pixi.loader.reset()
 		for (const name of project.files) {
 			let o = files.srcs[name]
-			if (!loader.resources[o.url]) loader.add( o.url, { crossOrigin: 'anonymous' })
+			if (!pixi.loader.resources[o.url]) pixi.loader.add( o.url, { crossOrigin: 'anonymous' })
 		}
 
 		await setPositions()
 
-		loader.load(async e => {
+		pixi.loader.load(async e => {
 			console.log('[Project] ✅💥  files loaded')
 			await drawImages()
-			await renderThumbnail()
+			// await renderThumbnail()
 		})
 		inited = true
 	}
@@ -202,29 +215,19 @@
 				const neuSize = width != layers.background.width || height != layers.background.height
 				const neuMargin = project.config.margin != prevMargin
 				const isCanvasChanged = neuSize || neuMargin
-				const isNewFiles = project.files.length != Object.keys(loader.resources).length
+				const isNewFiles = project.files.length != Object.keys(pixi.loader.resources).length
 				const isNewLayer = project.layers.length != layers.processed.children.length
-
+				const isTrigger = project.trigger
 				let something = false
 
-				if (isCanvasChanged || isNewFiles ) {
-					console.log('[Project] 🪡🖼  clearing images')
-					await clearImages()
-					something = true
-				}
 
-				if (isNewFiles) {
+				if (isNewFiles || isTrigger) {
 					console.log('[Project] 🪡✨  new files, run setup')
 					await setup( files )
 					something = true
+					project.trigger = false
 				} 
-				// if (isNewLayer) {
-				// 	console.log('[Project] 🪡🍰  new layer')
-				// 	await setPositions()
-				// 	await drawImages()
-				// 	something = true
-				// } 
-
+				
 				if ( isCanvasChanged ) {
 					console.log('[Project] 🪡📐  set positions, draw images')
 					await setPositions()
@@ -233,11 +236,11 @@
 				}
 				// await drawImages()
 
-				if (!something) console.log(`[Project] 🪡💤  nothing happened`)
-				if (something) await renderThumbnail()
+				// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
+				// await renderThumbnail()
 
 
-			}, 200)
+			}, 100)
 
 		}
 	}
@@ -250,46 +253,66 @@
 
 	let prevMargin
 
+	async function removeChildren( obj ) {
+
+		for (let x = obj.children.length - 1; x >= 0; x--) {
+			// await obj.children[x].destroy( { children: true })
+			await obj.removeChild(obj.children[x])
+		}
+	}
+
 	async function drawImages() {
 
 		const { width, height } = calculate
 
-		// await layers.images.destroy({children:true})
 
-		const len = Object.keys(loader.resources).length
+
+		// await removeChildren( layers.processed )
+
+		console.log('[Project] 🛑  cleared groups ')
+
+		const len = Object.keys(pixi.loader.resources).length
 		const size = rectd.neu( 0, 0, width, height )
 		const inner = rectd.shrinkBy( size, mm2px( project.config.margin ) )
 		prevMargin = project.config.margin
 		let splits = rectd.splitUp( inner, len )
 
-		let i = 0
-		for (const [name, resource] of Object.entries(loader.resources) ) {
+		for (let idx = 0; idx < project.layers.length; idx++) {
 
-			let sprite = new PIXI.Sprite( resource.texture )
-			let image = rectd.neu( 0, 0, resource.data.width, resource.data.height )
+			let group = layers.groups[idx] = layers.groups[idx] ? layers.groups[idx] : new PIXI.Container()
+			await removeChildren( group )
+
+			let i = 0
+			for (const [name, resource] of Object.entries(pixi.loader.resources) ) {
+
+				let sprite = new PIXI.Sprite( resource.texture )
+				let image = rectd.neu( 0, 0, resource.data.width, resource.data.height )
 
 
-			sprite.width = width
-			sprite.height = height
+				sprite.width = width
+				sprite.height = height
 
-			let fit = rectd.fitInto( image, inner )
-			rectd.auto( fit, sprite )
+				let fit = rectd.fitInto( image, inner )
+				rectd.auto( fit, sprite )
 
-			if (splits.length > 1) {
-				let mask = new PIXI.Graphics()
-				mask.drawRect(splits[i].x,splits[i].y,splits[i].width,splits[i].height)
-				sprite.mask = mask
+				if (splits.length > 1) {
+					let mask = new PIXI.Graphics()
+					mask.drawRect(splits[i].x,splits[i].y,splits[i].width,splits[i].height)
+					sprite.mask = mask
+				}
+
+				console.log('[Project] 🎉  adding sprite to images:', name, i)
+
+				await group.addChild( sprite )
+				i += 1
 			}
 
-			console.log('[Project] 🎉  adding sprite to images:', name, i)
+			layers.processed.addChild( group )
 
-
-			await layers.images.addChild( sprite )
-			i += 1
 		}
 
 
-		console.log(`[Project] ✅🖼  ${i} image(s) drawn`)
+		console.log(`[Project] ✅🖼  ${Object.keys(pixi.loader.resources).length} image(s) drawn in ${project.layers.length} layers`)
 
 
 
@@ -412,7 +435,9 @@
 
 		e.target.scrollLeft = 4500
 		e.target.scrollTop = 4500
+
 	}
+
 
 	function onWheel(e) {
 
@@ -430,11 +455,16 @@
 
 	let keys = {}
 
-	function onKeyDown(e) {
+	async function onKeyDown(e) {
 		keys[e.key] = true
 	}
-	function onKeyUp(e) {
+	async function onKeyUp(e) {
 		keys[e.key] = false
+		await renderThumbnail()
+	}
+
+	async function onMouseUp(e) {
+		await renderThumbnail()
 	}
 
 	let thumbnail
@@ -544,9 +574,10 @@
 
 
 				<Title>Layout</Title>
-				<div class="hidden abs" style="left:-99999px;top:-99999px">
-					<canvas id="thumbnail" bind:this={thumbnail} />
-					<img src={project.thumbnail} />
+				<div class="hidden abs" style="left:-99999px;top:-99999px" >
+				<!-- <div > -->
+					<canvas class="b1-solid" id="thumbnail" bind:this={thumbnail} />
+					<img class="b1-solid" src={THUMBS[IDX]} />
 				</div>
 				<div class="p1 flex column cmb1 bb1-solid">
 					<div class="flex row">
@@ -592,34 +623,58 @@
 						{/each}
 					</aside>
 
-					<div class="select">
-						<select bind:value={project.config.background}>
-							{#each options.backgrounds as bg}
-								<option value={bg.name} name={bg.name}>{bg.name}</option>
-							{/each}
-						</select>
+					<div class="flex rel">
+						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+							Paper
+						</span>
+						<div class="select w100pc grow">
+							<select class="pl5 w100pc align-right" bind:value={project.config.background}>
+								{#each options.backgrounds as bg}
+									<option value={bg.name} name={bg.name}>{bg.name}</option>
+								{/each}
+							</select>
+						</div>
 					</div>
-					<div class="select">
-						<select bind:value={project.config.size}>
-							{#each options.sizes as sz}
-								<option value={sz.name} name={sz.name}>{sz.name}</option>
-							{/each}
-						</select>
+					<div class="flex rel">
+						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+							Size
+						</span>
+						<div class="select w100pc grow">
+							<select class="pl5 w100pc" bind:value={project.config.size}>
+								{#each options.sizes as sz}
+									<option value={sz.name} name={sz.name}>{sz.name}</option>
+								{/each}
+							</select>
+						</div>
 					</div>
-					<input 
-						min={150}
-						max={600}
-						step={50}
-						type="number" 
-						placeholder="DPI" 
-						bind:value={project.config.dpi} />
-					<input 
-						min={0}
-						max={Math.max( _uniforms.size[0], _uniforms.size[1] ) * 0.4 }
-						step={1}
-						type="number" 
-						placeholder="Margin" 
-						bind:value={project.config.margin} />
+					<div class="flex rel">
+						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+							DPI
+						</span>
+						<input 
+							min={150}
+							max={600}
+							step={50}
+							type="number" 
+							class="w100pc grow"
+							style="padding-left:5em"
+							placeholder="DPI" 
+							bind:value={project.config.dpi} />
+					</div>
+					<div class="flex rel">
+						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+							Margin
+						</span>
+						<input 
+							min={0}
+							max={Math.max( _uniforms.size[0], _uniforms.size[1] ) * 0.4 }
+							step={1}
+							class="w100pc grow"
+							style="padding-left:5em"
+							type="number" 
+							placeholder="Margin" 
+							bind:value={project.config.margin} />
+					</div>
 
 
 				</div>
@@ -628,14 +683,14 @@
 
 
 				<Title>Layers</Title>
-				{#each project.layers as layer, index}
+				{#each layers.groups as group, index}
 					<div class="p1" class:bt1-solid={index != 0}>
 						<Layer 
 							{index}
+							{pixi}
+							bind:group={group}
 							bind:solo={solo}
-							bind:container={layers.processed}
-							images={layers.images}
-							bind:layer={layer} />
+							bind:layer={project.layers[index]} />
 					</div>
 				{/each}
 				<div class="plr1">
@@ -648,9 +703,6 @@
 				</div>
 			</section>
 		</sidebar>
-		<!-- <footer class="p1 bt1-solid br1-solid">
-			RISO3000
-		</footer> -->
 	</div>
 
 	<section 
@@ -675,25 +727,54 @@
 		<div class="t1 r1 abs monospace hidden">
 			{calculate.width} x {calculate.height}
 		</div>
-		<div class="abs b0 l0 p1 flex row ">
+		<div class="abs t0 r2 p1 flex row w3em">
 
-			<div class="flex row bg">
-				<button 
-					on:click={e => zoom > 0.05 ? zoom -= 0.05 : null }
-					class="p0 h3em m0 w3em" >-</button>
-				<input  
-					class="p0 h3em m0 br0-solid bl0-solid" 
-					type="range" 
-					min={0.01} 
-					max={3} 
-					step={0.001} 
-					bind:value={zoom} /> 
+			<div class="flex column">
 				<button 
 					on:click={e => zoom < 2 ? zoom += 0.05 : null }
-					class="p0 h3em m0 w3em" >+</button>
+					class="p0 h3em m0 w3em flex row-center-center" >
+					<span class="flex w1em h1em cross rotate45" />
+				</button>
+				<div class="h10em flex ">
+					<input  
+						class="grow p0 m0 h1em round radius1em b1-solid rotate270 abs" 
+						style="left: -1.5em;top: 8.5em;width: 8em;margin-left:-0px;margin-top:-0.5px;background: transparent" 
+						type="range" 
+						min={0.01} 
+						max={3} 
+						step={0.001} 
+						bind:value={zoom} /> 
+				</div>
+				<button 
+					on:click={e => zoom > 0.05 ? zoom -= 0.05 : null }
+					class="p0 h3em m0 w3em flex row-center-center" >
+						<span class="flex w1em pt0-5 mt0-5 bt1-solid" />
+					</button>
+				<button 
+					class="p0  m0 h3em w3em flex row-center-center bt0-solid" >
+						⤢
+					</button>
+				<button 
+					class="p0  m0 h3em w3em flex row-center-center bt0-solid" >
+						A
+					</button>
+				<button 
+					class="p0  m0 h3em w3em flex row-center-center mt1" >
+						⬚
+					</button>
+
+					
 			</div>
 		</div>
+		<footer class="abs b0 l0 p1 w100pc flex row-space-between-flex-end">
+			<span class="f1 italic"></span>
+			<button>Export</button>
+		</footer>
 	</section>
 </main>
 
-<svelte:window on:resize={onResize} on:keydown={onKeyDown} on:keyup={onKeyUp} />
+<svelte:window 
+	on:mouseup={onMouseUp}
+	on:resize={onResize} 
+	on:keydown={onKeyDown} 
+	on:keyup={onKeyUp} />

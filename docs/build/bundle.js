@@ -593,9 +593,82 @@ var app = (function () {
 
 
 float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+float hash(float n) { return fract(sin(n) * 1e4); }
+float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
-float noise(in vec2 xy, in float seed){
-       return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
+float noise(float x) {
+  float i = floor(x);
+  float f = fract(x);
+  float u = f * f * (3.0 - 2.0 * f);
+  return mix(hash(i), hash(i + 1.0), u);
+}
+
+vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+
+float snoise(vec2 v){
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+           -0.577350269189626, 0.024390243902439);
+  vec2 i  = floor(v + dot(v, C.yy) );
+  vec2 x0 = v -   i + dot(i, C.xx);
+  vec2 i1;
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod(i, 289.0);
+  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+  + i.x + vec3(0.0, i1.x, 1.0 ));
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+    dot(x12.zw,x12.zw)), 0.0);
+  m = m*m ;
+  m = m*m ;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+  vec3 g;
+  g.x  = a0.x  * x0.x  + h.x  * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+
+float noise(vec2 x) {
+  vec2 i = floor(x);
+  vec2 f = fract(x);
+
+  // Four corners in 2D of a tile
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+
+  // Simple 2D lerp using smoothstep envelope between the values.
+  // return vec3(mix(mix(a, b, smoothstep(0.0, 1.0, f.x)),
+  //      mix(c, d, smoothstep(0.0, 1.0, f.x)),
+  //      smoothstep(0.0, 1.0, f.y)));
+
+  // Same code, with the clamps in smoothstep and common subexpressions
+  // optimized away.
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+}
+
+// This one has non-ideal tiling properties that I'm still tuning
+float noise(vec3 x) {
+  const vec3 step = vec3(110, 241, 171);
+
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+ 
+  // For performance, compute the base input to a 1D hash from the integer part of the argument and the 
+  // incremental change to the 1D based on the 3D -> 1D wrapping
+    float n = dot(i, step);
+
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
+               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z);
 }
 
 float rand(vec2 n) { 
@@ -44583,19 +44656,19 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "3005 U"
         },
         {
-            "name": "GREEN",
+            "name": "GRN",
             "japanese": "グリーン",
             "rgb": "0, 169, 92",
             "pantone": "354 U"
         },
         {
-            "name": "MEDIUM BLUE",
+            "name": "MED BLUE",
             "japanese": "ミディアムブルー",
             "rgb": "50, 85, 164",
             "pantone": "286 U"
         },
         {
-            "name": "BRIGHT RED",
+            "name": "BRGHT RED",
             "japanese": "ブライトレッド",
             "rgb": "241, 80, 96",
             "pantone": "185 U"
@@ -44625,7 +44698,7 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "1245 U"
         },
         {
-            "name": "HUNTER GREEN",
+            "name": "HUNTR GRN",
             "japanese": "ハンターグリーン",
             "rgb": "64, 112, 96",
             "pantone": "342 U"
@@ -44661,25 +44734,25 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "ORANGE 021 U"
         },
         {
-            "name": "FLUORESCENT PINK",
+            "name": "FLUO PINK",
             "japanese": "蛍光ピンク",
             "rgb": "255, 72, 176",
             "pantone": "806 U"
         },
         {
-            "name": "LIGHT GRAY",
+            "name": "LGHT GRAY",
             "japanese": "ライトグレー",
             "rgb": "136, 137, 138",
             "pantone": "424 U"
         },
         {
-            "name": "FLATALLIC GOLD",
+            "name": "FLATLLC GOLD",
             "japanese": "フラッタリックゴールド",
             "rgb": "180, 143, 80",
             "pantone": ""
         },
         {
-            "name": "METALLIC GOLD",
+            "name": "METLLC GOLD",
             "japanese": "金",
             "rgb": "172, 147, 110",
             "pantone": "872 U"
@@ -44691,13 +44764,13 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "485 U"
         },
         {
-            "name": "FLUORESCENT ORANGE",
+            "name": "FLUO ORANGE",
             "japanese": "蛍光オレンジ",
             "rgb": "255, 116, 119",
             "pantone": "805 U"
         },
         {
-            "name": "CORNFLOWER",
+            "name": "CORNFLWR",
             "japanese": "コーンフラワー",
             "rgb": "98, 168, 229",
             "pantone": "292 U"
@@ -44811,13 +44884,13 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "570 U"
         },
         {
-            "name": "KELLY GREEN",
+            "name": "KELLY GRN",
             "japanese": "ケリーグリーン",
             "rgb": "103, 179, 70",
             "pantone": "368 U"
         },
         {
-            "name": "LIGHT TEAL",
+            "name": "LGHT TEAL",
             "japanese": "",
             "rgb": "0, 157, 165",
             "pantone": "320 U"
@@ -44883,19 +44956,19 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "186 U"
         },
         {
-            "name": "CRANBERRY",
+            "name": "CRNBRRY",
             "japanese": "",
             "rgb": "194, 79, 93",
             "pantone": "200 U"
         },
         {
-            "name": "MAROON",
+            "name": "MAROON",    
             "japanese": "",
             "rgb": "158, 76, 110",
             "pantone": "221 U"
         },
         {
-            "name": "RASPBERRY RED",
+            "name": "RSPBRY RED",
             "japanese": "",
             "rgb": "180, 75, 101",
             "pantone": "207 U"
@@ -44907,7 +44980,7 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "1807 U"
         },
         {
-            "name": "LIGHT LIME",
+            "name": "LGHT LIME",
             "japanese": "黄緑",
             "rgb": "227, 237, 85",
             "pantone": "387 U"
@@ -44943,13 +45016,13 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "1655 U"
         },
         {
-            "name": "BRIGHT OLIVE GREEN",
+            "name": "BRGHT OLIVE GRN",
             "japanese": "",
             "rgb": "180, 159, 41",
             "pantone": "103 U"
         },
         {
-            "name": "BRIGHT GOLD",
+            "name": "BRGHT GOLD",
             "japanese": "",
             "rgb": "186, 128, 50",
             "pantone": "131 U"
@@ -44979,7 +45052,7 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "231 U"
         },
         {
-            "name": "LIGHT MAUVE",
+            "name": "LGHT MAUVE",
             "japanese": "",
             "rgb": "230, 181, 201",
             "pantone": "7430 U"
@@ -45027,25 +45100,25 @@ vec3 rgb2hsv(vec3 rgb) {
             "pantone": "324 U"
         },
         {
-            "name": "CLEAR MEDIUM",
+            "name": "CLR MED",
             "japanese": "透明な培地",
             "rgb": "242,242,242",
             "pantone": ""
         },
         {
-            "name": "FLUORESCENT YELLOW",
+            "name": "FLUO YELLOW",
             "japanese": "蛍光イエロー",
             "rgb": "255, 233, 22",
             "pantone": "803 U"
         },
         {
-            "name": "FLUORESCENT RED",
+            "name": "FLUO RED",
             "japanese": "蛍光レッド",
             "rgb": "255, 76, 101",
             "pantone": "812 U"
         },
         {
-            "name": "FLUORESCENT GREEN",
+            "name": "FLUO GRN",
             "japanese": "蛍光グリーン",
             "rgb": "68, 214, 44",
             "pantone": "802 U"
@@ -45054,55 +45127,71 @@ vec3 rgb2hsv(vec3 rgb) {
 
     const config = [
     	{
-    		name: 'invert',
-    		type: 'bool',
-    		default: 0,
-    		label: 'Invert'
-    	},
-    	{
     		name: 'hue_point',
     		type: 'float',
     		default: 0,
     		label: 'Hue',
-    		link: 'picker'
+    		link: 0,
+    		viz: 360
     	},
     	{
     		name: 'hue_width',
     		type: 'float',
     		default: 0.1,
     		label: 'Width',
-    		link: 'picker'
+    		link: 0,
+    		viz: 100
     	},
     	{
     		name: 'hue_falloff',
     		type: 'float',
     		default: 0.5,
     		label: 'Falloff',
-    		link: 'picker'
+    		link: 0,
+    		viz: 100
+    	},
+    	{
+    		name: 'hue_balance',
+    		type: 'float',
+    		default: 0.5,
+    		label: 'Balance',
+    		link: 0,
+    		viz: 100
+    	},
+    	{
+    		name: 'invert',
+    		type: 'bool',
+    		default: 0,
+    		label: 'Invert',
+    		viz: null
     	},
     	{
     		name: 'levels_low',
     		type: 'float',
     		default: 0,
-    		label: 'Levels'
+    		label: 'Levels',
+    		viz: 100
     	},
     	{
     		name: 'levels_mid',
     		type: 'float',
     		default: 0.5,
-    		label: false
+    		label: false,
+    		viz: 100
     	},
     	{
     		name: 'levels_high',
     		type: 'float',
     		default: 1,
-    		label: false
+    		label: false,
+    		viz: 100
     	},
     	{
     		name: 'opacity',
     		type: 'float',
     		default: 1,
-    		label: 'Opacity'
+    		label: 'Opacity',
+    		viz: 100
     	}
     ];
 
@@ -45363,47 +45452,47 @@ void main(void) {
 
     function get_each_context$2(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[32] = list[i];
-    	child_ctx[33] = list;
-    	child_ctx[34] = i;
+    	child_ctx[33] = list[i];
+    	child_ctx[34] = list;
+    	child_ctx[35] = i;
     	return child_ctx;
     }
 
     function get_each_context_1$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[35] = list[i];
-    	child_ctx[37] = i;
+    	child_ctx[36] = list[i];
+    	child_ctx[38] = i;
     	return child_ctx;
     }
 
     function get_each_context_2$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[38] = list[i];
-    	child_ctx[37] = i;
+    	child_ctx[39] = list[i];
+    	child_ctx[38] = i;
     	return child_ctx;
     }
 
     function get_each_context_3$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[40] = list[i];
-    	child_ctx[37] = i;
+    	child_ctx[41] = list[i];
+    	child_ctx[38] = i;
     	return child_ctx;
     }
 
-    // (244:5) {#each types as t,i}
+    // (275:5) {#each types as t,i}
     function create_each_block_3$1(ctx) {
     	let option;
-    	let t_value = /*t*/ ctx[40] + "";
+    	let t_value = /*t*/ ctx[41] + "";
     	let t;
 
     	const block = {
     		c: function create() {
     			option = element("option");
     			t = text(t_value);
-    			option.__value = /*i*/ ctx[37];
+    			option.__value = /*i*/ ctx[38];
     			option.value = option.__value;
-    			attr_dev(option, "name", /*t*/ ctx[40]);
-    			add_location(option, file$3, 244, 6, 5571);
+    			attr_dev(option, "name", /*t*/ ctx[41]);
+    			add_location(option, file$3, 275, 6, 6525);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -45419,29 +45508,29 @@ void main(void) {
     		block,
     		id: create_each_block_3$1.name,
     		type: "each",
-    		source: "(244:5) {#each types as t,i}",
+    		source: "(275:5) {#each types as t,i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (264:5) {#each colours as c, i}
+    // (295:5) {#each colours as c, i}
     function create_each_block_2$1(ctx) {
     	let div;
     	let span2;
     	let span0;
-    	let t0_value = /*c*/ ctx[38].name + "";
+    	let t0_value = /*c*/ ctx[39].name + "";
     	let t0;
     	let t1;
     	let span1;
-    	let t2_value = (/*c*/ ctx[38].japanese || "-") + "";
+    	let t2_value = (/*c*/ ctx[39].japanese || "-") + "";
     	let t2;
     	let mounted;
     	let dispose;
 
     	function click_handler_5(...args) {
-    		return /*click_handler_5*/ ctx[21](/*i*/ ctx[37], ...args);
+    		return /*click_handler_5*/ ctx[20](/*i*/ ctx[38], ...args);
     	}
 
     	const block = {
@@ -45453,13 +45542,13 @@ void main(void) {
     			t1 = space();
     			span1 = element("span");
     			t2 = text(t2_value);
-    			add_location(span0, file$3, 270, 8, 6405);
-    			add_location(span1, file$3, 271, 8, 6435);
+    			add_location(span0, file$3, 301, 8, 7359);
+    			add_location(span1, file$3, 302, 8, 7389);
     			attr_dev(span2, "class", "inverted flex column p1");
-    			add_location(span2, file$3, 268, 7, 6349);
-    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[38].rgb});margin-top:-1px;margin-left:-1px`);
+    			add_location(span2, file$3, 299, 7, 7303);
+    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[39].rgb});margin-top:-1px;margin-left:-1px`);
     			attr_dev(div, "class", "b1-solid flex column pointer no-basis grow minw16em minh0em");
-    			add_location(div, file$3, 264, 6, 6144);
+    			add_location(div, file$3, 295, 6, 7098);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -45489,14 +45578,14 @@ void main(void) {
     		block,
     		id: create_each_block_2$1.name,
     		type: "each",
-    		source: "(264:5) {#each colours as c, i}",
+    		source: "(295:5) {#each colours as c, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (276:5) {#each new Array(10) as ii,i}
+    // (307:5) {#each new Array(10) as ii,i}
     function create_each_block_1$1(ctx) {
     	let span;
 
@@ -45506,7 +45595,7 @@ void main(void) {
     			attr_dev(span, "class", "flex column pointer no-basis grow minw16em clickable h0em");
     			set_style(span, "line-height", "0px");
     			set_style(span, "max-height", "0px");
-    			add_location(span, file$3, 276, 6, 6550);
+    			add_location(span, file$3, 307, 6, 7504);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, span, anchor);
@@ -45520,46 +45609,37 @@ void main(void) {
     		block,
     		id: create_each_block_1$1.name,
     		type: "each",
-    		source: "(276:5) {#each new Array(10) as ii,i}",
+    		source: "(307:5) {#each new Array(10) as ii,i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (288:4) {#if ui.label}
+    // (321:4) {#if ui.label}
     function create_if_block_2$1(ctx) {
     	let label;
     	let span;
-    	let t0_value = /*ui*/ ctx[32].label + "";
-    	let t0;
-    	let t1;
-    	let if_block = /*ui*/ ctx[32].type == "float" && create_if_block_3(ctx);
+    	let t_value = /*ui*/ ctx[33].label + "";
+    	let t;
 
     	const block = {
     		c: function create() {
     			label = element("label");
     			span = element("span");
-    			t0 = text(t0_value);
-    			t1 = space();
-    			if (if_block) if_block.c();
-    			add_location(span, file$3, 290, 6, 6866);
-    			attr_dev(label, "class", "capitalize flex row-space-between-flex-start");
-    			add_location(label, file$3, 289, 5, 6799);
+    			t = text(t_value);
+    			add_location(span, file$3, 323, 6, 7912);
+    			attr_dev(label, "class", "no-basis capitalize grow flex row-flex-start-flex-start");
+    			add_location(label, file$3, 322, 5, 7834);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, label, anchor);
     			append_dev(label, span);
-    			append_dev(span, t0);
-    			append_dev(label, t1);
-    			if (if_block) if_block.m(label, null);
+    			append_dev(span, t);
     		},
-    		p: function update(ctx, dirty) {
-    			if (/*ui*/ ctx[32].type == "float") if_block.p(ctx, dirty);
-    		},
+    		p: noop$1,
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(label);
-    			if (if_block) if_block.d();
     		}
     	};
 
@@ -45567,72 +45647,36 @@ void main(void) {
     		block,
     		id: create_if_block_2$1.name,
     		type: "if",
-    		source: "(288:4) {#if ui.label}",
+    		source: "(321:4) {#if ui.label}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (292:6) {#if ui.type =='float'}
-    function create_if_block_3(ctx) {
-    	let span;
-    	let t_value = /*layer*/ ctx[0][/*ui*/ ctx[32].name].toFixed(2) + "";
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			span = element("span");
-    			t = text(t_value);
-    			attr_dev(span, "class", "monospace");
-    			add_location(span, file$3, 292, 7, 6927);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, span, anchor);
-    			append_dev(span, t);
-    		},
-    		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*layer*/ 1 && t_value !== (t_value = /*layer*/ ctx[0][/*ui*/ ctx[32].name].toFixed(2) + "")) set_data_dev(t, t_value);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(span);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_3.name,
-    		type: "if",
-    		source: "(292:6) {#if ui.type =='float'}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (299:33) 
+    // (341:33) 
     function create_if_block_1$1(ctx) {
     	let input;
     	let mounted;
     	let dispose;
 
     	function input_change_input_handler() {
-    		/*input_change_input_handler*/ ctx[23].call(input, /*ui*/ ctx[32]);
+    		/*input_change_input_handler*/ ctx[22].call(input, /*ui*/ ctx[33]);
     	}
 
     	const block = {
     		c: function create() {
     			input = element("input");
-    			attr_dev(input, "class", "round radius1em");
+    			attr_dev(input, "class", "no-basis grow maxw60pc w60pc minw60pc round ml2 radius1em");
     			attr_dev(input, "type", "range");
-    			attr_dev(input, "min", "0");
+    			attr_dev(input, "min", "-0.000001");
     			attr_dev(input, "max", "1");
-    			attr_dev(input, "step", 1 / 360);
-    			add_location(input, file$3, 299, 5, 7153);
+    			attr_dev(input, "step", "0.001");
+    			add_location(input, file$3, 341, 5, 8401);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, input, anchor);
-    			set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[32].name]);
+    			set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
 
     			if (!mounted) {
     				dispose = [
@@ -45647,7 +45691,7 @@ void main(void) {
     			ctx = new_ctx;
 
     			if (dirty[0] & /*layer*/ 1) {
-    				set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[32].name]);
+    				set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
     			}
     		},
     		d: function destroy(detaching) {
@@ -45661,35 +45705,45 @@ void main(void) {
     		block,
     		id: create_if_block_1$1.name,
     		type: "if",
-    		source: "(299:33) ",
+    		source: "(341:33) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (297:4) {#if ui.type == 'boolean'}
+    // (330:4) {#if ui.type == 'bool'}
     function create_if_block$1(ctx) {
-    	let input;
+    	let div;
+    	let span1;
+    	let span0;
     	let mounted;
     	let dispose;
 
-    	function input_change_handler() {
-    		/*input_change_handler*/ ctx[22].call(input, /*ui*/ ctx[32]);
+    	function click_handler_6(...args) {
+    		return /*click_handler_6*/ ctx[21](/*ui*/ ctx[33], ...args);
     	}
 
     	const block = {
     		c: function create() {
-    			input = element("input");
-    			attr_dev(input, "type", "checkbox");
-    			add_location(input, file$3, 297, 5, 7058);
+    			div = element("div");
+    			span1 = element("span");
+    			span0 = element("span");
+    			attr_dev(span0, "class", "fill");
+    			toggle_class(span0, "cross", /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
+    			add_location(span0, file$3, 337, 7, 8285);
+    			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block");
+    			add_location(span1, file$3, 335, 6, 8218);
+    			attr_dev(div, "class", "br0-solid flex row-flex-end-center");
+    			add_location(div, file$3, 332, 5, 8101);
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, input, anchor);
-    			input.checked = /*layer*/ ctx[0][/*ui*/ ctx[32].name];
+    			insert_dev(target, div, anchor);
+    			append_dev(div, span1);
+    			append_dev(span1, span0);
 
     			if (!mounted) {
-    				dispose = listen_dev(input, "change", input_change_handler);
+    				dispose = listen_dev(div, "click", click_handler_6, false, false, false);
     				mounted = true;
     			}
     		},
@@ -45697,11 +45751,11 @@ void main(void) {
     			ctx = new_ctx;
 
     			if (dirty[0] & /*layer*/ 1) {
-    				input.checked = /*layer*/ ctx[0][/*ui*/ ctx[32].name];
+    				toggle_class(span0, "cross", /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
     			}
     		},
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(input);
+    			if (detaching) detach_dev(div);
     			mounted = false;
     			dispose();
     		}
@@ -45711,23 +45765,23 @@ void main(void) {
     		block,
     		id: create_if_block$1.name,
     		type: "if",
-    		source: "(297:4) {#if ui.type == 'boolean'}",
+    		source: "(330:4) {#if ui.type == 'bool'}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (286:2) {#each gui.config as ui}
+    // (316:2) {#each gui.config as ui}
     function create_each_block$2(ctx) {
     	let div;
     	let t0;
     	let t1;
-    	let if_block0 = /*ui*/ ctx[32].label && create_if_block_2$1(ctx);
+    	let if_block0 = /*ui*/ ctx[33].label && create_if_block_2$1(ctx);
 
     	function select_block_type(ctx, dirty) {
-    		if (/*ui*/ ctx[32].type == "boolean") return create_if_block$1;
-    		if (/*ui*/ ctx[32].type == "float") return create_if_block_1$1;
+    		if (/*ui*/ ctx[33].type == "bool") return create_if_block$1;
+    		if (/*ui*/ ctx[33].type == "float") return create_if_block_1$1;
     	}
 
     	let current_block_type = select_block_type(ctx);
@@ -45740,8 +45794,9 @@ void main(void) {
     			t0 = space();
     			if (if_block1) if_block1.c();
     			t1 = space();
-    			attr_dev(div, "class", "flex column cmb0-2");
-    			add_location(div, file$3, 286, 3, 6741);
+    			attr_dev(div, "class", "flex row-flex-end-center mt1 w100pc");
+    			toggle_class(div, "none", !isNaN(/*ui*/ ctx[33].link) && /*ui*/ ctx[33].link != /*layer*/ ctx[0].type);
+    			add_location(div, file$3, 316, 3, 7694);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -45751,8 +45806,12 @@ void main(void) {
     			append_dev(div, t1);
     		},
     		p: function update(ctx, dirty) {
-    			if (/*ui*/ ctx[32].label) if_block0.p(ctx, dirty);
+    			if (/*ui*/ ctx[33].label) if_block0.p(ctx, dirty);
     			if (if_block1) if_block1.p(ctx, dirty);
+
+    			if (dirty[0] & /*layer*/ 1) {
+    				toggle_class(div, "none", !isNaN(/*ui*/ ctx[33].link) && /*ui*/ ctx[33].link != /*layer*/ ctx[0].type);
+    			}
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
@@ -45768,7 +45827,7 @@ void main(void) {
     		block,
     		id: create_each_block$2.name,
     		type: "each",
-    		source: "(286:2) {#each gui.config as ui}",
+    		source: "(316:2) {#each gui.config as ui}",
     		ctx
     	});
 
@@ -45782,53 +45841,45 @@ void main(void) {
     	let palette;
     	let updating_layer;
     	let t0;
-    	let t1;
-    	let t2;
-    	let t3_value = /*layer*/ ctx[0].solo + "";
-    	let t3;
-    	let t4;
-    	let t5_value = /*layer*/ ctx[0].muted + "";
-    	let t5;
-    	let t6;
     	let div2;
     	let span0;
-    	let t7;
-    	let t8_value = (/*index*/ ctx[2] + 1).toString().padStart(3, "0") + "";
-    	let t8;
-    	let t9;
+    	let t1;
+    	let t2_value = (/*index*/ ctx[2] + 1).toString() + "";
+    	let t2;
+    	let t3;
     	let div1;
     	let button0;
-    	let t10;
-    	let t11;
+    	let t4;
+    	let t5;
     	let button1;
-    	let t12;
-    	let t13;
+    	let t6;
+    	let t7;
     	let button2;
-    	let t14;
+    	let t8;
     	let button3;
-    	let t15;
+    	let t9;
     	let button4;
     	let span1;
-    	let t16;
+    	let t10;
     	let div6;
     	let div3;
     	let select_1;
-    	let t17;
+    	let t11;
     	let div5;
     	let span3;
     	let span2;
-    	let t18_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "";
-    	let t18;
-    	let t19;
+    	let t12_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "";
+    	let t12;
+    	let t13;
     	let div4;
-    	let t20;
-    	let t21;
+    	let t14;
+    	let t15;
     	let current;
     	let mounted;
     	let dispose;
 
     	function palette_layer_binding(value) {
-    		/*palette_layer_binding*/ ctx[14](value);
+    		/*palette_layer_binding*/ ctx[13](value);
     	}
 
     	let palette_props = {};
@@ -45877,32 +45928,26 @@ void main(void) {
     			div7 = element("div");
     			div0 = element("div");
     			create_component(palette.$$.fragment);
-    			t0 = text("\n\t\t> ");
-    			t1 = text(/*solo*/ ctx[1]);
-    			t2 = text(" / S ");
-    			t3 = text(t3_value);
-    			t4 = text(" / M ");
-    			t5 = text(t5_value);
-    			t6 = space();
+    			t0 = space();
     			div2 = element("div");
     			span0 = element("span");
-    			t7 = text("L");
-    			t8 = text(t8_value);
-    			t9 = space();
+    			t1 = text("L");
+    			t2 = text(t2_value);
+    			t3 = space();
     			div1 = element("div");
     			button0 = element("button");
-    			t10 = text("M");
-    			t11 = space();
+    			t4 = text("M");
+    			t5 = space();
     			button1 = element("button");
-    			t12 = text("S");
-    			t13 = space();
+    			t6 = text("S");
+    			t7 = space();
     			button2 = element("button");
-    			t14 = space();
+    			t8 = space();
     			button3 = element("button");
-    			t15 = space();
+    			t9 = space();
     			button4 = element("button");
     			span1 = element("span");
-    			t16 = space();
+    			t10 = space();
     			div6 = element("div");
     			div3 = element("div");
     			select_1 = element("select");
@@ -45911,73 +45956,73 @@ void main(void) {
     				each_blocks_3[i].c();
     			}
 
-    			t17 = space();
+    			t11 = space();
     			div5 = element("div");
     			span3 = element("span");
     			span2 = element("span");
-    			t18 = text(t18_value);
-    			t19 = space();
+    			t12 = text(t12_value);
+    			t13 = space();
     			div4 = element("div");
 
     			for (let i = 0; i < each_blocks_2.length; i += 1) {
     				each_blocks_2[i].c();
     			}
 
-    			t20 = space();
+    			t14 = space();
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
     				each_blocks_1[i].c();
     			}
 
-    			t21 = space();
+    			t15 = space();
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
     			attr_dev(div0, "class", "h2em flex column mb1 w100pc b1-solid");
-    			add_location(div0, file$3, 206, 2, 4368);
+    			add_location(div0, file$3, 231, 2, 5239);
     			attr_dev(span0, "class", " sink h3em flex row-flex-start-center pl1 grow mr1");
-    			add_location(span0, file$3, 215, 3, 4628);
+    			add_location(span0, file$3, 243, 3, 5457);
     			attr_dev(button0, "class", /*topRight*/ ctx[9]);
     			toggle_class(button0, "filled", /*layer*/ ctx[0].muted);
-    			add_location(button0, file$3, 223, 4, 4806);
+    			add_location(button0, file$3, 254, 4, 5760);
     			attr_dev(button1, "class", "" + (/*topRight*/ ctx[9] + " br1-solid"));
     			toggle_class(button1, "filled", /*solo*/ ctx[1] == /*index*/ ctx[2]);
-    			add_location(button1, file$3, 227, 4, 4937);
+    			add_location(button1, file$3, 258, 4, 5891);
     			attr_dev(button2, "class", "" + (/*topRight*/ ctx[9] + " arrow rotate180 br1-solid bl0-solid ml1"));
-    			add_location(button2, file$3, 231, 4, 5054);
+    			add_location(button2, file$3, 262, 4, 6008);
     			attr_dev(button3, "class", "" + (/*topRight*/ ctx[9] + " arrow bl1-solid "));
-    			add_location(button3, file$3, 234, 4, 5172);
+    			add_location(button3, file$3, 265, 4, 6126);
     			attr_dev(span1, "class", "cross block w1em h1em");
-    			add_location(span1, file$3, 237, 31, 5296);
+    			add_location(span1, file$3, 268, 31, 6250);
     			attr_dev(button4, "class", /*topRight*/ ctx[9]);
-    			add_location(button4, file$3, 237, 4, 5269);
+    			add_location(button4, file$3, 268, 4, 6223);
     			attr_dev(div1, "class", "flex row ");
-    			add_location(div1, file$3, 222, 3, 4778);
+    			add_location(div1, file$3, 249, 3, 5589);
     			attr_dev(div2, "class", "mb1 flex row-space-between-center br1-solid");
-    			add_location(div2, file$3, 212, 2, 4548);
+    			add_location(div2, file$3, 240, 2, 5377);
     			attr_dev(select_1, "class", "br0-solid");
     			set_style(select_1, "letter-spacing", "4em");
-    			if (/*layer*/ ctx[0].type === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[19].call(select_1));
-    			add_location(select_1, file$3, 242, 4, 5460);
+    			if (/*layer*/ ctx[0].type === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[18].call(select_1));
+    			add_location(select_1, file$3, 273, 4, 6414);
     			attr_dev(div3, "class", "basis5em h100pc select");
-    			add_location(div3, file$3, 241, 3, 5419);
+    			add_location(div3, file$3, 272, 3, 6373);
     			attr_dev(span2, "class", "flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable");
-    			add_location(span2, file$3, 253, 5, 5793);
+    			add_location(span2, file$3, 284, 5, 6747);
     			attr_dev(span3, "class", "select grow");
-    			add_location(span3, file$3, 250, 4, 5719);
+    			add_location(span3, file$3, 281, 4, 6673);
     			attr_dev(div4, "class", "flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99");
     			toggle_class(div4, "none", !/*overlay*/ ctx[3]);
-    			add_location(div4, file$3, 260, 4, 5981);
+    			add_location(div4, file$3, 291, 4, 6935);
     			attr_dev(div5, "class", "flex no-basis h100pc grow ");
-    			add_location(div5, file$3, 249, 3, 5674);
+    			add_location(div5, file$3, 280, 3, 6628);
     			attr_dev(div6, "class", "flex row-stretch-stretch grow w100pc");
-    			add_location(div6, file$3, 240, 2, 5365);
+    			add_location(div6, file$3, 271, 2, 6319);
     			attr_dev(div7, "class", "mb0-5");
-    			add_location(div7, file$3, 205, 1, 4346);
+    			add_location(div7, file$3, 226, 1, 5195);
     			attr_dev(div8, "class", "flex column");
-    			add_location(div8, file$3, 204, 0, 4319);
+    			add_location(div8, file$3, 225, 0, 5168);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -45988,31 +46033,25 @@ void main(void) {
     			append_dev(div7, div0);
     			mount_component(palette, div0, null);
     			append_dev(div7, t0);
-    			append_dev(div7, t1);
-    			append_dev(div7, t2);
-    			append_dev(div7, t3);
-    			append_dev(div7, t4);
-    			append_dev(div7, t5);
-    			append_dev(div7, t6);
     			append_dev(div7, div2);
     			append_dev(div2, span0);
-    			append_dev(span0, t7);
-    			append_dev(span0, t8);
-    			append_dev(div2, t9);
+    			append_dev(span0, t1);
+    			append_dev(span0, t2);
+    			append_dev(div2, t3);
     			append_dev(div2, div1);
     			append_dev(div1, button0);
-    			append_dev(button0, t10);
-    			append_dev(div1, t11);
+    			append_dev(button0, t4);
+    			append_dev(div1, t5);
     			append_dev(div1, button1);
-    			append_dev(button1, t12);
-    			append_dev(div1, t13);
+    			append_dev(button1, t6);
+    			append_dev(div1, t7);
     			append_dev(div1, button2);
-    			append_dev(div1, t14);
+    			append_dev(div1, t8);
     			append_dev(div1, button3);
-    			append_dev(div1, t15);
+    			append_dev(div1, t9);
     			append_dev(div1, button4);
     			append_dev(button4, span1);
-    			append_dev(div7, t16);
+    			append_dev(div7, t10);
     			append_dev(div7, div6);
     			append_dev(div6, div3);
     			append_dev(div3, select_1);
@@ -46022,25 +46061,25 @@ void main(void) {
     			}
 
     			select_option(select_1, /*layer*/ ctx[0].type);
-    			append_dev(div6, t17);
+    			append_dev(div6, t11);
     			append_dev(div6, div5);
     			append_dev(div5, span3);
     			append_dev(span3, span2);
-    			append_dev(span2, t18);
-    			append_dev(div5, t19);
+    			append_dev(span2, t12);
+    			append_dev(div5, t13);
     			append_dev(div5, div4);
 
     			for (let i = 0; i < each_blocks_2.length; i += 1) {
     				each_blocks_2[i].m(div4, null);
     			}
 
-    			append_dev(div4, t20);
+    			append_dev(div4, t14);
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
     				each_blocks_1[i].m(div4, null);
     			}
 
-    			append_dev(div7, t21);
+    			append_dev(div7, t15);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].m(div7, null);
@@ -46050,13 +46089,13 @@ void main(void) {
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(div0, "click", /*click_handler*/ ctx[15], false, false, false),
-    					listen_dev(button0, "click", /*click_handler_1*/ ctx[16], false, false, false),
+    					listen_dev(div0, "click", /*click_handler*/ ctx[14], false, false, false),
+    					listen_dev(button0, "click", /*click_handler_1*/ ctx[15], false, false, false),
     					listen_dev(button1, "click", /*onSolo*/ ctx[6], false, false, false),
-    					listen_dev(button2, "click", /*click_handler_2*/ ctx[17], false, false, false),
-    					listen_dev(button3, "click", /*click_handler_3*/ ctx[18], false, false, false),
-    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[19]),
-    					listen_dev(span3, "click", /*click_handler_4*/ ctx[20], false, false, false)
+    					listen_dev(button2, "click", /*click_handler_2*/ ctx[16], false, false, false),
+    					listen_dev(button3, "click", /*click_handler_3*/ ctx[17], false, false, false),
+    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[18]),
+    					listen_dev(span3, "click", /*click_handler_4*/ ctx[19], false, false, false)
     				];
 
     				mounted = true;
@@ -46072,10 +46111,7 @@ void main(void) {
     			}
 
     			palette.$set(palette_changes);
-    			if (!current || dirty[0] & /*solo*/ 2) set_data_dev(t1, /*solo*/ ctx[1]);
-    			if ((!current || dirty[0] & /*layer*/ 1) && t3_value !== (t3_value = /*layer*/ ctx[0].solo + "")) set_data_dev(t3, t3_value);
-    			if ((!current || dirty[0] & /*layer*/ 1) && t5_value !== (t5_value = /*layer*/ ctx[0].muted + "")) set_data_dev(t5, t5_value);
-    			if ((!current || dirty[0] & /*index*/ 4) && t8_value !== (t8_value = (/*index*/ ctx[2] + 1).toString().padStart(3, "0") + "")) set_data_dev(t8, t8_value);
+    			if ((!current || dirty[0] & /*index*/ 4) && t2_value !== (t2_value = (/*index*/ ctx[2] + 1).toString() + "")) set_data_dev(t2, t2_value);
 
     			if (dirty[0] & /*layer*/ 1) {
     				toggle_class(button0, "filled", /*layer*/ ctx[0].muted);
@@ -46113,7 +46149,7 @@ void main(void) {
     				select_option(select_1, /*layer*/ ctx[0].type);
     			}
 
-    			if ((!current || dirty[0] & /*layer*/ 1) && t18_value !== (t18_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "")) set_data_dev(t18, t18_value);
+    			if ((!current || dirty[0] & /*layer*/ 1) && t12_value !== (t12_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "")) set_data_dev(t12, t12_value);
 
     			if (dirty[0] & /*select*/ 16) {
     				each_value_2 = colours;
@@ -46128,7 +46164,7 @@ void main(void) {
     					} else {
     						each_blocks_2[i] = create_each_block_2$1(child_ctx);
     						each_blocks_2[i].c();
-    						each_blocks_2[i].m(div4, t20);
+    						each_blocks_2[i].m(div4, t14);
     					}
     				}
 
@@ -46204,15 +46240,30 @@ void main(void) {
     	validate_slots("Layer", slots, []);
     	let { layer = {} } = $$props;
     	let { index = 0 } = $$props;
-    	let { container } = $$props;
-    	let { images } = $$props;
-    	let { target } = $$props;
     	let { solo = null } = $$props;
     	let { project = {} } = $$props;
-    	let group;
+    	let { pixi } = $$props;
+    	let { group } = $$props;
+    	let filter;
 
     	function setDefaults(layer_) {
     		for (const g of gui.config) if (!layer[g.name]) $$invalidate(0, layer[g.name] = g.default, layer);
+    	}
+
+    	let id;
+
+    	function setStringId(layer_) {
+    		const pad = num => Math.round(num).toString().padStart(3, "0");
+    		let i = layer.type || 0;
+    		id = `L${index + 1}_`;
+    		id += `${(colours[layer.colour]?.name || "").replaceAll(" ", "")}_`;
+    		id += `${types[i].toUpperCase()[0]}`;
+    		const { hue_point, hue_width, hue_falloff } = layer;
+    		if (i == 0) id += `${pad(hue_point * 360)}${pad(hue_width * 100)}${pad(hue_falloff * 100)}`;
+    		id += `_I${layer.invert ? 1 : 0}_`;
+    		const { levels_low, levels_mid, levels_high, opacity } = layer;
+    		id += `L${pad(levels_low * 100)}${pad(levels_mid * 100)}${pad(levels_high * 100)}_`;
+    		id += `O${pad(opacity * 100)}`;
     	}
 
     	onMount(setup);
@@ -46220,9 +46271,9 @@ void main(void) {
 
     	async function setup() {
     		if (layer.solo == null) $$invalidate(0, layer.solo = false, layer);
-    		$$invalidate(0, layer.muted = false, layer);
-    		$$invalidate(0, layer.type = 0, layer);
-    		$$invalidate(0, layer.colour = parseInt(Math.random() * colours.length), layer);
+    		if (layer.muted == undefined) $$invalidate(0, layer.muted = false, layer);
+    		if (layer.type == undefined) $$invalidate(0, layer.type = 0, layer);
+    		if (layer.colour == undefined) $$invalidate(0, layer.colour = parseInt(Math.random() * colours.length), layer);
     		$$invalidate(0, layer.seed = Math.random(), layer);
 
     		$$invalidate(
@@ -46246,8 +46297,9 @@ uniform sampler2D uSampler;`;
     		let program = `
 float extract( vec3 hsv ) {
 
-	float width = hue_width;
-	float falloff = hue_falloff;
+	float width = hue_width * 0.5;
+	float balance = hue_balance;
+	float falloff = ( ( 1.0 - hue_width ) / 2.0 ) * hue_falloff;
 	float low = hue_point - width;
 	float high = hue_point + width;
 	float very_low = low - falloff;
@@ -46257,8 +46309,9 @@ float extract( vec3 hsv ) {
 
 	if ( within( hsv.x, very_low, very_high ) != 0 ) {
 
-		float sat = hsv.y;
+		float saturation = hsv.y;
 		float bright = hsv.z;
+		float final = ((1.0 - balance) * bright) + (balance * saturation);
 
 		int LOW = within( hsv.x, very_low, low );
 		int HIGH = within( hsv.x, high, very_high );
@@ -46267,14 +46320,14 @@ float extract( vec3 hsv ) {
 		if ( LOW != 0 ) {
 			if (LOW == 2) HUE += 1.0;
 			if (LOW == 3) HUE -= 1.0;
-			sat *= map( HUE, very_low, low, 0.0, 1.0 );
+			final *= map( HUE, very_low, low, 0.0, 1.0 );
 		} else if ( HIGH != 0 ) {
 			if (HIGH == 2) HUE += 1.0;
 			if (HIGH == 3) HUE -= 1.0;
-			sat *= map( HUE, high, very_high, 1.0, 0.0 );
+			final *= map( HUE, high, very_high, 1.0, 0.0 );
 		}
 
-		return map(sat + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 );
+		return final;
 
 	} else {
 		return 0.0;
@@ -46294,7 +46347,7 @@ void main(void) {
 	vec3 hsv = rgb2hsv( color );
 	vec3 ink = getInk();
 
-	if (solo) ink = vec3(1.0,1.0,1.0);
+	if (solo) ink = vec3(1.0,0.0,0.0);
 	float power = 0.0;
 
 	if (type == 0) {
@@ -46310,24 +46363,23 @@ void main(void) {
 		if (type == 7) power = color.b;
 	}
 
+	power = clamp( map(power + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 ), 0.0, 1.0);
 
-	// vec4 end = vec4(ink, 1.0);
-	// end *= power * opacity;
+	// float noiz = map( snoise(vec2(hsv.r * 0.1, hsv.g * 0.1)), 0.0, 1.0, opacity - 1.0, opacity);
 
-	float noiz = map( noise(vec2(hsv.z, hsv.x), 99999999.0 * seed), 0.0, 1.0, opacity - 0.2, opacity);
-
-	gl_FragColor = vec4(ink,1.0) * noiz * power;
+	if (solo) {
+		gl_FragColor = vec4(ink,1.0) * power * opacity;
+	} else {
+		gl_FragColor = vec4(ink,1.0) * power * opacity;
+	}
 
 }`;
 
     		let fragment = window.fragment = `${lib}\n${header}\n${program}`;
-    		group = new Container();
-    		group.filters = [new Filter(null, fragment, layer)];
-    		container.addChild(group);
-
-    		// if (layer.flag) return
-    		group.addChild(images);
-    	} // visualise()
+    		filter = new Filter(null, fragment, layer);
+    		new filters.NoiseFilter(1);
+    		$$invalidate(11, group.filters = [filter], group);
+    	}
 
     	function select(i) {
     		$$invalidate(0, layer.colour = i, layer);
@@ -46342,9 +46394,9 @@ void main(void) {
     		if (group) {
     			if (solo_ != null) {
     				console.log(`[Layer:${index}] 👁  solo set`);
-    				group.visible = solo_ == index;
+    				$$invalidate(11, group.visible = solo_ == index, group);
     			} else if (group.visible != !muted_) {
-    				group.visible = !muted_;
+    				$$invalidate(11, group.visible = !muted_, group);
     				console.log(`[Layer:${index}] 🔊  muted is set ${group.visible}`);
     			}
     		}
@@ -46377,7 +46429,7 @@ void main(void) {
 
     	let topRight = `h3em w3em p0 m0 br0-solid flex row-center-center`;
     	let arrowClass = `p0 no-grow flex row-center-center w3em b0-solid`;
-    	const writable_props = ["layer", "index", "container", "images", "target", "solo", "project"];
+    	const writable_props = ["layer", "index", "solo", "project", "pixi", "group"];
 
     	Object.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$2.warn(`<Layer> was created with unknown prop '${key}'`);
@@ -46400,11 +46452,7 @@ void main(void) {
 
     	const click_handler_4 = e => $$invalidate(3, overlay = true);
     	const click_handler_5 = (i, e) => select(i);
-
-    	function input_change_handler(ui) {
-    		layer[ui.name] = this.checked;
-    		$$invalidate(0, layer);
-    	}
+    	const click_handler_6 = (ui, e) => $$invalidate(0, layer[ui.name] = !layer[ui.name], layer);
 
     	function input_change_input_handler(ui) {
     		layer[ui.name] = to_number(this.value);
@@ -46414,11 +46462,10 @@ void main(void) {
     	$$self.$$set = $$props => {
     		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
     		if ("index" in $$props) $$invalidate(2, index = $$props.index);
-    		if ("container" in $$props) $$invalidate(11, container = $$props.container);
-    		if ("images" in $$props) $$invalidate(12, images = $$props.images);
-    		if ("target" in $$props) $$invalidate(13, target = $$props.target);
     		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
     		if ("project" in $$props) $$invalidate(10, project = $$props.project);
+    		if ("pixi" in $$props) $$invalidate(12, pixi = $$props.pixi);
+    		if ("group" in $$props) $$invalidate(11, group = $$props.group);
     	};
 
     	$$self.$capture_state = () => ({
@@ -46430,13 +46477,14 @@ void main(void) {
     		Palette,
     		layer,
     		index,
-    		container,
-    		images,
-    		target,
     		solo,
     		project,
+    		pixi,
     		group,
+    		filter,
     		setDefaults,
+    		id,
+    		setStringId,
     		type,
     		setup,
     		select,
@@ -46455,12 +46503,12 @@ void main(void) {
     	$$self.$inject_state = $$props => {
     		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
     		if ("index" in $$props) $$invalidate(2, index = $$props.index);
-    		if ("container" in $$props) $$invalidate(11, container = $$props.container);
-    		if ("images" in $$props) $$invalidate(12, images = $$props.images);
-    		if ("target" in $$props) $$invalidate(13, target = $$props.target);
     		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
     		if ("project" in $$props) $$invalidate(10, project = $$props.project);
-    		if ("group" in $$props) group = $$props.group;
+    		if ("pixi" in $$props) $$invalidate(12, pixi = $$props.pixi);
+    		if ("group" in $$props) $$invalidate(11, group = $$props.group);
+    		if ("filter" in $$props) filter = $$props.filter;
+    		if ("id" in $$props) id = $$props.id;
     		if ("type" in $$props) type = $$props.type;
     		if ("overlay" in $$props) $$invalidate(3, overlay = $$props.overlay);
     		if ("types" in $$props) $$invalidate(5, types = $$props.types);
@@ -46476,6 +46524,10 @@ void main(void) {
     	$$self.$$.update = () => {
     		if ($$self.$$.dirty[0] & /*layer*/ 1) {
     			setDefaults();
+    		}
+
+    		if ($$self.$$.dirty[0] & /*layer*/ 1) {
+    			setStringId();
     		}
 
     		if ($$self.$$.dirty[0] & /*layer, solo*/ 3) {
@@ -46495,9 +46547,8 @@ void main(void) {
     		onLayerUp,
     		topRight,
     		project,
-    		container,
-    		images,
-    		target,
+    		group,
+    		pixi,
     		palette_layer_binding,
     		click_handler,
     		click_handler_1,
@@ -46506,7 +46557,7 @@ void main(void) {
     		select_1_change_handler,
     		click_handler_4,
     		click_handler_5,
-    		input_change_handler,
+    		click_handler_6,
     		input_change_input_handler
     	];
     }
@@ -46524,11 +46575,10 @@ void main(void) {
     			{
     				layer: 0,
     				index: 2,
-    				container: 11,
-    				images: 12,
-    				target: 13,
     				solo: 1,
-    				project: 10
+    				project: 10,
+    				pixi: 12,
+    				group: 11
     			},
     			[-1, -1]
     		);
@@ -46543,16 +46593,12 @@ void main(void) {
     		const { ctx } = this.$$;
     		const props = options.props || {};
 
-    		if (/*container*/ ctx[11] === undefined && !("container" in props)) {
-    			console_1$2.warn("<Layer> was created without expected prop 'container'");
+    		if (/*pixi*/ ctx[12] === undefined && !("pixi" in props)) {
+    			console_1$2.warn("<Layer> was created without expected prop 'pixi'");
     		}
 
-    		if (/*images*/ ctx[12] === undefined && !("images" in props)) {
-    			console_1$2.warn("<Layer> was created without expected prop 'images'");
-    		}
-
-    		if (/*target*/ ctx[13] === undefined && !("target" in props)) {
-    			console_1$2.warn("<Layer> was created without expected prop 'target'");
+    		if (/*group*/ ctx[11] === undefined && !("group" in props)) {
+    			console_1$2.warn("<Layer> was created without expected prop 'group'");
     		}
     	}
 
@@ -46572,30 +46618,6 @@ void main(void) {
     		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	get container() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set container(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get images() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set images(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get target() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set target(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
     	get solo() {
     		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
@@ -46609,6 +46631,22 @@ void main(void) {
     	}
 
     	set project(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get pixi() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set pixi(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get group() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set group(value) {
     		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
@@ -46630,8 +46668,8 @@ void main(void) {
     			div0 = element("div");
     			if (default_slot) default_slot.c();
     			attr_dev(div0, "class", "pb0 mb0 f1 ");
-    			add_location(div0, file$2, 1, 1, 24);
-    			attr_dev(div1, "class", "plr1 pt1");
+    			add_location(div0, file$2, 1, 1, 32);
+    			attr_dev(div1, "class", "plr1 ptb0-5 pop ");
     			add_location(div1, file$2, 0, 0, 0);
     		},
     		l: function claim(nodes) {
@@ -46717,39 +46755,39 @@ void main(void) {
 
     function get_each_context$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[76] = list[i];
-    	child_ctx[77] = list;
-    	child_ctx[78] = i;
+    	child_ctx[78] = list[i];
+    	child_ctx[79] = list;
+    	child_ctx[80] = i;
     	return child_ctx;
     }
 
     function get_each_context_1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[79] = list[i];
+    	child_ctx[81] = list[i];
     	return child_ctx;
     }
 
     function get_each_context_2(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[82] = list[i];
+    	child_ctx[84] = list[i];
     	return child_ctx;
     }
 
     function get_each_context_3(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[85] = list[i];
-    	child_ctx[87] = i;
+    	child_ctx[87] = list[i];
+    	child_ctx[89] = i;
     	return child_ctx;
     }
 
     function get_each_context_4(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[88] = list[i];
-    	child_ctx[90] = i;
+    	child_ctx[90] = list[i];
+    	child_ctx[92] = i;
     	return child_ctx;
     }
 
-    // (459:4) <Title>
+    // (489:4) <Title>
     function create_default_slot_2(ctx) {
     	let t;
 
@@ -46769,17 +46807,17 @@ void main(void) {
     		block,
     		id: create_default_slot_2.name,
     		type: "slot",
-    		source: "(459:4) <Title>",
+    		source: "(489:4) <Title>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (503:8) {:else}
+    // (533:8) {:else}
     function create_else_block(ctx) {
     	let div;
-    	let t_value = /*handle*/ ctx[88].name + "";
+    	let t_value = /*handle*/ ctx[90].name + "";
     	let t;
 
     	const block = {
@@ -46787,14 +46825,14 @@ void main(void) {
     			div = element("div");
     			t = text(t_value);
     			attr_dev(div, "class", " minh8em flex row-center-center");
-    			add_location(div, file$1, 503, 9, 11386);
+    			add_location(div, file$1, 533, 9, 12150);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
     			append_dev(div, t);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*files*/ 2 && t_value !== (t_value = /*handle*/ ctx[88].name + "")) set_data_dev(t, t_value);
+    			if (dirty[0] & /*files*/ 2 && t_value !== (t_value = /*handle*/ ctx[90].name + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
@@ -46805,14 +46843,14 @@ void main(void) {
     		block,
     		id: create_else_block.name,
     		type: "else",
-    		source: "(503:8) {:else}",
+    		source: "(533:8) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (497:8) {#if files.srcs[handle.name]}
+    // (527:8) {#if files.srcs[handle.name]}
     function create_if_block_2(ctx) {
     	let img;
     	let img_style_value;
@@ -46823,30 +46861,30 @@ void main(void) {
     		c: function create() {
     			img = element("img");
 
-    			attr_dev(img, "style", img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1
+    			attr_dev(img, "style", img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1
 			? "1;"
 			: "0.8;filter: grayscale(100%);"}`);
 
     			attr_dev(img, "class", "");
-    			if (img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[88].name].url)) attr_dev(img, "src", img_src_value);
-    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[88].name);
-    			add_location(img, file$1, 497, 10, 11145);
+    			if (img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[90].name].url)) attr_dev(img, "src", img_src_value);
+    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[90].name);
+    			add_location(img, file$1, 527, 10, 11909);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, img, anchor);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*project, files*/ 3 && img_style_value !== (img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1
+    			if (dirty[0] & /*project, files*/ 3 && img_style_value !== (img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1
 			? "1;"
 			: "0.8;filter: grayscale(100%);"}`)) {
     				attr_dev(img, "style", img_style_value);
     			}
 
-    			if (dirty[0] & /*files*/ 2 && img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[88].name].url)) {
+    			if (dirty[0] & /*files*/ 2 && img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[90].name].url)) {
     				attr_dev(img, "src", img_src_value);
     			}
 
-    			if (dirty[0] & /*files*/ 2 && img_alt_value !== (img_alt_value = /*handle*/ ctx[88].name)) {
+    			if (dirty[0] & /*files*/ 2 && img_alt_value !== (img_alt_value = /*handle*/ ctx[90].name)) {
     				attr_dev(img, "alt", img_alt_value);
     			}
     		},
@@ -46859,14 +46897,14 @@ void main(void) {
     		block,
     		id: create_if_block_2.name,
     		type: "if",
-    		source: "(497:8) {#if files.srcs[handle.name]}",
+    		source: "(527:8) {#if files.srcs[handle.name]}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (479:5) {#each files.handles as handle, i}
+    // (509:5) {#each files.handles as handle, i}
     function create_each_block_4(ctx) {
     	let div2;
     	let div0;
@@ -46882,15 +46920,15 @@ void main(void) {
     	let dispose;
 
     	function click_handler(...args) {
-    		return /*click_handler*/ ctx[25](/*handle*/ ctx[88], ...args);
+    		return /*click_handler*/ ctx[28](/*handle*/ ctx[90], ...args);
     	}
 
     	function click_handler_1(...args) {
-    		return /*click_handler_1*/ ctx[26](/*handle*/ ctx[88], ...args);
+    		return /*click_handler_1*/ ctx[29](/*handle*/ ctx[90], ...args);
     	}
 
     	function select_block_type(ctx, dirty) {
-    		if (/*files*/ ctx[1].srcs[/*handle*/ ctx[88].name]) return create_if_block_2;
+    		if (/*files*/ ctx[1].srcs[/*handle*/ ctx[90].name]) return create_if_block_2;
     		return create_else_block;
     	}
 
@@ -46898,7 +46936,7 @@ void main(void) {
     	let if_block = current_block_type(ctx);
 
     	function click_handler_2(...args) {
-    		return /*click_handler_2*/ ctx[27](/*handle*/ ctx[88], ...args);
+    		return /*click_handler_2*/ ctx[30](/*handle*/ ctx[90], ...args);
     	}
 
     	const block = {
@@ -46914,18 +46952,18 @@ void main(void) {
     			div1 = element("div");
     			if_block.c();
     			t4 = space();
-    			attr_dev(button0, "class", /*classes*/ ctx[16].miniButtons);
-    			add_location(button0, file$1, 484, 8, 10725);
-    			attr_dev(button1, "class", /*classes*/ ctx[16].miniButtons);
-    			add_location(button1, file$1, 489, 8, 10867);
+    			attr_dev(button0, "class", /*classes*/ ctx[19].miniButtons);
+    			add_location(button0, file$1, 514, 8, 11489);
+    			attr_dev(button1, "class", /*classes*/ ctx[19].miniButtons);
+    			add_location(button1, file$1, 519, 8, 11631);
     			attr_dev(div0, "class", "overlay abs t1 l1 bt1-solid br1-solid flex grow row-flex-end-flex-start z-index2");
-    			add_location(div0, file$1, 483, 7, 10622);
+    			add_location(div0, file$1, 513, 7, 11386);
     			attr_dev(div1, "class", "b1-solid flex");
-    			add_location(div1, file$1, 495, 7, 11024);
+    			add_location(div1, file$1, 525, 7, 11788);
     			attr_dev(div2, "class", "rel bb1-solid file p1");
-    			toggle_class(div2, "bt1-solid", /*i*/ ctx[90] == 0);
-    			toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1);
-    			add_location(div2, file$1, 479, 6, 10483);
+    			toggle_class(div2, "bt1-solid", /*i*/ ctx[92] == 0);
+    			toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1);
+    			add_location(div2, file$1, 509, 6, 11247);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div2, anchor);
@@ -46966,7 +47004,7 @@ void main(void) {
     			}
 
     			if (dirty[0] & /*project, files*/ 3) {
-    				toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1);
+    				toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1);
     			}
     		},
     		d: function destroy(detaching) {
@@ -46981,14 +47019,14 @@ void main(void) {
     		block,
     		id: create_each_block_4.name,
     		type: "each",
-    		source: "(479:5) {#each files.handles as handle, i}",
+    		source: "(509:5) {#each files.handles as handle, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (515:4) {#if files.handles.length == 0 }
+    // (545:4) {#if files.handles.length == 0 }
     function create_if_block_1(ctx) {
     	let div;
 
@@ -46997,7 +47035,7 @@ void main(void) {
     			div = element("div");
     			div.textContent = "No files";
     			attr_dev(div, "class", "p1");
-    			add_location(div, file$1, 515, 5, 11597);
+    			add_location(div, file$1, 545, 5, 12361);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -47011,14 +47049,14 @@ void main(void) {
     		block,
     		id: create_if_block_1.name,
     		type: "if",
-    		source: "(515:4) {#if files.handles.length == 0 }",
+    		source: "(545:4) {#if files.handles.length == 0 }",
     		ctx
     	});
 
     	return block;
     }
 
-    // (546:4) <Title>
+    // (576:4) <Title>
     function create_default_slot_1$1(ctx) {
     	let t;
 
@@ -47038,14 +47076,14 @@ void main(void) {
     		block,
     		id: create_default_slot_1$1.name,
     		type: "slot",
-    		source: "(546:4) <Title>",
+    		source: "(576:4) <Title>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (574:6) {#if !project.files || project.files.length == 0}
+    // (605:6) {#if !project.files || project.files.length == 0}
     function create_if_block(ctx) {
     	let div;
 
@@ -47054,7 +47092,7 @@ void main(void) {
     			div = element("div");
     			div.textContent = "No image(s) selected";
     			attr_dev(div, "class", "button b1-solid error");
-    			add_location(div, file$1, 574, 7, 12831);
+    			add_location(div, file$1, 605, 7, 13644);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -47068,18 +47106,18 @@ void main(void) {
     		block,
     		id: create_if_block.name,
     		type: "if",
-    		source: "(574:6) {#if !project.files || project.files.length == 0}",
+    		source: "(605:6) {#if !project.files || project.files.length == 0}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (577:6) {#each project.files as file, idx}
+    // (608:6) {#each project.files as file, idx}
     function create_each_block_3(ctx) {
     	let div;
     	let span;
-    	let t0_value = /*file*/ ctx[85] + "";
+    	let t0_value = /*file*/ ctx[87] + "";
     	let t0;
     	let t1;
     	let button0;
@@ -47090,11 +47128,11 @@ void main(void) {
     	let dispose;
 
     	function click_handler_5(...args) {
-    		return /*click_handler_5*/ ctx[31](/*idx*/ ctx[87], ...args);
+    		return /*click_handler_5*/ ctx[34](/*idx*/ ctx[89], ...args);
     	}
 
     	function click_handler_6(...args) {
-    		return /*click_handler_6*/ ctx[32](/*idx*/ ctx[87], ...args);
+    		return /*click_handler_6*/ ctx[35](/*idx*/ ctx[89], ...args);
     	}
 
     	const block = {
@@ -47108,14 +47146,14 @@ void main(void) {
     			button1 = element("button");
     			t3 = space();
     			attr_dev(span, "class", "h3em flex column-flex-start-center plr1 grow");
-    			add_location(span, file$1, 578, 8, 13033);
-    			attr_dev(button0, "class", "" + (/*arrowClass*/ ctx[17] + " arrow rotate180 br1-solid"));
-    			add_location(button0, file$1, 579, 8, 13114);
-    			attr_dev(button1, "class", "" + (/*arrowClass*/ ctx[17] + " arrow bl1-solid "));
-    			add_location(button1, file$1, 582, 8, 13231);
+    			add_location(span, file$1, 609, 8, 13846);
+    			attr_dev(button0, "class", "" + (/*arrowClass*/ ctx[20] + " arrow rotate180 br1-solid"));
+    			add_location(button0, file$1, 610, 8, 13927);
+    			attr_dev(button1, "class", "" + (/*arrowClass*/ ctx[20] + " arrow bl1-solid "));
+    			add_location(button1, file$1, 613, 8, 14044);
     			attr_dev(div, "class", "flex row-stretch-stretch b1-solid");
     			set_style(div, "margin-top", "-1px");
-    			add_location(div, file$1, 577, 7, 12953);
+    			add_location(div, file$1, 608, 7, 13766);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -47138,7 +47176,7 @@ void main(void) {
     		},
     		p: function update(new_ctx, dirty) {
     			ctx = new_ctx;
-    			if (dirty[0] & /*project*/ 1 && t0_value !== (t0_value = /*file*/ ctx[85] + "")) set_data_dev(t0, t0_value);
+    			if (dirty[0] & /*project*/ 1 && t0_value !== (t0_value = /*file*/ ctx[87] + "")) set_data_dev(t0, t0_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
@@ -47151,27 +47189,27 @@ void main(void) {
     		block,
     		id: create_each_block_3.name,
     		type: "each",
-    		source: "(577:6) {#each project.files as file, idx}",
+    		source: "(608:6) {#each project.files as file, idx}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (597:7) {#each options.backgrounds as bg}
+    // (632:8) {#each options.backgrounds as bg}
     function create_each_block_2(ctx) {
     	let option;
-    	let t_value = /*bg*/ ctx[82].name + "";
+    	let t_value = /*bg*/ ctx[84].name + "";
     	let t;
 
     	const block = {
     		c: function create() {
     			option = element("option");
     			t = text(t_value);
-    			option.__value = /*bg*/ ctx[82].name;
+    			option.__value = /*bg*/ ctx[84].name;
     			option.value = option.__value;
-    			attr_dev(option, "name", /*bg*/ ctx[82].name);
-    			add_location(option, file$1, 597, 8, 13678);
+    			attr_dev(option, "name", /*bg*/ ctx[84].name);
+    			add_location(option, file$1, 632, 9, 14666);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -47187,27 +47225,27 @@ void main(void) {
     		block,
     		id: create_each_block_2.name,
     		type: "each",
-    		source: "(597:7) {#each options.backgrounds as bg}",
+    		source: "(632:8) {#each options.backgrounds as bg}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (604:7) {#each options.sizes as sz}
+    // (644:8) {#each options.sizes as sz}
     function create_each_block_1(ctx) {
     	let option;
-    	let t_value = /*sz*/ ctx[79].name + "";
+    	let t_value = /*sz*/ ctx[81].name + "";
     	let t;
 
     	const block = {
     		c: function create() {
     			option = element("option");
     			t = text(t_value);
-    			option.__value = /*sz*/ ctx[79].name;
+    			option.__value = /*sz*/ ctx[81].name;
     			option.value = option.__value;
-    			attr_dev(option, "name", /*sz*/ ctx[79].name);
-    			add_location(option, file$1, 604, 8, 13896);
+    			attr_dev(option, "name", /*sz*/ ctx[81].name);
+    			add_location(option, file$1, 644, 9, 15061);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -47223,14 +47261,14 @@ void main(void) {
     		block,
     		id: create_each_block_1.name,
     		type: "each",
-    		source: "(604:7) {#each options.sizes as sz}",
+    		source: "(644:8) {#each options.sizes as sz}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (630:4) <Title>
+    // (685:4) <Title>
     function create_default_slot$1(ctx) {
     	let t;
 
@@ -47250,54 +47288,54 @@ void main(void) {
     		block,
     		id: create_default_slot$1.name,
     		type: "slot",
-    		source: "(630:4) <Title>",
+    		source: "(685:4) <Title>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (631:4) {#each project.layers as layer, index}
+    // (686:4) {#each layers.groups as group, index}
     function create_each_block$1(ctx) {
     	let div;
     	let layer;
+    	let updating_group;
     	let updating_solo;
-    	let updating_container;
     	let updating_layer;
     	let current;
 
-    	function layer_solo_binding(value) {
-    		/*layer_solo_binding*/ ctx[37](value);
+    	function layer_group_binding(value) {
+    		/*layer_group_binding*/ ctx[40](value, /*group*/ ctx[78], /*each_value*/ ctx[79], /*index*/ ctx[80]);
     	}
 
-    	function layer_container_binding(value) {
-    		/*layer_container_binding*/ ctx[38](value);
+    	function layer_solo_binding(value) {
+    		/*layer_solo_binding*/ ctx[41](value);
     	}
 
     	function layer_layer_binding(value) {
-    		/*layer_layer_binding*/ ctx[39](value, /*layer*/ ctx[76], /*each_value*/ ctx[77], /*index*/ ctx[78]);
+    		/*layer_layer_binding*/ ctx[42](value, /*index*/ ctx[80]);
     	}
 
     	let layer_props = {
-    		index: /*index*/ ctx[78],
-    		images: /*layers*/ ctx[8].images
+    		index: /*index*/ ctx[80],
+    		pixi: /*pixi*/ ctx[15]
     	};
 
-    	if (/*solo*/ ctx[7] !== void 0) {
-    		layer_props.solo = /*solo*/ ctx[7];
+    	if (/*group*/ ctx[78] !== void 0) {
+    		layer_props.group = /*group*/ ctx[78];
     	}
 
-    	if (/*layers*/ ctx[8].processed !== void 0) {
-    		layer_props.container = /*layers*/ ctx[8].processed;
+    	if (/*solo*/ ctx[9] !== void 0) {
+    		layer_props.solo = /*solo*/ ctx[9];
     	}
 
-    	if (/*layer*/ ctx[76] !== void 0) {
-    		layer_props.layer = /*layer*/ ctx[76];
+    	if (/*project*/ ctx[0].layers[/*index*/ ctx[80]] !== void 0) {
+    		layer_props.layer = /*project*/ ctx[0].layers[/*index*/ ctx[80]];
     	}
 
     	layer = new Layer({ props: layer_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(layer, "group", layer_group_binding));
     	binding_callbacks.push(() => bind$1(layer, "solo", layer_solo_binding));
-    	binding_callbacks.push(() => bind$1(layer, "container", layer_container_binding));
     	binding_callbacks.push(() => bind$1(layer, "layer", layer_layer_binding));
 
     	const block = {
@@ -47305,8 +47343,8 @@ void main(void) {
     			div = element("div");
     			create_component(layer.$$.fragment);
     			attr_dev(div, "class", "p1");
-    			toggle_class(div, "bt1-solid", /*index*/ ctx[78] != 0);
-    			add_location(div, file$1, 631, 5, 14458);
+    			toggle_class(div, "bt1-solid", /*index*/ ctx[80] != 0);
+    			add_location(div, file$1, 686, 5, 16048);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -47316,23 +47354,22 @@ void main(void) {
     		p: function update(new_ctx, dirty) {
     			ctx = new_ctx;
     			const layer_changes = {};
-    			if (dirty[0] & /*layers*/ 256) layer_changes.images = /*layers*/ ctx[8].images;
 
-    			if (!updating_solo && dirty[0] & /*solo*/ 128) {
-    				updating_solo = true;
-    				layer_changes.solo = /*solo*/ ctx[7];
-    				add_flush_callback(() => updating_solo = false);
+    			if (!updating_group && dirty[0] & /*layers*/ 1024) {
+    				updating_group = true;
+    				layer_changes.group = /*group*/ ctx[78];
+    				add_flush_callback(() => updating_group = false);
     			}
 
-    			if (!updating_container && dirty[0] & /*layers*/ 256) {
-    				updating_container = true;
-    				layer_changes.container = /*layers*/ ctx[8].processed;
-    				add_flush_callback(() => updating_container = false);
+    			if (!updating_solo && dirty[0] & /*solo*/ 512) {
+    				updating_solo = true;
+    				layer_changes.solo = /*solo*/ ctx[9];
+    				add_flush_callback(() => updating_solo = false);
     			}
 
     			if (!updating_layer && dirty[0] & /*project*/ 1) {
     				updating_layer = true;
-    				layer_changes.layer = /*layer*/ ctx[76];
+    				layer_changes.layer = /*project*/ ctx[0].layers[/*index*/ ctx[80]];
     				add_flush_callback(() => updating_layer = false);
     			}
 
@@ -47357,7 +47394,7 @@ void main(void) {
     		block,
     		id: create_each_block$1.name,
     		type: "each",
-    		source: "(631:4) {#each project.layers as layer, index}",
+    		source: "(686:4) {#each layers.groups as group, index}",
     		ctx
     	});
 
@@ -47366,7 +47403,7 @@ void main(void) {
 
     function create_fragment$1(ctx) {
     	let main_1;
-    	let div10;
+    	let div14;
     	let sidebar;
     	let section0;
     	let title0;
@@ -47393,7 +47430,7 @@ void main(void) {
     	let img;
     	let img_src_value;
     	let t12;
-    	let div8;
+    	let div12;
     	let div5;
     	let div3;
     	let span1;
@@ -47408,43 +47445,69 @@ void main(void) {
     	let aside;
     	let t17;
     	let t18;
+    	let div7;
+    	let span4;
+    	let t20;
     	let div6;
     	let select0;
-    	let t19;
-    	let div7;
-    	let select1;
-    	let t20;
-    	let input0;
     	let t21;
+    	let div9;
+    	let span5;
+    	let t23;
+    	let div8;
+    	let select1;
+    	let t24;
+    	let div10;
+    	let span6;
+    	let t26;
+    	let input0;
+    	let t27;
+    	let div11;
+    	let span7;
+    	let t29;
     	let input1;
     	let input1_max_value;
-    	let t22;
-    	let title2;
-    	let t23;
-    	let t24;
-    	let div9;
-    	let button3;
-    	let t26;
-    	let section3;
-    	let div11;
-    	let t27;
-    	let div13;
-    	let div12;
-    	let t28;
-    	let div14;
-    	let t29_value = /*calculate*/ ctx[11].width + "";
-    	let t29;
     	let t30;
-    	let t31_value = /*calculate*/ ctx[11].height + "";
+    	let title2;
     	let t31;
     	let t32;
-    	let div16;
-    	let div15;
-    	let button4;
+    	let div13;
+    	let button3;
     	let t34;
-    	let input2;
+    	let section3;
+    	let div15;
     	let t35;
+    	let div17;
+    	let div16;
+    	let t36;
+    	let div18;
+    	let t37_value = /*calculate*/ ctx[13].width + "";
+    	let t37;
+    	let t38;
+    	let t39_value = /*calculate*/ ctx[13].height + "";
+    	let t39;
+    	let t40;
+    	let div21;
+    	let div20;
+    	let button4;
+    	let span8;
+    	let t41;
+    	let div19;
+    	let input2;
+    	let t42;
     	let button5;
+    	let span9;
+    	let t43;
+    	let button6;
+    	let t45;
+    	let button7;
+    	let t47;
+    	let button8;
+    	let t49;
+    	let footer;
+    	let span10;
+    	let t50;
+    	let button9;
     	let current;
     	let mounted;
     	let dispose;
@@ -47466,8 +47529,8 @@ void main(void) {
     	}
 
     	let if_block0 = /*files*/ ctx[1].handles.length == 0 && create_if_block_1(ctx);
-    	const default_slot_template = /*#slots*/ ctx[24].default;
-    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[50], null);
+    	const default_slot_template = /*#slots*/ ctx[27].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[53], null);
 
     	title1 = new Title({
     			props: {
@@ -47510,7 +47573,7 @@ void main(void) {
     			$$inline: true
     		});
 
-    	let each_value = /*project*/ ctx[0].layers;
+    	let each_value = /*layers*/ ctx[10].groups;
     	validate_each_argument(each_value);
     	let each_blocks = [];
 
@@ -47525,7 +47588,7 @@ void main(void) {
     	const block = {
     		c: function create() {
     			main_1 = element("main");
-    			div10 = element("div");
+    			div14 = element("div");
     			sidebar = element("sidebar");
     			section0 = element("section");
     			create_component(title0.$$.fragment);
@@ -47560,7 +47623,7 @@ void main(void) {
     			t11 = space();
     			img = element("img");
     			t12 = space();
-    			div8 = element("div");
+    			div12 = element("div");
     			div5 = element("div");
     			div3 = element("div");
     			span1 = element("span");
@@ -47581,6 +47644,10 @@ void main(void) {
     			}
 
     			t18 = space();
+    			div7 = element("div");
+    			span4 = element("span");
+    			span4.textContent = "Paper";
+    			t20 = space();
     			div6 = element("div");
     			select0 = element("select");
 
@@ -47588,163 +47655,238 @@ void main(void) {
     				each_blocks_2[i].c();
     			}
 
-    			t19 = space();
-    			div7 = element("div");
+    			t21 = space();
+    			div9 = element("div");
+    			span5 = element("span");
+    			span5.textContent = "Size";
+    			t23 = space();
+    			div8 = element("div");
     			select1 = element("select");
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
     				each_blocks_1[i].c();
     			}
 
-    			t20 = space();
+    			t24 = space();
+    			div10 = element("div");
+    			span6 = element("span");
+    			span6.textContent = "DPI";
+    			t26 = space();
     			input0 = element("input");
-    			t21 = space();
+    			t27 = space();
+    			div11 = element("div");
+    			span7 = element("span");
+    			span7.textContent = "Margin";
+    			t29 = space();
     			input1 = element("input");
-    			t22 = space();
+    			t30 = space();
     			create_component(title2.$$.fragment);
-    			t23 = space();
+    			t31 = space();
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
-    			t24 = space();
-    			div9 = element("div");
+    			t32 = space();
+    			div13 = element("div");
     			button3 = element("button");
     			button3.textContent = "Add layer";
-    			t26 = space();
-    			section3 = element("section");
-    			div11 = element("div");
-    			t27 = space();
-    			div13 = element("div");
-    			div12 = element("div");
-    			t28 = space();
-    			div14 = element("div");
-    			t29 = text(t29_value);
-    			t30 = text(" x ");
-    			t31 = text(t31_value);
-    			t32 = space();
-    			div16 = element("div");
-    			div15 = element("div");
-    			button4 = element("button");
-    			button4.textContent = "-";
     			t34 = space();
-    			input2 = element("input");
+    			section3 = element("section");
+    			div15 = element("div");
     			t35 = space();
+    			div17 = element("div");
+    			div16 = element("div");
+    			t36 = space();
+    			div18 = element("div");
+    			t37 = text(t37_value);
+    			t38 = text(" x ");
+    			t39 = text(t39_value);
+    			t40 = space();
+    			div21 = element("div");
+    			div20 = element("div");
+    			button4 = element("button");
+    			span8 = element("span");
+    			t41 = space();
+    			div19 = element("div");
+    			input2 = element("input");
+    			t42 = space();
     			button5 = element("button");
-    			button5.textContent = "+";
-    			button0.disabled = /*needsSync*/ ctx[12];
+    			span9 = element("span");
+    			t43 = space();
+    			button6 = element("button");
+    			button6.textContent = "⤢";
+    			t45 = space();
+    			button7 = element("button");
+    			button7.textContent = "A";
+    			t47 = space();
+    			button8 = element("button");
+    			button8.textContent = "⬚";
+    			t49 = space();
+    			footer = element("footer");
+    			span10 = element("span");
+    			t50 = space();
+    			button9 = element("button");
+    			button9.textContent = "Export";
+    			button0.disabled = /*needsSync*/ ctx[14];
     			attr_dev(button0, "class", "w100pc");
-    			add_location(button0, file$1, 460, 5, 10048);
+    			add_location(button0, file$1, 490, 5, 10812);
     			attr_dev(button1, "class", "w100pc mt1");
-    			add_location(button1, file$1, 466, 5, 10181);
+    			add_location(button1, file$1, 496, 5, 10945);
     			attr_dev(button2, "class", "w100pc mt1");
-    			add_location(button2, file$1, 471, 5, 10291);
+    			add_location(button2, file$1, 501, 5, 11055);
     			attr_dev(div0, "class", "p1");
-    			add_location(div0, file$1, 459, 4, 10026);
+    			add_location(div0, file$1, 489, 4, 10790);
     			attr_dev(div1, "class", "checker");
-    			add_location(div1, file$1, 477, 4, 10415);
-    			attr_dev(section0, "class", /*classes*/ ctx[16].lanes);
-    			add_location(section0, file$1, 457, 3, 9965);
-    			attr_dev(section1, "class", /*classes*/ ctx[16].lanes + " basis0pc");
-    			add_location(section1, file$1, 528, 3, 11692);
+    			add_location(div1, file$1, 507, 4, 11179);
+    			attr_dev(section0, "class", /*classes*/ ctx[19].lanes);
+    			add_location(section0, file$1, 487, 3, 10729);
+    			attr_dev(section1, "class", /*classes*/ ctx[19].lanes + " basis0pc");
+    			add_location(section1, file$1, 558, 3, 12456);
+    			attr_dev(canvas, "class", "b1-solid");
     			attr_dev(canvas, "id", "thumbnail");
-    			add_location(canvas, file$1, 547, 5, 11981);
-    			if (img.src !== (img_src_value = /*project*/ ctx[0].thumbnail)) attr_dev(img, "src", img_src_value);
-    			add_location(img, file$1, 548, 5, 12034);
+    			add_location(canvas, file$1, 578, 5, 12766);
+    			attr_dev(img, "class", "b1-solid");
+    			if (img.src !== (img_src_value = /*THUMBS*/ ctx[4][/*IDX*/ ctx[3]])) attr_dev(img, "src", img_src_value);
+    			add_location(img, file$1, 579, 5, 12836);
     			attr_dev(div2, "class", "hidden abs");
     			set_style(div2, "left", "-99999px");
     			set_style(div2, "top", "-99999px");
-    			add_location(div2, file$1, 546, 4, 11916);
+    			add_location(div2, file$1, 576, 4, 12680);
     			attr_dev(span0, "class", "fill");
     			toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
-    			add_location(span0, file$1, 557, 8, 12351);
+    			add_location(span0, file$1, 588, 8, 13164);
     			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block mr1");
-    			add_location(span1, file$1, 555, 7, 12278);
+    			add_location(span1, file$1, 586, 7, 13091);
     			attr_dev(div3, "class", "br0-solid flex row-flex-start-center mr1 ");
-    			add_location(div3, file$1, 552, 6, 12159);
+    			add_location(div3, file$1, 583, 6, 12972);
     			attr_dev(span2, "class", "fill");
     			toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
-    			add_location(span2, file$1, 566, 8, 12644);
+    			add_location(span2, file$1, 597, 8, 13457);
     			attr_dev(span3, "class", "b1-solid rel checker w2em h2em block mr1");
-    			add_location(span3, file$1, 564, 7, 12571);
+    			add_location(span3, file$1, 595, 7, 13384);
     			attr_dev(div4, "class", "br0-solid flex row-flex-start-center mr1 ");
-    			add_location(div4, file$1, 561, 6, 12453);
+    			add_location(div4, file$1, 592, 6, 13266);
     			attr_dev(div5, "class", "flex row");
-    			add_location(div5, file$1, 551, 5, 12130);
-    			add_location(aside, file$1, 572, 5, 12759);
-    			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[33].call(select0));
-    			add_location(select0, file$1, 595, 6, 13581);
-    			attr_dev(div6, "class", "select");
-    			add_location(div6, file$1, 594, 5, 13554);
-    			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[34].call(select1));
-    			add_location(select1, file$1, 602, 6, 13811);
-    			attr_dev(div7, "class", "select");
-    			add_location(div7, file$1, 601, 5, 13784);
+    			add_location(div5, file$1, 582, 5, 12943);
+    			add_location(aside, file$1, 603, 5, 13572);
+    			attr_dev(span4, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span4, file$1, 626, 6, 14396);
+    			attr_dev(select0, "class", "pl5 w100pc align-right");
+    			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[36].call(select0));
+    			add_location(select0, file$1, 630, 7, 14536);
+    			attr_dev(div6, "class", "select w100pc grow");
+    			add_location(div6, file$1, 629, 6, 14496);
+    			attr_dev(div7, "class", "flex rel");
+    			add_location(div7, file$1, 625, 5, 14367);
+    			attr_dev(span5, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span5, file$1, 638, 6, 14816);
+    			attr_dev(select1, "class", "pl5 w100pc");
+    			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[37].call(select1));
+    			add_location(select1, file$1, 642, 7, 14955);
+    			attr_dev(div8, "class", "select w100pc grow");
+    			add_location(div8, file$1, 641, 6, 14915);
+    			attr_dev(div9, "class", "flex rel");
+    			add_location(div9, file$1, 637, 5, 14787);
+    			attr_dev(span6, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span6, file$1, 650, 6, 15211);
     			attr_dev(input0, "min", 150);
     			attr_dev(input0, "max", 600);
     			attr_dev(input0, "step", 50);
     			attr_dev(input0, "type", "number");
+    			attr_dev(input0, "class", "w100pc grow");
+    			set_style(input0, "padding-left", "5em");
     			attr_dev(input0, "placeholder", "DPI");
-    			add_location(input0, file$1, 608, 5, 14002);
+    			add_location(input0, file$1, 653, 6, 15309);
+    			attr_dev(div10, "class", "flex rel");
+    			add_location(div10, file$1, 649, 5, 15182);
+    			attr_dev(span7, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span7, file$1, 664, 6, 15563);
     			attr_dev(input1, "min", 0);
-    			attr_dev(input1, "max", input1_max_value = Math.max(/*_uniforms*/ ctx[4].size[0], /*_uniforms*/ ctx[4].size[1]) * 0.4);
+    			attr_dev(input1, "max", input1_max_value = Math.max(/*_uniforms*/ ctx[6].size[0], /*_uniforms*/ ctx[6].size[1]) * 0.4);
     			attr_dev(input1, "step", 1);
+    			attr_dev(input1, "class", "w100pc grow");
+    			set_style(input1, "padding-left", "5em");
     			attr_dev(input1, "type", "number");
     			attr_dev(input1, "placeholder", "Margin");
-    			add_location(input1, file$1, 615, 5, 14150);
-    			attr_dev(div8, "class", "p1 flex column cmb1 bb1-solid");
-    			add_location(div8, file$1, 550, 4, 12081);
+    			add_location(input1, file$1, 667, 6, 15664);
+    			attr_dev(div11, "class", "flex rel");
+    			add_location(div11, file$1, 663, 5, 15534);
+    			attr_dev(div12, "class", "p1 flex column cmb1 bb1-solid");
+    			add_location(div12, file$1, 581, 4, 12894);
     			attr_dev(button3, "class", "w100pc mb1");
-    			add_location(button3, file$1, 641, 5, 14709);
-    			attr_dev(div9, "class", "plr1");
-    			add_location(div9, file$1, 640, 4, 14685);
+    			add_location(button3, file$1, 696, 5, 16284);
+    			attr_dev(div13, "class", "plr1");
+    			add_location(div13, file$1, 695, 4, 16260);
     			attr_dev(section2, "id", "layers");
-    			attr_dev(section2, "class", /*classes*/ ctx[16].lanes + " basis30pc");
-    			add_location(section2, file$1, 540, 3, 11804);
+    			attr_dev(section2, "class", /*classes*/ ctx[19].lanes + " basis30pc");
+    			add_location(section2, file$1, 570, 3, 12568);
     			attr_dev(sidebar, "class", "flex row grow overflow-hidden");
-    			add_location(sidebar, file$1, 450, 2, 9888);
-    			attr_dev(div10, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh");
-    			add_location(div10, file$1, 446, 1, 9788);
-    			attr_dev(div11, "id", "zoom");
-    			attr_dev(div11, "class", "flex fill");
-    			add_location(div11, file$1, 659, 2, 15168);
-    			set_style(div12, "width", "9000px");
-    			set_style(div12, "height", "9000px");
-    			add_location(div12, file$1, 672, 3, 15522);
-    			attr_dev(div13, "id", "scroller");
-    			attr_dev(div13, "class", "abs fill overflow-auto");
-    			set_style(div13, "width", "120%");
-    			set_style(div13, "height", "120%");
-    			add_location(div13, file$1, 663, 2, 15234);
-    			attr_dev(div14, "class", "t1 r1 abs monospace hidden");
-    			add_location(div14, file$1, 674, 2, 15577);
-    			attr_dev(button4, "class", "p0 h3em m0 w3em");
-    			add_location(button4, file$1, 680, 4, 15742);
-    			attr_dev(input2, "class", "p0 h3em m0 br0-solid bl0-solid");
+    			add_location(sidebar, file$1, 480, 2, 10652);
+    			attr_dev(div14, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh");
+    			add_location(div14, file$1, 476, 1, 10552);
+    			attr_dev(div15, "id", "zoom");
+    			attr_dev(div15, "class", "flex fill");
+    			add_location(div15, file$1, 711, 2, 16668);
+    			set_style(div16, "width", "9000px");
+    			set_style(div16, "height", "9000px");
+    			add_location(div16, file$1, 724, 3, 17022);
+    			attr_dev(div17, "id", "scroller");
+    			attr_dev(div17, "class", "abs fill overflow-auto");
+    			set_style(div17, "width", "120%");
+    			set_style(div17, "height", "120%");
+    			add_location(div17, file$1, 715, 2, 16734);
+    			attr_dev(div18, "class", "t1 r1 abs monospace hidden");
+    			add_location(div18, file$1, 726, 2, 17077);
+    			attr_dev(span8, "class", "flex w1em h1em cross rotate45");
+    			add_location(span8, file$1, 735, 5, 17367);
+    			attr_dev(button4, "class", "p0 h3em m0 w3em flex row-center-center");
+    			add_location(button4, file$1, 732, 4, 17246);
+    			attr_dev(input2, "class", "grow p0 m0 h1em round radius1em b1-solid rotate270 abs");
+    			set_style(input2, "left", "-1.5em");
+    			set_style(input2, "top", "8.5em");
+    			set_style(input2, "width", "8em");
+    			set_style(input2, "margin-left", "-0px");
+    			set_style(input2, "margin-top", "-0.5px");
+    			set_style(input2, "background", "transparent");
     			attr_dev(input2, "type", "range");
     			attr_dev(input2, "min", 0.01);
     			attr_dev(input2, "max", 3);
     			attr_dev(input2, "step", 0.001);
-    			add_location(input2, file$1, 683, 4, 15852);
-    			attr_dev(button5, "class", "p0 h3em m0 w3em");
-    			add_location(button5, file$1, 690, 4, 16006);
-    			attr_dev(div15, "class", "flex row bg");
-    			add_location(div15, file$1, 679, 3, 15712);
-    			attr_dev(div16, "class", "abs b0 l0 p1 flex row ");
-    			add_location(div16, file$1, 677, 2, 15671);
+    			add_location(input2, file$1, 738, 5, 17463);
+    			attr_dev(div19, "class", "h10em flex ");
+    			add_location(div19, file$1, 737, 4, 17432);
+    			attr_dev(span9, "class", "flex w1em pt0-5 mt0-5 bt1-solid");
+    			add_location(span9, file$1, 750, 6, 17892);
+    			attr_dev(button5, "class", "p0 h3em m0 w3em flex row-center-center");
+    			add_location(button5, file$1, 747, 4, 17767);
+    			attr_dev(button6, "class", "p0  m0 h3em w3em flex row-center-center bt0-solid");
+    			add_location(button6, file$1, 752, 4, 17960);
+    			attr_dev(button7, "class", "p0  m0 h3em w3em flex row-center-center bt0-solid");
+    			add_location(button7, file$1, 756, 4, 18061);
+    			attr_dev(button8, "class", "p0  m0 h3em w3em flex row-center-center mt1");
+    			add_location(button8, file$1, 760, 4, 18162);
+    			attr_dev(div20, "class", "flex column");
+    			add_location(div20, file$1, 731, 3, 17216);
+    			attr_dev(div21, "class", "abs t0 r2 p1 flex row w3em");
+    			add_location(div21, file$1, 729, 2, 17171);
+    			attr_dev(span10, "class", "f1 italic");
+    			add_location(span10, file$1, 769, 3, 18353);
+    			add_location(button9, file$1, 770, 3, 18388);
+    			attr_dev(footer, "class", "abs b0 l0 p1 w100pc flex row-space-between-flex-end");
+    			add_location(footer, file$1, 768, 2, 18281);
     			attr_dev(section3, "class", "rel basis70pc minw50em pointer grow flex row-center-flex-start maxh100vh overflow-hidden");
-    			add_location(section3, file$1, 655, 1, 14965);
+    			add_location(section3, file$1, 707, 1, 16465);
     			attr_dev(main_1, "class", "flex row-stretch-stretch bg overflow-auto");
-    			add_location(main_1, file$1, 443, 0, 9704);
+    			add_location(main_1, file$1, 473, 0, 10468);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, main_1, anchor);
-    			append_dev(main_1, div10);
-    			append_dev(div10, sidebar);
+    			append_dev(main_1, div14);
+    			append_dev(div14, sidebar);
     			append_dev(sidebar, section0);
     			mount_component(title0, section0, null);
     			append_dev(section0, t0);
@@ -47777,12 +47919,12 @@ void main(void) {
     			append_dev(section2, t10);
     			append_dev(section2, div2);
     			append_dev(div2, canvas);
-    			/*canvas_binding*/ ctx[28](canvas);
+    			/*canvas_binding*/ ctx[31](canvas);
     			append_dev(div2, t11);
     			append_dev(div2, img);
     			append_dev(section2, t12);
-    			append_dev(section2, div8);
-    			append_dev(div8, div5);
+    			append_dev(section2, div12);
+    			append_dev(div12, div5);
     			append_dev(div5, div3);
     			append_dev(div3, span1);
     			append_dev(span1, span0);
@@ -47792,8 +47934,8 @@ void main(void) {
     			append_dev(div4, span3);
     			append_dev(span3, span2);
     			append_dev(div4, t15);
-    			append_dev(div8, t16);
-    			append_dev(div8, aside);
+    			append_dev(div12, t16);
+    			append_dev(div12, aside);
     			if (if_block1) if_block1.m(aside, null);
     			append_dev(aside, t17);
 
@@ -47801,8 +47943,11 @@ void main(void) {
     				each_blocks_3[i].m(aside, null);
     			}
 
-    			append_dev(div8, t18);
-    			append_dev(div8, div6);
+    			append_dev(div12, t18);
+    			append_dev(div12, div7);
+    			append_dev(div7, span4);
+    			append_dev(div7, t20);
+    			append_dev(div7, div6);
     			append_dev(div6, select0);
 
     			for (let i = 0; i < each_blocks_2.length; i += 1) {
@@ -47810,61 +47955,85 @@ void main(void) {
     			}
 
     			select_option(select0, /*project*/ ctx[0].config.background);
-    			append_dev(div8, t19);
-    			append_dev(div8, div7);
-    			append_dev(div7, select1);
+    			append_dev(div12, t21);
+    			append_dev(div12, div9);
+    			append_dev(div9, span5);
+    			append_dev(div9, t23);
+    			append_dev(div9, div8);
+    			append_dev(div8, select1);
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
     				each_blocks_1[i].m(select1, null);
     			}
 
     			select_option(select1, /*project*/ ctx[0].config.size);
-    			append_dev(div8, t20);
-    			append_dev(div8, input0);
+    			append_dev(div12, t24);
+    			append_dev(div12, div10);
+    			append_dev(div10, span6);
+    			append_dev(div10, t26);
+    			append_dev(div10, input0);
     			set_input_value(input0, /*project*/ ctx[0].config.dpi);
-    			append_dev(div8, t21);
-    			append_dev(div8, input1);
+    			append_dev(div12, t27);
+    			append_dev(div12, div11);
+    			append_dev(div11, span7);
+    			append_dev(div11, t29);
+    			append_dev(div11, input1);
     			set_input_value(input1, /*project*/ ctx[0].config.margin);
-    			append_dev(section2, t22);
+    			append_dev(section2, t30);
     			mount_component(title2, section2, null);
-    			append_dev(section2, t23);
+    			append_dev(section2, t31);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].m(section2, null);
     			}
 
-    			append_dev(section2, t24);
-    			append_dev(section2, div9);
-    			append_dev(div9, button3);
-    			append_dev(main_1, t26);
+    			append_dev(section2, t32);
+    			append_dev(section2, div13);
+    			append_dev(div13, button3);
+    			append_dev(main_1, t34);
     			append_dev(main_1, section3);
-    			append_dev(section3, div11);
-    			/*div11_binding*/ ctx[40](div11);
-    			append_dev(section3, t27);
-    			append_dev(section3, div13);
-    			append_dev(div13, div12);
-    			append_dev(section3, t28);
-    			append_dev(section3, div14);
-    			append_dev(div14, t29);
-    			append_dev(div14, t30);
-    			append_dev(div14, t31);
-    			append_dev(section3, t32);
-    			append_dev(section3, div16);
-    			append_dev(div16, div15);
-    			append_dev(div15, button4);
-    			append_dev(div15, t34);
-    			append_dev(div15, input2);
-    			set_input_value(input2, /*zoom*/ ctx[3]);
-    			append_dev(div15, t35);
-    			append_dev(div15, button5);
-    			/*main_1_binding*/ ctx[49](main_1);
+    			append_dev(section3, div15);
+    			/*div15_binding*/ ctx[43](div15);
+    			append_dev(section3, t35);
+    			append_dev(section3, div17);
+    			append_dev(div17, div16);
+    			append_dev(section3, t36);
+    			append_dev(section3, div18);
+    			append_dev(div18, t37);
+    			append_dev(div18, t38);
+    			append_dev(div18, t39);
+    			append_dev(section3, t40);
+    			append_dev(section3, div21);
+    			append_dev(div21, div20);
+    			append_dev(div20, button4);
+    			append_dev(button4, span8);
+    			append_dev(div20, t41);
+    			append_dev(div20, div19);
+    			append_dev(div19, input2);
+    			set_input_value(input2, /*zoom*/ ctx[5]);
+    			append_dev(div20, t42);
+    			append_dev(div20, button5);
+    			append_dev(button5, span9);
+    			append_dev(div20, t43);
+    			append_dev(div20, button6);
+    			append_dev(div20, t45);
+    			append_dev(div20, button7);
+    			append_dev(div20, t47);
+    			append_dev(div20, button8);
+    			append_dev(section3, t49);
+    			append_dev(section3, footer);
+    			append_dev(footer, span10);
+    			append_dev(footer, t50);
+    			append_dev(footer, button9);
+    			/*main_1_binding*/ ctx[52](main_1);
     			current = true;
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(window_1, "resize", /*onResize*/ ctx[13], false, false, false),
-    					listen_dev(window_1, "keydown", /*onKeyDown*/ ctx[22], false, false, false),
-    					listen_dev(window_1, "keyup", /*onKeyUp*/ ctx[23], false, false, false),
+    					listen_dev(window_1, "mouseup", onMouseUp, false, false, false),
+    					listen_dev(window_1, "resize", /*onResize*/ ctx[16], false, false, false),
+    					listen_dev(window_1, "keydown", /*onKeyDown*/ ctx[25], false, false, false),
+    					listen_dev(window_1, "keyup", /*onKeyUp*/ ctx[26], false, false, false),
     					listen_dev(
     						button0,
     						"click",
@@ -47895,26 +48064,26 @@ void main(void) {
     						false,
     						false
     					),
-    					listen_dev(div3, "click", /*click_handler_3*/ ctx[29], false, false, false),
-    					listen_dev(div4, "click", /*click_handler_4*/ ctx[30], false, false, false),
-    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[33]),
-    					listen_dev(select1, "change", /*select1_change_handler*/ ctx[34]),
-    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[35]),
-    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[36]),
+    					listen_dev(div3, "click", /*click_handler_3*/ ctx[32], false, false, false),
+    					listen_dev(div4, "click", /*click_handler_4*/ ctx[33], false, false, false),
+    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[36]),
+    					listen_dev(select1, "change", /*select1_change_handler*/ ctx[37]),
+    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[38]),
+    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[39]),
     					listen_dev(button3, "click", click_handler_7, false, false, false),
-    					listen_dev(button3, "click", /*addLayer*/ ctx[15], false, false, false),
-    					listen_dev(div13, "mousedown", /*mousedown_handler*/ ctx[41], false, false, false),
-    					listen_dev(div13, "mouseup", /*mouseup_handler*/ ctx[42], false, false, false),
-    					listen_dev(div13, "mouseleave", /*mouseleave_handler*/ ctx[43], false, false, false),
-    					listen_dev(div13, "mousemove", /*onMove*/ ctx[20], false, false, false),
-    					listen_dev(div13, "scroll", onScroll, false, false, false),
-    					listen_dev(div13, "wheel", /*onWheel*/ ctx[21], false, false, false),
-    					listen_dev(button4, "click", /*click_handler_8*/ ctx[44], false, false, false),
-    					listen_dev(input2, "change", /*input2_change_input_handler*/ ctx[45]),
-    					listen_dev(input2, "input", /*input2_change_input_handler*/ ctx[45]),
-    					listen_dev(button5, "click", /*click_handler_9*/ ctx[46], false, false, false),
-    					listen_dev(section3, "mousedown", /*mousedown_handler_1*/ ctx[47], false, false, false),
-    					listen_dev(section3, "mouseup", /*mouseup_handler_1*/ ctx[48], false, false, false)
+    					listen_dev(button3, "click", /*addLayer*/ ctx[18], false, false, false),
+    					listen_dev(div17, "mousedown", /*mousedown_handler*/ ctx[44], false, false, false),
+    					listen_dev(div17, "mouseup", /*mouseup_handler*/ ctx[45], false, false, false),
+    					listen_dev(div17, "mouseleave", /*mouseleave_handler*/ ctx[46], false, false, false),
+    					listen_dev(div17, "mousemove", /*onMove*/ ctx[23], false, false, false),
+    					listen_dev(div17, "scroll", onScroll, false, false, false),
+    					listen_dev(div17, "wheel", /*onWheel*/ ctx[24], false, false, false),
+    					listen_dev(button4, "click", /*click_handler_8*/ ctx[47], false, false, false),
+    					listen_dev(input2, "change", /*input2_change_input_handler*/ ctx[48]),
+    					listen_dev(input2, "input", /*input2_change_input_handler*/ ctx[48]),
+    					listen_dev(button5, "click", /*click_handler_9*/ ctx[49], false, false, false),
+    					listen_dev(section3, "mousedown", /*mousedown_handler_1*/ ctx[50], false, false, false),
+    					listen_dev(section3, "mouseup", /*mouseup_handler_1*/ ctx[51], false, false, false)
     				];
 
     				mounted = true;
@@ -47924,17 +48093,17 @@ void main(void) {
     			ctx = new_ctx;
     			const title0_changes = {};
 
-    			if (dirty[1] & /*$$scope*/ 524288) {
+    			if (dirty[1] & /*$$scope*/ 4194304) {
     				title0_changes.$$scope = { dirty, ctx };
     			}
 
     			title0.$set(title0_changes);
 
-    			if (!current || dirty[0] & /*needsSync*/ 4096) {
-    				prop_dev(button0, "disabled", /*needsSync*/ ctx[12]);
+    			if (!current || dirty[0] & /*needsSync*/ 16384) {
+    				prop_dev(button0, "disabled", /*needsSync*/ ctx[14]);
     			}
 
-    			if (dirty[0] & /*project, files, handlers, classes*/ 65543) {
+    			if (dirty[0] & /*project, files, handlers, classes*/ 524295) {
     				each_value_4 = /*files*/ ctx[1].handles;
     				validate_each_argument(each_value_4);
     				let i;
@@ -47970,20 +48139,20 @@ void main(void) {
     			}
 
     			if (default_slot) {
-    				if (default_slot.p && (!current || dirty[1] & /*$$scope*/ 524288)) {
-    					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[50], !current ? [-1, -1, -1] : dirty, null, null);
+    				if (default_slot.p && (!current || dirty[1] & /*$$scope*/ 4194304)) {
+    					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[53], !current ? [-1, -1, -1] : dirty, null, null);
     				}
     			}
 
     			const title1_changes = {};
 
-    			if (dirty[1] & /*$$scope*/ 524288) {
+    			if (dirty[1] & /*$$scope*/ 4194304) {
     				title1_changes.$$scope = { dirty, ctx };
     			}
 
     			title1.$set(title1_changes);
 
-    			if (!current || dirty[0] & /*project*/ 1 && img.src !== (img_src_value = /*project*/ ctx[0].thumbnail)) {
+    			if (!current || dirty[0] & /*THUMBS, IDX*/ 24 && img.src !== (img_src_value = /*THUMBS*/ ctx[4][/*IDX*/ ctx[3]])) {
     				attr_dev(img, "src", img_src_value);
     			}
 
@@ -48006,7 +48175,7 @@ void main(void) {
     				if_block1 = null;
     			}
 
-    			if (dirty[0] & /*arrowClass, onFileDown, onFileUp, project*/ 917505) {
+    			if (dirty[0] & /*arrowClass, onFileDown, onFileUp, project*/ 7340033) {
     				each_value_3 = /*project*/ ctx[0].files;
     				validate_each_argument(each_value_3);
     				let i;
@@ -48090,7 +48259,7 @@ void main(void) {
     				set_input_value(input0, /*project*/ ctx[0].config.dpi);
     			}
 
-    			if (!current || dirty[0] & /*_uniforms*/ 16 && input1_max_value !== (input1_max_value = Math.max(/*_uniforms*/ ctx[4].size[0], /*_uniforms*/ ctx[4].size[1]) * 0.4)) {
+    			if (!current || dirty[0] & /*_uniforms*/ 64 && input1_max_value !== (input1_max_value = Math.max(/*_uniforms*/ ctx[6].size[0], /*_uniforms*/ ctx[6].size[1]) * 0.4)) {
     				attr_dev(input1, "max", input1_max_value);
     			}
 
@@ -48100,14 +48269,14 @@ void main(void) {
 
     			const title2_changes = {};
 
-    			if (dirty[1] & /*$$scope*/ 524288) {
+    			if (dirty[1] & /*$$scope*/ 4194304) {
     				title2_changes.$$scope = { dirty, ctx };
     			}
 
     			title2.$set(title2_changes);
 
-    			if (dirty[0] & /*layers, solo, project*/ 385) {
-    				each_value = /*project*/ ctx[0].layers;
+    			if (dirty[0] & /*pixi, layers, solo, project*/ 34305) {
+    				each_value = /*layers*/ ctx[10].groups;
     				validate_each_argument(each_value);
     				let i;
 
@@ -48121,7 +48290,7 @@ void main(void) {
     						each_blocks[i] = create_each_block$1(child_ctx);
     						each_blocks[i].c();
     						transition_in(each_blocks[i], 1);
-    						each_blocks[i].m(section2, t24);
+    						each_blocks[i].m(section2, t32);
     					}
     				}
 
@@ -48134,11 +48303,11 @@ void main(void) {
     				check_outros();
     			}
 
-    			if ((!current || dirty[0] & /*calculate*/ 2048) && t29_value !== (t29_value = /*calculate*/ ctx[11].width + "")) set_data_dev(t29, t29_value);
-    			if ((!current || dirty[0] & /*calculate*/ 2048) && t31_value !== (t31_value = /*calculate*/ ctx[11].height + "")) set_data_dev(t31, t31_value);
+    			if ((!current || dirty[0] & /*calculate*/ 8192) && t37_value !== (t37_value = /*calculate*/ ctx[13].width + "")) set_data_dev(t37, t37_value);
+    			if ((!current || dirty[0] & /*calculate*/ 8192) && t39_value !== (t39_value = /*calculate*/ ctx[13].height + "")) set_data_dev(t39, t39_value);
 
-    			if (dirty[0] & /*zoom*/ 8) {
-    				set_input_value(input2, /*zoom*/ ctx[3]);
+    			if (dirty[0] & /*zoom*/ 32) {
+    				set_input_value(input2, /*zoom*/ ctx[5]);
     			}
     		},
     		i: function intro(local) {
@@ -48174,15 +48343,15 @@ void main(void) {
     			if (if_block0) if_block0.d();
     			if (default_slot) default_slot.d(detaching);
     			destroy_component(title1);
-    			/*canvas_binding*/ ctx[28](null);
+    			/*canvas_binding*/ ctx[31](null);
     			if (if_block1) if_block1.d();
     			destroy_each(each_blocks_3, detaching);
     			destroy_each(each_blocks_2, detaching);
     			destroy_each(each_blocks_1, detaching);
     			destroy_component(title2);
     			destroy_each(each_blocks, detaching);
-    			/*div11_binding*/ ctx[40](null);
-    			/*main_1_binding*/ ctx[49](null);
+    			/*div15_binding*/ ctx[43](null);
+    			/*main_1_binding*/ ctx[52](null);
     			mounted = false;
     			run_all(dispose);
     		}
@@ -48199,9 +48368,25 @@ void main(void) {
     	return block;
     }
 
+    async function renderThumbnail() {
+    	
+    } // console.log('doing render...')
+    // // await pixi.app.renderer.render(pixi.app.stage)
+
+    async function removeChildren(obj) {
+    	for (let x = obj.children.length - 1; x >= 0; x--) {
+    		// await obj.children[x].destroy( { children: true })
+    		await obj.removeChild(obj.children[x]);
+    	}
+    }
+
     function onScroll(e) {
     	e.target.scrollLeft = 4500;
     	e.target.scrollTop = 4500;
+    }
+
+    async function onMouseUp(e) {
+    	await renderThumbnail();
     }
 
     const click_handler_7 = e => e.target.blur();
@@ -48218,18 +48403,19 @@ void main(void) {
     	let layers = window.layers = {
     		background: new Graphics(),
     		container: new Container(),
-    		images: new Container(),
+    		groups: [],
     		processed: new Container()
     	};
 
-    	let pixi = {
+    	let pixi = window.pixi = {
     		app: new Application({
     				antialias: false,
     				transparent: true,
     				resolution: 1,
     				forceCanvas: true,
     				preserveDrawingBuffer: true
-    			})
+    			}),
+    		loader: new Loader()
     	};
 
     	// let thumb = new PIXI.Application({
@@ -48246,11 +48432,14 @@ void main(void) {
     	let { project } = $$props;
     	let { files } = $$props;
     	let { handlers } = $$props;
+    	let { IDX } = $$props;
+    	let { THUMBS } = $$props;
     	let uniforms = {};
 
     	function setUniforms(unis) {
     		uniforms.hsla = unis.hsla;
     		uniforms.size = unis.size;
+    		uniforms.solo = solo != null;
     	}
 
     	const mm2px = mm => Math.round(project.config.dpi / 25.4 * mm);
@@ -48266,12 +48455,13 @@ void main(void) {
     		layers.background.drawRect(0, 0, calculate.width, calculate.height);
 
     		$$invalidate(
-    			8,
+    			10,
     			layers.background.filters = [
     				new Filter(null,
     				`
 			${lib}
 			varying vec2 vTextureCoord;
+			uniform bool solo;
 			uniform sampler2D uSampler;
 			uniform vec4 hsla;
 
@@ -48279,6 +48469,7 @@ void main(void) {
 
 				vec3 bg3 = vec3(hsla.x / 360.0, hsla.y / 100.0, hsla.z / 100.0);
 				vec4 bg4 = vec4( hsl2rgb( bg3 ), 1.0 );
+				if (solo) bg4 = vec4(0.0,0.0,0.0,0.0);
 				gl_FragColor = bg4;
 
 			}`,
@@ -48299,52 +48490,43 @@ void main(void) {
     		// stage.removeChild( raw )
     	}
 
-    	function addLayer() {
+    	async function addLayer() {
     		console.log("[Project] 🍰  adding layer ------------------------");
     		let cp = project.layers;
     		$$invalidate(0, project.layers = [], project);
     		cp.push({ flag: true });
     		$$invalidate(0, project.layers = cp, project);
+    		await drawImages();
     	}
 
-    	async function clearImages() {
-    		for (let i = layers.images.children.length - 1; i >= 0; i--) layers.images.removeChild(layers.images.children[i]);
-    	}
+    	let thumbTimeout, thumbLookup;
 
-    	async function renderThumbnail() {
-    		let { width, height } = calculate;
-    		let ctx = thumbnail.getContext("2d");
-    		$$invalidate(10, thumbnail.width = width > height ? 140 : 100, thumbnail);
-    		$$invalidate(10, thumbnail.height = width > height ? 100 : 140, thumbnail);
-    		ctx.drawImage(new Extract(pixi.app.renderer).image(pixi.app.stage), 0, 0, thumbnail.width, thumbnail.height);
-    		let data = thumbnail.toDataURL();
-
-    		if (data != project.thumbnail) {
-    			console.log("[Project] ⏱🌁  rendered thumbnail");
-    			$$invalidate(0, project.thumbnail = data, project);
-    		}
-    	} // await setPositions()
-
+    	// let {width,height} = calculate
+    	// let ctx = thumbnail.getContext('2d')
+    	// thumbnail.width = width > height ? 140 : 100
+    	// thumbnail.height = width > height ? 100 : 140
+    	// ctx.drawImage( (new PIXI.Extract(pixi.app.renderer)).image(layers.processed), 0, 0, thumbnail.width, thumbnail.height)
+    	// // let base64 = (new PIXI.Extract(pixi.app.renderer)).base64(layers.groups[0])
+    	// THUMBS[IDX] = thumbnail.toDataURL()
+    	// console.log('rendered?')
     	async function setup(files) {
     		if (!files?.srcs) return;
-    		if (!loader) loader = new Loader();
     		let list = project.files.filter(name => files.srcs[name]);
     		if (list.length != project.files.length) return;
     		console.log("[Project] 💥  setup (reset)");
-    		await loader.reset();
+    		await pixi.loader.reset();
 
     		for (const name of project.files) {
     			let o = files.srcs[name];
-    			if (!loader.resources[o.url]) loader.add(o.url, { crossOrigin: "anonymous" });
+    			if (!pixi.loader.resources[o.url]) pixi.loader.add(o.url, { crossOrigin: "anonymous" });
     		}
 
     		await setPositions();
 
-    		loader.load(async e => {
+    		pixi.loader.load(async e => {
     			console.log("[Project] ✅💥  files loaded");
     			await drawImages();
-    			await renderThumbnail();
-    		});
+    		}); // await renderThumbnail()
 
     		inited = true;
     	}
@@ -48362,49 +48544,35 @@ void main(void) {
     				async e => {
     					// console.log('[Project] 🪡  update')
     					if (!project.multiple && project.files.length > 1) {
-    						if (!window.confirm(`Remove ${project.files.length - 1} images from project?`)) return;
+    						if (!window.confirm(`Remove ${project.files.length - 1} images from project?`)) return; // await drawImages()
+    						// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
+
     						$$invalidate(0, project.files = project.files.splice(1, project.files.length), project);
     					}
 
     					const neuSize = width != layers.background.width || height != layers.background.height;
     					const neuMargin = project.config.margin != prevMargin;
     					const isCanvasChanged = neuSize || neuMargin;
-    					const isNewFiles = project.files.length != Object.keys(loader.resources).length;
+    					const isNewFiles = project.files.length != Object.keys(pixi.loader.resources).length;
     					project.layers.length != layers.processed.children.length;
-    					let something = false;
+    					const isTrigger = project.trigger;
 
-    					if (isCanvasChanged || isNewFiles) {
-    						console.log("[Project] 🪡🖼  clearing images");
-    						await clearImages();
-    						something = true;
-    					}
-
-    					if (isNewFiles) {
+    					if (isNewFiles || isTrigger) {
     						console.log("[Project] 🪡✨  new files, run setup");
     						await setup(files);
-    						something = true;
+    						$$invalidate(0, project.trigger = false, project);
     					}
 
-    					// if (isNewLayer) {
-    					// 	console.log('[Project] 🪡🍰  new layer')
-    					// 	await setPositions()
-    					// 	await drawImages()
-    					// 	something = true
-    					// } 
     					if (isCanvasChanged) {
     						console.log("[Project] 🪡📐  set positions, draw images");
     						await setPositions();
     						await drawImages();
-    						something = true;
     					}
-
-    					// await drawImages()
-    					if (!something) console.log(`[Project] 🪡💤  nothing happened`);
-
-    					if (something) await renderThumbnail();
     				},
-    				200
-    			);
+    				// await renderThumbnail()
+    				100
+    			); // await drawImages()
+    			// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
     		}
     	}
 
@@ -48414,53 +48582,68 @@ void main(void) {
     	async function drawImages() {
     		const { width, height } = calculate;
 
-    		// await layers.images.destroy({children:true})
-    		const len = Object.keys(loader.resources).length;
+    		// await removeChildren( layers.processed )
+    		console.log("[Project] 🛑  cleared groups ");
 
+    		const len = Object.keys(pixi.loader.resources).length;
     		const size = rectd.neu(0, 0, width, height);
     		const inner = rectd.shrinkBy(size, mm2px(project.config.margin));
     		prevMargin = project.config.margin;
     		let splits = rectd.splitUp(inner, len);
-    		let i = 0;
 
-    		for (const [name, resource] of Object.entries(loader.resources)) {
-    			let sprite = new Sprite(resource.texture);
-    			let image = rectd.neu(0, 0, resource.data.width, resource.data.height);
-    			sprite.width = width;
-    			sprite.height = height;
-    			let fit = rectd.fitInto(image, inner);
-    			rectd.auto(fit, sprite);
+    		for (let idx = 0; idx < project.layers.length; idx++) {
+    			let group = $$invalidate(
+    				10,
+    				layers.groups[idx] = layers.groups[idx]
+    				? layers.groups[idx]
+    				: new Container(),
+    				layers
+    			);
 
-    			if (splits.length > 1) {
-    				let mask = new Graphics();
-    				mask.drawRect(splits[i].x, splits[i].y, splits[i].width, splits[i].height);
-    				sprite.mask = mask;
+    			await removeChildren(group);
+    			let i = 0;
+
+    			for (const [name, resource] of Object.entries(pixi.loader.resources)) {
+    				let sprite = new Sprite(resource.texture);
+    				let image = rectd.neu(0, 0, resource.data.width, resource.data.height);
+    				sprite.width = width;
+    				sprite.height = height;
+    				let fit = rectd.fitInto(image, inner);
+    				rectd.auto(fit, sprite);
+
+    				if (splits.length > 1) {
+    					let mask = new Graphics();
+    					mask.drawRect(splits[i].x, splits[i].y, splits[i].width, splits[i].height);
+    					sprite.mask = mask;
+    				}
+
+    				console.log("[Project] 🎉  adding sprite to images:", name, i);
+    				await group.addChild(sprite);
+    				i += 1;
     			}
 
-    			console.log("[Project] 🎉  adding sprite to images:", name, i);
-    			await layers.images.addChild(sprite);
-    			i += 1;
+    			layers.processed.addChild(group);
     		}
 
-    		console.log(`[Project] ✅🖼  ${i} image(s) drawn`);
+    		console.log(`[Project] ✅🖼  ${Object.keys(pixi.loader.resources).length} image(s) drawn in ${project.layers.length} layers`);
     	}
 
     	async function onZoom(zoom_) {
     		console.log("[Project] 🔭  zoom changed");
-    		$$invalidate(8, layers.container.scale.x = zoom, layers);
-    		$$invalidate(8, layers.container.scale.y = zoom, layers);
+    		$$invalidate(10, layers.container.scale.x = zoom, layers);
+    		$$invalidate(10, layers.container.scale.y = zoom, layers);
     	}
 
     	let inited = false;
 
     	async function setPositions() {
     		const { width, height } = calculate;
-    		$$invalidate(8, layers.background.width = width, layers);
-    		$$invalidate(8, layers.background.height = height, layers);
-    		$$invalidate(8, layers.container.x = editor.offsetWidth / 2, layers);
-    		$$invalidate(8, layers.container.y = editor.offsetHeight / 2, layers);
-    		$$invalidate(8, layers.container.pivot.x = width / 2, layers);
-    		$$invalidate(8, layers.container.pivot.y = height / 2, layers);
+    		$$invalidate(10, layers.background.width = width, layers);
+    		$$invalidate(10, layers.background.height = height, layers);
+    		$$invalidate(10, layers.container.x = editor.offsetWidth / 2, layers);
+    		$$invalidate(10, layers.container.y = editor.offsetHeight / 2, layers);
+    		$$invalidate(10, layers.container.pivot.x = width / 2, layers);
+    		$$invalidate(10, layers.container.pivot.y = height / 2, layers);
     		console.log("[Project] ✅📐  positions set", { width, height });
     	}
 
@@ -48513,11 +48696,11 @@ void main(void) {
 
     		// layers.container.x = editor.offsetWidth / 2
     		// layers.container.y = editor.offsetHeight / 2
-    		$$invalidate(8, layers.container.pivot.x -= x - lastXY.x, layers);
+    		$$invalidate(10, layers.container.pivot.x -= x - lastXY.x, layers);
 
-    		$$invalidate(8, layers.container.pivot.y -= y - lastXY.y, layers);
-    		$$invalidate(8, layers.container.x -= (x - lastXY.x) * zoom, layers);
-    		$$invalidate(8, layers.container.y -= (y - lastXY.y) * zoom, layers);
+    		$$invalidate(10, layers.container.pivot.y -= y - lastXY.y, layers);
+    		$$invalidate(10, layers.container.x -= (x - lastXY.x) * zoom, layers);
+    		$$invalidate(10, layers.container.y -= (y - lastXY.y) * zoom, layers);
     		lastXY = { x, y };
 
     		// layers.container.pivot.x = width/2
@@ -48531,36 +48714,37 @@ void main(void) {
     		width *= zoom;
     		height *= zoom;
     		if (!dragging) return;
-    		$$invalidate(8, layers.container.x = (width - offsetWidth) * x * -1, layers);
-    		$$invalidate(8, layers.container.y = (height - offsetHeight) * y * -1, layers);
+    		$$invalidate(10, layers.container.x = (width - offsetWidth) * x * -1, layers);
+    		$$invalidate(10, layers.container.y = (height - offsetHeight) * y * -1, layers);
     	} // pixi.app.stage.pivot.x = pixi.app.stage.x 
     	// pixi.app.stage.pivot.y = pixi.app.stage.y 
 
     	function onWheel(e) {
     		if (keys["Alt"]) {
-    			$$invalidate(3, zoom += e.deltaY * 0.001);
-    			if (zoom < 0.01) $$invalidate(3, zoom = 0.01);
-    			if (zoom > 3) $$invalidate(3, zoom = 3);
+    			$$invalidate(5, zoom += e.deltaY * 0.001);
+    			if (zoom < 0.01) $$invalidate(5, zoom = 0.01);
+    			if (zoom > 3) $$invalidate(5, zoom = 3);
     		} else {
     			let fract = 0.5;
-    			$$invalidate(8, layers.container.x += e.deltaX * fract * -1, layers);
-    			$$invalidate(8, layers.container.y += e.deltaY * fract * -1, layers);
+    			$$invalidate(10, layers.container.x += e.deltaX * fract * -1, layers);
+    			$$invalidate(10, layers.container.y += e.deltaY * fract * -1, layers);
     		}
     	}
 
     	let dragging = false;
     	let keys = {};
 
-    	function onKeyDown(e) {
+    	async function onKeyDown(e) {
     		keys[e.key] = true;
     	}
 
-    	function onKeyUp(e) {
+    	async function onKeyUp(e) {
     		keys[e.key] = false;
+    		await renderThumbnail();
     	}
 
     	let thumbnail;
-    	const writable_props = ["project", "files", "handlers"];
+    	const writable_props = ["project", "files", "handlers", "IDX", "THUMBS"];
 
     	Object_1.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$1.warn(`<Project> was created with unknown prop '${key}'`);
@@ -48573,7 +48757,7 @@ void main(void) {
     	function canvas_binding($$value) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			thumbnail = $$value;
-    			$$invalidate(10, thumbnail);
+    			$$invalidate(12, thumbnail);
     		});
     	}
 
@@ -48602,48 +48786,48 @@ void main(void) {
     		$$invalidate(0, project);
     	}
 
-    	function layer_solo_binding(value) {
-    		solo = value;
-    		$$invalidate(7, solo);
+    	function layer_group_binding(value, group, each_value, index) {
+    		each_value[index] = value;
+    		$$invalidate(10, layers);
     	}
 
-    	function layer_container_binding(value) {
-    		if ($$self.$$.not_equal(layers.processed, value)) {
-    			layers.processed = value;
-    			$$invalidate(8, layers);
+    	function layer_solo_binding(value) {
+    		solo = value;
+    		$$invalidate(9, solo);
+    	}
+
+    	function layer_layer_binding(value, index) {
+    		if ($$self.$$.not_equal(project.layers[index], value)) {
+    			project.layers[index] = value;
+    			$$invalidate(0, project);
     		}
     	}
 
-    	function layer_layer_binding(value, layer, each_value, index) {
-    		each_value[index] = value;
-    		$$invalidate(0, project);
-    	}
-
-    	function div11_binding($$value) {
+    	function div15_binding($$value) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			editor = $$value;
-    			$$invalidate(6, editor);
+    			$$invalidate(8, editor);
     		});
     	}
 
-    	const mousedown_handler = e => $$invalidate(9, dragging = true);
-    	const mouseup_handler = e => $$invalidate(9, dragging = false);
-    	const mouseleave_handler = e => $$invalidate(9, dragging = false);
-    	const click_handler_8 = e => zoom > 0.05 ? $$invalidate(3, zoom -= 0.05) : null;
+    	const mousedown_handler = e => $$invalidate(11, dragging = true);
+    	const mouseup_handler = e => $$invalidate(11, dragging = false);
+    	const mouseleave_handler = e => $$invalidate(11, dragging = false);
+    	const click_handler_8 = e => zoom < 2 ? $$invalidate(5, zoom += 0.05) : null;
 
     	function input2_change_input_handler() {
     		zoom = to_number(this.value);
-    		$$invalidate(3, zoom);
+    		$$invalidate(5, zoom);
     	}
 
-    	const click_handler_9 = e => zoom < 2 ? $$invalidate(3, zoom += 0.05) : null;
+    	const click_handler_9 = e => zoom > 0.05 ? $$invalidate(5, zoom -= 0.05) : null;
     	const mousedown_handler_1 = e => togglePreview(true);
     	const mouseup_handler_1 = e => togglePreview(false);
 
     	function main_1_binding($$value) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			main = $$value;
-    			$$invalidate(5, main);
+    			$$invalidate(7, main);
     		});
     	}
 
@@ -48651,7 +48835,9 @@ void main(void) {
     		if ("project" in $$props) $$invalidate(0, project = $$props.project);
     		if ("files" in $$props) $$invalidate(1, files = $$props.files);
     		if ("handlers" in $$props) $$invalidate(2, handlers = $$props.handlers);
-    		if ("$$scope" in $$props) $$invalidate(50, $$scope = $$props.$$scope);
+    		if ("IDX" in $$props) $$invalidate(3, IDX = $$props.IDX);
+    		if ("THUMBS" in $$props) $$invalidate(4, THUMBS = $$props.THUMBS);
+    		if ("$$scope" in $$props) $$invalidate(53, $$scope = $$props.$$scope);
     	};
 
     	$$self.$capture_state = () => ({
@@ -48677,6 +48863,8 @@ void main(void) {
     		project,
     		files,
     		handlers,
+    		IDX,
+    		THUMBS,
     		uniforms,
     		setUniforms,
     		mm2px,
@@ -48685,12 +48873,14 @@ void main(void) {
     		init,
     		togglePreview,
     		addLayer,
-    		clearImages,
+    		thumbTimeout,
+    		thumbLookup,
     		renderThumbnail,
     		setup,
     		update,
     		sizeTimeout,
     		prevMargin,
+    		removeChildren,
     		drawImages,
     		onZoom,
     		inited,
@@ -48711,6 +48901,7 @@ void main(void) {
     		keys,
     		onKeyDown,
     		onKeyUp,
+    		onMouseUp,
     		thumbnail,
     		_uniforms,
     		calculate,
@@ -48718,34 +48909,38 @@ void main(void) {
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ("main" in $$props) $$invalidate(5, main = $$props.main);
-    		if ("editor" in $$props) $$invalidate(6, editor = $$props.editor);
+    		if ("main" in $$props) $$invalidate(7, main = $$props.main);
+    		if ("editor" in $$props) $$invalidate(8, editor = $$props.editor);
     		if ("app" in $$props) app = $$props.app;
     		if ("stage" in $$props) stage = $$props.stage;
     		if ("loader" in $$props) loader = $$props.loader;
     		if ("mode" in $$props) mode = $$props.mode;
-    		if ("solo" in $$props) $$invalidate(7, solo = $$props.solo);
-    		if ("layers" in $$props) $$invalidate(8, layers = $$props.layers);
-    		if ("pixi" in $$props) pixi = $$props.pixi;
+    		if ("solo" in $$props) $$invalidate(9, solo = $$props.solo);
+    		if ("layers" in $$props) $$invalidate(10, layers = $$props.layers);
+    		if ("pixi" in $$props) $$invalidate(15, pixi = $$props.pixi);
     		if ("project" in $$props) $$invalidate(0, project = $$props.project);
     		if ("files" in $$props) $$invalidate(1, files = $$props.files);
     		if ("handlers" in $$props) $$invalidate(2, handlers = $$props.handlers);
+    		if ("IDX" in $$props) $$invalidate(3, IDX = $$props.IDX);
+    		if ("THUMBS" in $$props) $$invalidate(4, THUMBS = $$props.THUMBS);
     		if ("uniforms" in $$props) uniforms = $$props.uniforms;
     		if ("fit" in $$props) fit = $$props.fit;
+    		if ("thumbTimeout" in $$props) thumbTimeout = $$props.thumbTimeout;
+    		if ("thumbLookup" in $$props) thumbLookup = $$props.thumbLookup;
     		if ("sizeTimeout" in $$props) sizeTimeout = $$props.sizeTimeout;
     		if ("prevMargin" in $$props) prevMargin = $$props.prevMargin;
     		if ("inited" in $$props) inited = $$props.inited;
-    		if ("classes" in $$props) $$invalidate(16, classes = $$props.classes);
+    		if ("classes" in $$props) $$invalidate(19, classes = $$props.classes);
     		if ("targets" in $$props) targets = $$props.targets;
-    		if ("arrowClass" in $$props) $$invalidate(17, arrowClass = $$props.arrowClass);
-    		if ("zoom" in $$props) $$invalidate(3, zoom = $$props.zoom);
+    		if ("arrowClass" in $$props) $$invalidate(20, arrowClass = $$props.arrowClass);
+    		if ("zoom" in $$props) $$invalidate(5, zoom = $$props.zoom);
     		if ("lastXY" in $$props) lastXY = $$props.lastXY;
-    		if ("dragging" in $$props) $$invalidate(9, dragging = $$props.dragging);
+    		if ("dragging" in $$props) $$invalidate(11, dragging = $$props.dragging);
     		if ("keys" in $$props) keys = $$props.keys;
-    		if ("thumbnail" in $$props) $$invalidate(10, thumbnail = $$props.thumbnail);
-    		if ("_uniforms" in $$props) $$invalidate(4, _uniforms = $$props._uniforms);
-    		if ("calculate" in $$props) $$invalidate(11, calculate = $$props.calculate);
-    		if ("needsSync" in $$props) $$invalidate(12, needsSync = $$props.needsSync);
+    		if ("thumbnail" in $$props) $$invalidate(12, thumbnail = $$props.thumbnail);
+    		if ("_uniforms" in $$props) $$invalidate(6, _uniforms = $$props._uniforms);
+    		if ("calculate" in $$props) $$invalidate(13, calculate = $$props.calculate);
+    		if ("needsSync" in $$props) $$invalidate(14, needsSync = $$props.needsSync);
     	};
 
     	if ($$props && "$$inject" in $$props) {
@@ -48754,18 +48949,18 @@ void main(void) {
 
     	$$self.$$.update = () => {
     		if ($$self.$$.dirty[0] & /*project*/ 1) {
-    			$$invalidate(4, _uniforms = {
+    			$$invalidate(6, _uniforms = {
     				hsla: options.backgrounds.find(b => b.name == project.config.background).colour,
     				size: options.sizes.find(b => b.name == project.config.size).xy
     			});
     		}
 
-    		if ($$self.$$.dirty[0] & /*_uniforms*/ 16) {
+    		if ($$self.$$.dirty[0] & /*_uniforms*/ 64) {
     			setUniforms(_uniforms);
     		}
 
-    		if ($$self.$$.dirty[0] & /*_uniforms*/ 16) {
-    			$$invalidate(11, calculate = {
+    		if ($$self.$$.dirty[0] & /*_uniforms*/ 64) {
+    			$$invalidate(13, calculate = {
     				width: mm2px(_uniforms.size[0]),
     				height: mm2px(_uniforms.size[1])
     			});
@@ -48780,10 +48975,10 @@ void main(void) {
     		}
 
     		if ($$self.$$.dirty[0] & /*files*/ 2) {
-    			$$invalidate(12, needsSync = files.handles.filter(h => !files.srcs[h.name]));
+    			$$invalidate(14, needsSync = files.handles.filter(h => !files.srcs[h.name]));
     		}
 
-    		if ($$self.$$.dirty[0] & /*zoom*/ 8) {
+    		if ($$self.$$.dirty[0] & /*zoom*/ 32) {
     			onZoom();
     		}
     	};
@@ -48792,6 +48987,8 @@ void main(void) {
     		project,
     		files,
     		handlers,
+    		IDX,
+    		THUMBS,
     		zoom,
     		_uniforms,
     		main,
@@ -48802,6 +48999,7 @@ void main(void) {
     		thumbnail,
     		calculate,
     		needsSync,
+    		pixi,
     		onResize,
     		togglePreview,
     		addLayer,
@@ -48826,10 +49024,10 @@ void main(void) {
     		select1_change_handler,
     		input0_input_handler,
     		input1_input_handler,
+    		layer_group_binding,
     		layer_solo_binding,
-    		layer_container_binding,
     		layer_layer_binding,
-    		div11_binding,
+    		div15_binding,
     		mousedown_handler,
     		mouseup_handler,
     		mouseleave_handler,
@@ -48846,7 +49044,22 @@ void main(void) {
     class Project extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init$1(this, options, instance$1, create_fragment$1, safe_not_equal, { project: 0, files: 1, handlers: 2 }, [-1, -1, -1]);
+
+    		init$1(
+    			this,
+    			options,
+    			instance$1,
+    			create_fragment$1,
+    			safe_not_equal,
+    			{
+    				project: 0,
+    				files: 1,
+    				handlers: 2,
+    				IDX: 3,
+    				THUMBS: 4
+    			},
+    			[-1, -1, -1]
+    		);
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -48868,6 +49081,14 @@ void main(void) {
 
     		if (/*handlers*/ ctx[2] === undefined && !("handlers" in props)) {
     			console_1$1.warn("<Project> was created without expected prop 'handlers'");
+    		}
+
+    		if (/*IDX*/ ctx[3] === undefined && !("IDX" in props)) {
+    			console_1$1.warn("<Project> was created without expected prop 'IDX'");
+    		}
+
+    		if (/*THUMBS*/ ctx[4] === undefined && !("THUMBS" in props)) {
+    			console_1$1.warn("<Project> was created without expected prop 'THUMBS'");
     		}
     	}
 
@@ -48894,6 +49115,22 @@ void main(void) {
     	set handlers(value) {
     		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
+
+    	get IDX() {
+    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set IDX(value) {
+    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get THUMBS() {
+    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set THUMBS(value) {
+    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
     }
 
     /* src/App.svelte generated by Svelte v3.38.3 */
@@ -48903,12 +49140,12 @@ void main(void) {
 
     function get_each_context(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[18] = list[i];
-    	child_ctx[20] = i;
+    	child_ctx[25] = list[i];
+    	child_ctx[27] = i;
     	return child_ctx;
     }
 
-    // (165:1) <Title>
+    // (209:1) <Title>
     function create_default_slot_1(ctx) {
     	let t;
 
@@ -48928,14 +49165,14 @@ void main(void) {
     		block,
     		id: create_default_slot_1.name,
     		type: "slot",
-    		source: "(165:1) <Title>",
+    		source: "(209:1) <Title>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (174:2) {#each PROJECTS as project,idx}
+    // (218:2) {#each PROJECTS as project,idx}
     function create_each_block(ctx) {
     	let div;
     	let img;
@@ -48947,13 +49184,13 @@ void main(void) {
     			div = element("div");
     			img = element("img");
     			t = space();
-    			attr_dev(img, "class", "b1-solid");
-    			if (img.src !== (img_src_value = /*project*/ ctx[18].thumbnail)) attr_dev(img, "src", img_src_value);
-    			add_location(img, file, 177, 4, 3556);
+    			attr_dev(img, "class", "b1-solid cross minh2em minw2em");
+    			if (img.src !== (img_src_value = /*THUMBS*/ ctx[1][/*IDX*/ ctx[2]])) attr_dev(img, "src", img_src_value);
+    			add_location(img, file, 221, 4, 4569);
     			attr_dev(div, "class", "p1 bb1-solid flex row-center-center ");
-    			toggle_class(div, "pop", /*idx*/ ctx[20] == /*IDX*/ ctx[2]);
-    			toggle_class(div, "bt1-solid", /*idx*/ ctx[20] == 0);
-    			add_location(div, file, 174, 3, 3444);
+    			toggle_class(div, "pop", /*idx*/ ctx[27] == /*IDX*/ ctx[2]);
+    			toggle_class(div, "bt1-solid", /*idx*/ ctx[27] == 0);
+    			add_location(div, file, 218, 3, 4457);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -48961,8 +49198,12 @@ void main(void) {
     			append_dev(div, t);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty & /*PROJECTS*/ 1 && img.src !== (img_src_value = /*project*/ ctx[18].thumbnail)) {
+    			if (dirty & /*THUMBS, IDX*/ 6 && img.src !== (img_src_value = /*THUMBS*/ ctx[1][/*IDX*/ ctx[2]])) {
     				attr_dev(img, "src", img_src_value);
+    			}
+
+    			if (dirty & /*IDX*/ 4) {
+    				toggle_class(div, "pop", /*idx*/ ctx[27] == /*IDX*/ ctx[2]);
     			}
     		},
     		d: function destroy(detaching) {
@@ -48974,14 +49215,14 @@ void main(void) {
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(174:2) {#each PROJECTS as project,idx}",
+    		source: "(218:2) {#each PROJECTS as project,idx}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (163:0) <Project bind:project={PROJECTS[IDX]} bind:files={files} {handlers}>
+    // (202:0) <Project   bind:IDX={IDX}  bind:THUMBS={THUMBS}  bind:project={PROJECTS[IDX]}   bind:files={files}   {handlers}>
     function create_default_slot(ctx) {
     	let title;
     	let t0;
@@ -49024,11 +49265,11 @@ void main(void) {
     			}
 
     			attr_dev(button, "class", "w100pc");
-    			add_location(button, file, 166, 2, 3307);
+    			add_location(button, file, 210, 2, 4320);
     			attr_dev(div0, "class", "p1");
-    			add_location(div0, file, 165, 1, 3288);
+    			add_location(div0, file, 209, 1, 4301);
     			attr_dev(div1, "class", "checker");
-    			add_location(div1, file, 172, 1, 3385);
+    			add_location(div1, file, 216, 1, 4398);
     		},
     		m: function mount(target, anchor) {
     			mount_component(title, target, anchor);
@@ -49052,13 +49293,13 @@ void main(void) {
     		p: function update(ctx, dirty) {
     			const title_changes = {};
 
-    			if (dirty & /*$$scope*/ 2097152) {
+    			if (dirty & /*$$scope*/ 268435456) {
     				title_changes.$$scope = { dirty, ctx };
     			}
 
     			title.$set(title_changes);
 
-    			if (dirty & /*IDX, PROJECTS*/ 5) {
+    			if (dirty & /*IDX, THUMBS, PROJECTS*/ 7) {
     				each_value = /*PROJECTS*/ ctx[0];
     				validate_each_argument(each_value);
     				let i;
@@ -49107,7 +49348,7 @@ void main(void) {
     		block,
     		id: create_default_slot.name,
     		type: "slot",
-    		source: "(163:0) <Project bind:project={PROJECTS[IDX]} bind:files={files} {handlers}>",
+    		source: "(202:0) <Project   bind:IDX={IDX}  bind:THUMBS={THUMBS}  bind:project={PROJECTS[IDX]}   bind:files={files}   {handlers}>",
     		ctx
     	});
 
@@ -49116,33 +49357,53 @@ void main(void) {
 
     function create_fragment(ctx) {
     	let project;
+    	let updating_IDX;
+    	let updating_THUMBS;
     	let updating_project;
     	let updating_files;
     	let current;
 
+    	function project_IDX_binding(value) {
+    		/*project_IDX_binding*/ ctx[5](value);
+    	}
+
+    	function project_THUMBS_binding(value) {
+    		/*project_THUMBS_binding*/ ctx[6](value);
+    	}
+
     	function project_project_binding(value) {
-    		/*project_project_binding*/ ctx[4](value);
+    		/*project_project_binding*/ ctx[7](value);
     	}
 
     	function project_files_binding(value) {
-    		/*project_files_binding*/ ctx[5](value);
+    		/*project_files_binding*/ ctx[8](value);
     	}
 
     	let project_props = {
-    		handlers: /*handlers*/ ctx[3],
+    		handlers: /*handlers*/ ctx[4],
     		$$slots: { default: [create_default_slot] },
     		$$scope: { ctx }
     	};
+
+    	if (/*IDX*/ ctx[2] !== void 0) {
+    		project_props.IDX = /*IDX*/ ctx[2];
+    	}
+
+    	if (/*THUMBS*/ ctx[1] !== void 0) {
+    		project_props.THUMBS = /*THUMBS*/ ctx[1];
+    	}
 
     	if (/*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]] !== void 0) {
     		project_props.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
     	}
 
-    	if (/*files*/ ctx[1] !== void 0) {
-    		project_props.files = /*files*/ ctx[1];
+    	if (/*files*/ ctx[3] !== void 0) {
+    		project_props.files = /*files*/ ctx[3];
     	}
 
     	project = new Project({ props: project_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(project, "IDX", project_IDX_binding));
+    	binding_callbacks.push(() => bind$1(project, "THUMBS", project_THUMBS_binding));
     	binding_callbacks.push(() => bind$1(project, "project", project_project_binding));
     	binding_callbacks.push(() => bind$1(project, "files", project_files_binding));
 
@@ -49160,8 +49421,20 @@ void main(void) {
     		p: function update(ctx, [dirty]) {
     			const project_changes = {};
 
-    			if (dirty & /*$$scope, PROJECTS*/ 2097153) {
+    			if (dirty & /*$$scope, PROJECTS, IDX, THUMBS*/ 268435463) {
     				project_changes.$$scope = { dirty, ctx };
+    			}
+
+    			if (!updating_IDX && dirty & /*IDX*/ 4) {
+    				updating_IDX = true;
+    				project_changes.IDX = /*IDX*/ ctx[2];
+    				add_flush_callback(() => updating_IDX = false);
+    			}
+
+    			if (!updating_THUMBS && dirty & /*THUMBS*/ 2) {
+    				updating_THUMBS = true;
+    				project_changes.THUMBS = /*THUMBS*/ ctx[1];
+    				add_flush_callback(() => updating_THUMBS = false);
     			}
 
     			if (!updating_project && dirty & /*PROJECTS, IDX*/ 5) {
@@ -49170,9 +49443,9 @@ void main(void) {
     				add_flush_callback(() => updating_project = false);
     			}
 
-    			if (!updating_files && dirty & /*files*/ 2) {
+    			if (!updating_files && dirty & /*files*/ 8) {
     				updating_files = true;
-    				project_changes.files = /*files*/ ctx[1];
+    				project_changes.files = /*files*/ ctx[3];
     				add_flush_callback(() => updating_files = false);
     			}
 
@@ -49217,15 +49490,16 @@ void main(void) {
     			background: options.backgrounds[0].name,
     			size: options.sizes[1].name,
     			dpi: 300,
-    			margin: 0
+    			margin: 10
     		},
     		multiple: false,
-    		files: ["test"], //[ 'autr', 'test', 'alt']
+    		files: ["wheel"], //[ 'autr', 'test', 'alt']
     		
     	};
 
     	let FILES = {};
     	let PROJECTS = [intro];
+    	let THUMBS = [];
     	let IDX = 0;
 
     	async function setup() {
@@ -49249,6 +49523,11 @@ void main(void) {
     				name: "alt",
     				url: "sources/002.png",
     				static: true
+    			},
+    			{
+    				name: "wheel",
+    				url: "sources/wheel.jpg",
+    				static: true
     			}
     		],
     		srcs: {}
@@ -49256,12 +49535,13 @@ void main(void) {
 
     	const FILES_KEY = `${KEY}_FILES`;
     	const PROJECTS_KEY = `${KEY}_PROJECTS`;
+    	const THUMBS_KEY = `${KEY}_THUMBS`;
 
     	function selectImage(handle) {
-    		console.log("SELECTED IMAGE");
     		let idx = PROJECTS[IDX].files.indexOf(handle.name);
 
     		if (!PROJECTS[IDX].multiple) {
+    			$$invalidate(0, PROJECTS[IDX].trigger = true, PROJECTS);
     			$$invalidate(0, PROJECTS[IDX].files = [handle.name], PROJECTS);
     		} else {
     			if (idx == -1) {
@@ -49279,7 +49559,7 @@ void main(void) {
 
     	async function requestFile(handle) {
     		if (handle.static) {
-    			$$invalidate(1, files.srcs[handle.name] = handle, files);
+    			$$invalidate(3, files.srcs[handle.name] = handle, files);
     		} else {
     			let opts = { mode: "read" };
     			let permission = await handle.queryPermission(opts);
@@ -49289,7 +49569,7 @@ void main(void) {
     				const file = await handle.getFile();
 
     				$$invalidate(
-    					1,
+    					3,
     					files.srcs[handle.name] = {
     						name: handle.name,
     						url: URL.createObjectURL(file)
@@ -49303,8 +49583,47 @@ void main(void) {
     	}
 
     	async function loadDb() {
-    		let neu = await get(FILES_KEY) || [];
-    		$$invalidate(1, files.handles = files.handles.concat(neu), files);
+    		const neuFiles = await get(FILES_KEY) || [];
+    		$$invalidate(3, files.handles = files.handles.concat(neuFiles), files);
+    		console.log(`[App] loaded ${neuFiles.length} file references from db`);
+    		$$invalidate(0, PROJECTS = (await get(PROJECTS_KEY)).filter(p => p));
+    		if (PROJECTS.length == 0) PROJECTS.push(intro);
+    		console.log(`[App] loaded ${PROJECTS.length} projects from db`, PROJECTS);
+    	}
+
+    	async function projectsUpdated(projects_) {
+    		await saveDb();
+    	}
+
+    	let saveTimeout;
+
+    	async function saveDb() {
+    		if (saveTimeout) {
+    			clearTimeout(saveTimeout);
+    			saveTimeout = null;
+    		}
+
+    		saveTimeout = setTimeout(
+    			async e => {
+    				let cleaned = [...PROJECTS].map(p => {
+    					return {
+    						...p,
+    						layers: p.layers.map(l => {
+    							return {
+    								...l,
+    								filterGlobals: null,
+    								globals: null,
+    								uSampler: null
+    							};
+    						})
+    					};
+    				});
+
+    				console.log(`[App] saves ${PROJECTS.length} projects to db`);
+    				await set(PROJECTS_KEY, cleaned);
+    			},
+    			200
+    		);
     	}
 
     	async function requestAll() {
@@ -49325,7 +49644,7 @@ void main(void) {
     			multiple: true
     		});
 
-    		$$invalidate(1, files.handles = files.handles.concat(neu), files);
+    		$$invalidate(3, files.handles = files.handles.concat(neu), files);
     		await set(FILES_KEY, files.handles.filter(h => !h.static));
     		await requestAll();
     	}
@@ -49333,16 +49652,16 @@ void main(void) {
     	async function removeHandle(handle) {
     		if (!window.confirm(`Remove ${handle.name} from bin?`)) return;
     		let cp = files.handles;
-    		$$invalidate(1, files.handles = [], files);
+    		$$invalidate(3, files.handles = [], files);
     		const idx = cp.indexOf(handle);
     		if (idx != -1) cp.splice(idx, 1);
-    		$$invalidate(1, files.handles = cp, files);
+    		$$invalidate(3, files.handles = cp, files);
     		await set(FILES_KEY, files.handles.filter(h => !h.static));
     	}
 
     	async function clearAllHandles(handle) {
     		if (!window.confirm(`Remove all files from bin?`)) return;
-    		$$invalidate(1, files.handles = files.handles.filter(h => h.static), files);
+    		$$invalidate(3, files.handles = files.handles.filter(h => h.static), files);
     		await set(FILES_KEY, []);
     	}
 
@@ -49362,6 +49681,16 @@ void main(void) {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<App> was created with unknown prop '${key}'`);
     	});
 
+    	function project_IDX_binding(value) {
+    		IDX = value;
+    		$$invalidate(2, IDX);
+    	}
+
+    	function project_THUMBS_binding(value) {
+    		THUMBS = value;
+    		$$invalidate(1, THUMBS);
+    	}
+
     	function project_project_binding(value) {
     		if ($$self.$$.not_equal(PROJECTS[IDX], value)) {
     			PROJECTS[IDX] = value;
@@ -49371,7 +49700,7 @@ void main(void) {
 
     	function project_files_binding(value) {
     		files = value;
-    		$$invalidate(1, files);
+    		$$invalidate(3, files);
     	}
 
     	$$self.$capture_state = () => ({
@@ -49384,15 +49713,20 @@ void main(void) {
     		intro,
     		FILES,
     		PROJECTS,
+    		THUMBS,
     		IDX,
     		setup,
     		files,
     		KEY,
     		FILES_KEY,
     		PROJECTS_KEY,
+    		THUMBS_KEY,
     		selectImage,
     		requestFile,
     		loadDb,
+    		projectsUpdated,
+    		saveTimeout,
+    		saveDb,
     		requestAll,
     		accessFiles,
     		removeHandle,
@@ -49404,16 +49738,34 @@ void main(void) {
     		if ("intro" in $$props) intro = $$props.intro;
     		if ("FILES" in $$props) FILES = $$props.FILES;
     		if ("PROJECTS" in $$props) $$invalidate(0, PROJECTS = $$props.PROJECTS);
+    		if ("THUMBS" in $$props) $$invalidate(1, THUMBS = $$props.THUMBS);
     		if ("IDX" in $$props) $$invalidate(2, IDX = $$props.IDX);
-    		if ("files" in $$props) $$invalidate(1, files = $$props.files);
-    		if ("handlers" in $$props) $$invalidate(3, handlers = $$props.handlers);
+    		if ("files" in $$props) $$invalidate(3, files = $$props.files);
+    		if ("saveTimeout" in $$props) saveTimeout = $$props.saveTimeout;
+    		if ("handlers" in $$props) $$invalidate(4, handlers = $$props.handlers);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [PROJECTS, files, IDX, handlers, project_project_binding, project_files_binding];
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*PROJECTS*/ 1) {
+    			projectsUpdated();
+    		}
+    	};
+
+    	return [
+    		PROJECTS,
+    		THUMBS,
+    		IDX,
+    		files,
+    		handlers,
+    		project_IDX_binding,
+    		project_THUMBS_binding,
+    		project_project_binding,
+    		project_files_binding
+    	];
     }
 
     class App extends SvelteComponentDev {

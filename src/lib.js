@@ -4,9 +4,82 @@ export default `
 
 
 float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+float hash(float n) { return fract(sin(n) * 1e4); }
+float hash(vec2 p) { return fract(1e4 * sin(17.0 * p.x + p.y * 0.1) * (0.1 + abs(sin(p.y * 13.0 + p.x)))); }
 
-float noise(in vec2 xy, in float seed){
-       return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
+float noise(float x) {
+  float i = floor(x);
+  float f = fract(x);
+  float u = f * f * (3.0 - 2.0 * f);
+  return mix(hash(i), hash(i + 1.0), u);
+}
+
+vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+
+float snoise(vec2 v){
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+           -0.577350269189626, 0.024390243902439);
+  vec2 i  = floor(v + dot(v, C.yy) );
+  vec2 x0 = v -   i + dot(i, C.xx);
+  vec2 i1;
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod(i, 289.0);
+  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+  + i.x + vec3(0.0, i1.x, 1.0 ));
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+    dot(x12.zw,x12.zw)), 0.0);
+  m = m*m ;
+  m = m*m ;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+  vec3 g;
+  g.x  = a0.x  * x0.x  + h.x  * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+
+float noise(vec2 x) {
+  vec2 i = floor(x);
+  vec2 f = fract(x);
+
+  // Four corners in 2D of a tile
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+
+  // Simple 2D lerp using smoothstep envelope between the values.
+  // return vec3(mix(mix(a, b, smoothstep(0.0, 1.0, f.x)),
+  //      mix(c, d, smoothstep(0.0, 1.0, f.x)),
+  //      smoothstep(0.0, 1.0, f.y)));
+
+  // Same code, with the clamps in smoothstep and common subexpressions
+  // optimized away.
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+}
+
+// This one has non-ideal tiling properties that I'm still tuning
+float noise(vec3 x) {
+  const vec3 step = vec3(110, 241, 171);
+
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+ 
+  // For performance, compute the base input to a 1D hash from the integer part of the argument and the 
+  // incremental change to the 1D based on the 3D -> 1D wrapping
+    float n = dot(i, step);
+
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix( hash(n + dot(step, vec3(0, 0, 0))), hash(n + dot(step, vec3(1, 0, 0))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 0))), hash(n + dot(step, vec3(1, 1, 0))), u.x), u.y),
+               mix(mix( hash(n + dot(step, vec3(0, 0, 1))), hash(n + dot(step, vec3(1, 0, 1))), u.x),
+                   mix( hash(n + dot(step, vec3(0, 1, 1))), hash(n + dot(step, vec3(1, 1, 1))), u.x), u.y), u.z);
 }
 
 float rand(vec2 n) { 
