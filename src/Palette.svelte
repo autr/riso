@@ -81,7 +81,7 @@ void main(void) {
 	}
 
 }`
-		console.log('[Palette] setup')
+		// console.log('[Palette] setup')
 
 		graphic.filters = [new PIXI.Filter(null, fragment, layer)]
 		app.stage.addChild(graphic)
@@ -89,5 +89,5 @@ void main(void) {
 
 	}
 </script>
-<div class="rel no-basis flex grow" bind:this={el} />
-<div class="rel no-basis flex grow" style={`background-color: rgb(${colours?.[layer.colour]?.rgb})`} />
+<div class="rel basis70pc bb1-solid flex grow palette" style={`background-color: rgb(${colours?.[layer.colour]?.rgb})`} />
+<div class="rel basis30pc flex grow palette" bind:this={el} />

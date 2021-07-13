@@ -2,13 +2,17 @@
 	import lib from './lib.js'
 	import * as PIXI from 'pixi.js'
 	import { onMount } from 'svelte'
-	import Layer from './Layer.svelte'
-	import Palette from './Palette.svelte'
 	import { get, set } from 'idb-keyval'
 	import rectd from './rectd.js'
 	import options from './options.js'
 
+	import Layer from './Layer.svelte'
+	import Palette from './Palette.svelte'
+	import Title from './Title.svelte'
+
 	let main, editor, app, stage, loader, mode
+	let solo = null
+
 
 	let layers = window.layers = {
 		background: new PIXI.Graphics(),
@@ -22,9 +26,18 @@
 			antialias: false,
 			transparent: true,
 			resolution: 1,
-			forceCanvas: true
+			forceCanvas: true,
+			preserveDrawingBuffer: true
 		})
 	}
+
+	// let thumb = new PIXI.Application({
+	// 	antialias: false,
+	// 	transparent: true,
+	// 	resolution: 1,
+	// 	forceCanvas: true,
+	// 	preserveDrawingBuffer: true
+	// })
 
 	onMount( async e => {
 		await init()
@@ -52,17 +65,22 @@
 	const mm2px = mm => ( Math.round( ( project.config.dpi / 25.4 ) * mm ) )
 
 	$: calculate = {
-		width: mm2px( _uniforms.size[0] ) * 0.25,
-		height: mm2px( _uniforms.size[1] ) * 0.25
+		width: mm2px( _uniforms.size[0] ),
+		height: mm2px( _uniforms.size[1] )
 	}
 
 	let fit = {}
 
+	async function onResize(e) {
+		await pixi.app.renderer.resize(editor.offsetWidth,editor.offsetHeight)
+	}
+
 
 	async function init() {
 
-		console.log('[Project] initing background and containers', calculate)
 
+
+		await onResize()
 		editor.appendChild(pixi.app.view)
 
 		layers.background.drawRect(0,0,calculate.width,calculate.height)
@@ -80,11 +98,11 @@
 
 			}`, 
 		uniforms)]
-
-		pixi.app.stage.addChild( layers.background )
 		pixi.app.stage.addChild( layers.container )
+		layers.container.addChild( layers.background )
 		layers.container.addChild( layers.processed )
-		// layers.container.addChild( layers.images )
+
+		console.log(`[Project] 🎉  layers and background inited`)
 
 		await update( project.config )
 	}
@@ -101,30 +119,38 @@
 	}
 
 	function addLayer() {
+		console.log('[Project] 🍰  adding layer ------------------------')
 		let cp = project.layers
 		project.layers = []
-		cp.push( {} )
+		cp.push( { flag: true } )
 		project.layers = cp
 	}
 
-
-	async function update( config ) {
-		if (pixi?.app?.renderer ) {
-			const { width, height } = calculate
-			if ( width != pixi.app.renderer.width || height != pixi.app.renderer.height) {
-				console.log('[Project] canvas size updated', {width, height})
-				await pixi.app.renderer.resize( width, height )
-				layers.background.width = width
-				layers.background.height = height
-			}
-		}
+	async function clearImages() {
+		
+		for (let i = layers.images.children.length - 1; i >= 0; i--) layers.images.removeChild(layers.images.children[i])
 	}
 
-	$: update( project.config )
+	async function renderThumbnail() {
+		let {width,height} = calculate
+		let ctx = thumbnail.getContext('2d')
+		thumbnail.width = width > height ? 140 : 100
+		thumbnail.height = width > height ? 100 : 140
+		ctx.drawImage( (new PIXI.Extract(pixi.app.renderer)).image(pixi.app.stage), 0, 0, thumbnail.width, thumbnail.height)
+		let data = thumbnail.toDataURL()
+		if (data != project.thumbnail) {
+			console.log('[Project] ⏱🌁  rendered thumbnail')
+			project.thumbnail = data
+		}
 
-	$: setup( files )
+		// await setPositions()
+
+
+
+	}
 
 	async function setup( files ) {
+
 
 		if (!files?.srcs) return
 		if (!loader) loader = new PIXI.Loader()
@@ -132,52 +158,165 @@
 		let list = project.files.filter( name => files.srcs[name] )
 		if (list.length != project.files.length) return
 
+		console.log('[Project] 💥  setup (reset)')
 		await loader.reset()
 		for (const name of project.files) {
 			let o = files.srcs[name]
 			if (!loader.resources[o.url]) loader.add( o.url, { crossOrigin: 'anonymous' })
 		}
 
-		console.log('[Project] loading files...')
-		loader.load( async e => {
+		await setPositions()
 
-			console.log('[Project] all files loaded', list)
+		loader.load(async e => {
+			console.log('[Project] ✅💥  files loaded')
+			await drawImages()
+			await renderThumbnail()
+		})
+		inited = true
+	}
 
-			// await layers.images.destroy({children:false})
 
-			const len = Object.keys(loader.resources).length
+
+	async function update( config ) {
+
+
+		if (pixi?.app?.renderer && inited ) {
+
+
 			const { width, height } = calculate
-			const size = rectd.neu( 0, 0, width, height )
-			const inner = rectd.shrinkBy( size, mm2px( project.config.margin ) )
-			let splits = rectd.splitUp( inner, len )
 
-			let i = 0
-			for (const [name, resource] of Object.entries(loader.resources) ) {
-
-				let sprite = new PIXI.Sprite( resource.texture )
-				let image = rectd.neu( 0, 0, resource.data.width, resource.data.height )
-
-				let fit = rectd.fitInto( image, inner )
-				rectd.auto( fit, sprite )
-
-				if (splits.length > 1) {
-					let mask = new PIXI.Graphics()
-					mask.drawRect(splits[i].x,splits[i].y,splits[i].width,splits[i].height)
-					sprite.mask = mask
-				}
-
-
-				await layers.images.addChild( sprite )
-				i += 1
+			if (sizeTimeout) {
+				clearTimeout( sizeTimeout )
+				sizeTimeout = null
 			}
 
-			// rectd.auto( inner, layers.container )
-			// console.log(layers.container.width, '????', inner.width) 
-			// layers.container.scale.x = 0.5
+			sizeTimeout = setTimeout( async e => {
 
 
-			addLayer()
-		} )
+				// console.log('[Project] 🪡  update')
+
+				if (!project.multiple && project.files.length > 1) {
+					if (!window.confirm(`Remove ${project.files.length - 1} images from project?`)) return
+					project.files = project.files.splice(1,project.files.length)
+				}
+				const neuSize = width != layers.background.width || height != layers.background.height
+				const neuMargin = project.config.margin != prevMargin
+				const isCanvasChanged = neuSize || neuMargin
+				const isNewFiles = project.files.length != Object.keys(loader.resources).length
+				const isNewLayer = project.layers.length != layers.processed.children.length
+
+				let something = false
+
+				if (isCanvasChanged || isNewFiles ) {
+					console.log('[Project] 🪡🖼  clearing images')
+					await clearImages()
+					something = true
+				}
+
+				if (isNewFiles) {
+					console.log('[Project] 🪡✨  new files, run setup')
+					await setup( files )
+					something = true
+				} 
+				// if (isNewLayer) {
+				// 	console.log('[Project] 🪡🍰  new layer')
+				// 	await setPositions()
+				// 	await drawImages()
+				// 	something = true
+				// } 
+
+				if ( isCanvasChanged ) {
+					console.log('[Project] 🪡📐  set positions, draw images')
+					await setPositions()
+					await drawImages()
+					something = true
+				}
+				// await drawImages()
+
+				if (!something) console.log(`[Project] 🪡💤  nothing happened`)
+				if (something) await renderThumbnail()
+
+
+			}, 200)
+
+		}
+	}
+
+	let sizeTimeout
+	$: update( project.config )
+	$: setup( files )
+	$: needsSync = files.handles.filter( h => !files.srcs[h.name] )
+	$: onZoom( zoom )
+
+	let prevMargin
+
+	async function drawImages() {
+
+		const { width, height } = calculate
+
+		// await layers.images.destroy({children:true})
+
+		const len = Object.keys(loader.resources).length
+		const size = rectd.neu( 0, 0, width, height )
+		const inner = rectd.shrinkBy( size, mm2px( project.config.margin ) )
+		prevMargin = project.config.margin
+		let splits = rectd.splitUp( inner, len )
+
+		let i = 0
+		for (const [name, resource] of Object.entries(loader.resources) ) {
+
+			let sprite = new PIXI.Sprite( resource.texture )
+			let image = rectd.neu( 0, 0, resource.data.width, resource.data.height )
+
+
+			sprite.width = width
+			sprite.height = height
+
+			let fit = rectd.fitInto( image, inner )
+			rectd.auto( fit, sprite )
+
+			if (splits.length > 1) {
+				let mask = new PIXI.Graphics()
+				mask.drawRect(splits[i].x,splits[i].y,splits[i].width,splits[i].height)
+				sprite.mask = mask
+			}
+
+			console.log('[Project] 🎉  adding sprite to images:', name, i)
+
+
+			await layers.images.addChild( sprite )
+			i += 1
+		}
+
+
+		console.log(`[Project] ✅🖼  ${i} image(s) drawn`)
+
+
+
+	}
+
+	async function onZoom( zoom_ ) {
+		console.log('[Project] 🔭  zoom changed')
+		layers.container.scale.x = zoom
+		layers.container.scale.y = zoom
+	}
+
+	let inited = false
+
+	async function setPositions() {
+
+		const { width, height } = calculate
+
+		layers.background.width = width
+		layers.background.height = height
+
+		layers.container.x = editor.offsetWidth / 2
+		layers.container.y = editor.offsetHeight / 2
+
+		layers.container.pivot.x = width/2
+		layers.container.pivot.y = height/2
+
+		console.log('[Project] ✅📐  positions set', {width,height})
 	}
 
 
@@ -186,9 +325,119 @@
 		lanes: `flex column br1-solid overflow-auto no-basis grow`
 	}
 
-	$: needsSync = files.handles.filter( h => !files.srcs[h.name] )
 
 	let targets = {}
+
+	let arrowClass = `p0 no-grow flex row-center-center w3em b0-solid`
+
+	let zoom = 0.1
+
+	function move(from, to) {
+		let cp = project.files
+		project.files = []
+		let i = cp.splice(from, 1)[0]
+		cp.splice(to, 0, i)
+		project.files = cp
+	}
+	function onFileDown( idx ) {
+		let to = idx + 1
+		if (to >= project.files.length) return
+		move( idx, to )
+
+	}
+	function onFileUp( idx ) {
+		let to = idx - 1
+		if (to < 0) return
+		move( idx, to )
+	}
+	function onFileDelete( idx ) {
+		project.files = [...project.files.slice(0,idx), ...project.files.slice(idx+1,project.files.length)]
+	}
+
+	let lastXY
+
+	function onMove(e) {
+
+
+
+		let {x,y} = pixi.app.renderer.plugins.interaction.mouse.global
+		if (!lastXY) lastXY = {x,y}
+
+		let {offsetWidth,offsetHeight} = editor
+
+
+		// layers.container.x = editor.offsetWidth / 2
+		// layers.container.y = editor.offsetHeight / 2
+
+
+
+		layers.container.pivot.x -= (x - lastXY.x) 
+		layers.container.pivot.y -= (y - lastXY.y)
+
+		layers.container.x -= (x - lastXY.x) * zoom
+		layers.container.y -= (y - lastXY.y) * zoom
+		lastXY = {x,y}
+
+
+		// layers.container.pivot.x = width/2
+		// layers.container.pivot.y = height/2
+
+
+		// pixi.app.stage.pivot.x = offsetWidth/2
+		// pixi.app.stage.pivot.y = offsetHeight/2
+
+
+
+		x /= offsetWidth
+		y /= offsetHeight
+
+		let {width,height} = calculate
+
+		width *= zoom
+		height *= zoom
+
+
+		if (!dragging) return
+
+		layers.container.x = (width - offsetWidth) * x * -1
+		layers.container.y = (height - offsetHeight) * y * -1
+
+
+		// pixi.app.stage.pivot.x = pixi.app.stage.x 
+		// pixi.app.stage.pivot.y = pixi.app.stage.y 
+
+	}
+
+	function onScroll(e) {
+
+		e.target.scrollLeft = 4500
+		e.target.scrollTop = 4500
+	}
+
+	function onWheel(e) {
+
+		if (keys['Alt']) {
+			zoom += e.deltaY * 0.001
+			if (zoom < 0.01) zoom = 0.01
+			if (zoom > 3) zoom = 3
+		} else {
+			let fract = 0.5
+			layers.container.x += e.deltaX * fract * -1
+			layers.container.y += e.deltaY * fract * -1
+		}
+	}
+	let dragging = false
+
+	let keys = {}
+
+	function onKeyDown(e) {
+		keys[e.key] = true
+	}
+	function onKeyUp(e) {
+		keys[e.key] = false
+	}
+
+	let thumbnail
 
 </script>
 
@@ -196,9 +445,18 @@
 	style
 	bind:this={main} class="flex row-stretch-stretch bg overflow-auto">
 	<div class="basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh">
+
+
+
 		<sidebar 
 			class="flex row grow overflow-hidden">
+
+
+			<!-- FILES -->
+
+
 			<section class={classes.lanes}>
+				<Title>Files</Title>
 				<div class="p1">
 					<button 
 						disabled={needsSync}
@@ -217,39 +475,42 @@
 						Clear all
 					</button>
 				</div>
-				{#each files.handles as handle, i}
-					<div 
-						class:bt1-solid={i==0}
-						class="rel bb1-solid file">
-						<div class="overlay abs t0 r0 flex grow row-flex-end-flex-start z-index2">
-							<!-- <span class="fill bg " style="opacity:0.9"  /> -->
-							<button 
-								on:click={ e => handlers.requestFile( handle ) }
-								class={classes.miniButtons}>
-								⟳
-							</button>
-							<button 
-								on:click={ e => handlers.removeHandle( handle ) } 
-								class={classes.miniButtons}>
-								✕
-							</button>
-						</div>
-						<div on:click={e => handlers.selectImage(handle)}>
-							{#if files.srcs[handle.name]}
-									<img 
-										class="pointer" 
-										src={files.srcs[handle.name].url} 
-										alt={handle.name} />
-							{:else}
-								<div 
-									class=" minh8em flex row-center-center">
-									{handle.name}
-								</div>
-							{/if}
-						</div>
+				<div class="checker">
+					{#each files.handles as handle, i}
+						<div 
+							class:bt1-solid={i==0}
+							class:pop={project.files.indexOf(handle.name)!=-1}
+							class="rel bb1-solid file p1">
+							<div class="overlay abs t1 l1 bt1-solid br1-solid flex grow row-flex-end-flex-start z-index2">
+								<button 
+									on:click={ e => handlers.requestFile( handle ) }
+									class={classes.miniButtons}>
+									⟳
+								</button>
+								<button 
+									on:click={ e => handlers.removeHandle( handle ) } 
+									class={classes.miniButtons}>
+									✕
+								</button>
+							</div>
+							<div class="b1-solid flex" on:click={e => handlers.selectImage(handle)}>
+								{#if files.srcs[handle.name]}
+										<img 
+											style={`opacity:${project.files.indexOf(handle.name)!=-1 ? '1;' : '0.8;filter: grayscale(100%);'}`}
+											class="" 
+											src={files.srcs[handle.name].url} 
+											alt={handle.name} />
+								{:else}
+									<div 
+										class=" minh8em flex row-center-center">
+										{handle.name}
+									</div>
+								{/if}
+							</div>
 
-					</div>
-				{/each}
+						</div>
+					{/each}
+				</div>
 					
 				{#if files.handles.length == 0 }
 					<div class="p1">No files</div>
@@ -258,30 +519,79 @@
 
 
 
+
+
+			<!-- PROJECTS (SLOT) -->
+
+
+
+
 			<section class={classes.lanes + ' basis0pc'}>
-				PROJECTS
+				<slot />
 			</section>
 
 
-			<section id="layers" class={classes.lanes + ' basis20pc'}>
-				<div class="p1 flex column cmb1">
+
+
+			<!-- LAYOUT / LAYERS -->
+
+
+
+
+			<section id="layers" class={classes.lanes + ' basis30pc'}>
+
+				<!-- LAYOUT -->
+
+
+				<Title>Layout</Title>
+				<div class="hidden abs" style="left:-99999px;top:-99999px">
+					<canvas id="thumbnail" bind:this={thumbnail} />
+					<img src={project.thumbnail} />
+				</div>
+				<div class="p1 flex column cmb1 bb1-solid">
+					<div class="flex row">
+						<div 
+							on:click={e => project.multiple = false}
+							class="br0-solid flex row-flex-start-center mr1 ">
+							<span 
+								class="b1-solid rel checker w2em h2em block mr1">
+								<span class:cross={!project.multiple} class="fill" />
+							</span>
+							Single
+						</div>
+						<div 
+							on:click={e => project.multiple = true}
+							class="br0-solid flex row-flex-start-center mr1 ">
+							<span 
+								class="b1-solid rel checker w2em h2em block mr1">
+								<span class:cross={project.multiple} class="fill" />
+							</span>
+							Multiple
+						</div>
+					</div>
 
 					<aside>
-						{#each project.files as file}
-							<div class="flex row-stretch-stretch" style="margin-top:-1px">
-								<div class="flex column-stretch-stretch">
-									<button class="p0 no-basis grow flex row-center-center w2em">^</button>
-									<button class="p0 no-basis grow flex row-center-center w2em bt0-solid">,</button>
-								</div>
-								<span class="bt1-solid bb1-solid h4em flex column-flex-start-center plr1 grow">{file}</span>
-								<button class="cross w2em p0 h4em" />
+						{#if !project.files || project.files.length == 0} 
+							<div class="button b1-solid error">No image(s) selected</div>
+						{/if}
+						{#each project.files as file, idx}
+							<div class="flex row-stretch-stretch b1-solid" style="margin-top:-1px">
+								<span class="h3em flex column-flex-start-center plr1 grow">{file}</span>
+								<button 
+									on:click={ e => onFileUp(idx) }
+									class="{arrowClass} arrow rotate180 br1-solid" />
+								<button 
+									on:click={ e => onFileDown(idx) }
+									class="{arrowClass} arrow bl1-solid " />
+								<!-- <button 
+									on:click={ e => onFileDelete(idx) }
+									class="{arrowClass} bl1-solid">
+									<span class="cross block p0-4" />
+								</button> -->
 							</div>
 						{/each}
 					</aside>
 
-					<div>
-						{calculate.width} x {calculate.height}
-					</div>
 					<div class="select">
 						<select bind:value={project.config.background}>
 							{#each options.backgrounds as bg}
@@ -310,43 +620,80 @@
 						type="number" 
 						placeholder="Margin" 
 						bind:value={project.config.margin} />
+
+
+				</div>
+
+				<!-- LAYERS -->
+
+
+				<Title>Layers</Title>
+				{#each project.layers as layer, index}
+					<div class="p1" class:bt1-solid={index != 0}>
+						<Layer 
+							{index}
+							bind:solo={solo}
+							bind:container={layers.processed}
+							images={layers.images}
+							bind:layer={layer} />
+					</div>
+				{/each}
+				<div class="plr1">
 					<button 
-						class="w100pc"
+						class="w100pc mb1"
 						on:click={e => (e.target.blur())} 
 						on:click={addLayer}>
 						Add layer
 					</button>
-
-
 				</div>
-				{#each project.layers as layer, index}
-					<Layer 
-						{index}
-						bind:container={layers.processed}
-						bind:images={layers.images}
-						bind:layer={layer} />
-				{/each}
 			</section>
 		</sidebar>
-		<footer class="p1 bt1-solid br1-solid">
+		<!-- <footer class="p1 bt1-solid br1-solid">
 			RISO3000
-		</footer>
+		</footer> -->
 	</div>
-	<section class="no-basis minw2em br1-solid maxh100vh flex column overflow-hidden palette">
-		{#each project.layers as layer, i}
-			<div 
-				class="flex pointer minw2em bb1-solid no-basis row grow">
-				<Palette {layer} vertical={true} />
-				<span class="abs hidden">{i}</span>
-			</div>
-		{/each}
-	</section>
+
 	<section 
 		on:mousedown={ e => togglePreview( true ) }
 		on:mouseup={ e => togglePreview( false ) }
-		class="basis70pc minw50em pointer grow flex row-center-flex-start overflow-auto maxh100vh overflow-auto">
+		class="rel basis70pc minw50em pointer grow flex row-center-flex-start maxh100vh overflow-hidden">
 		<div
-			class="flex p4"
+			id="zoom"
+			class="flex fill"
 			bind:this={editor} />
+		<div 
+			id="scroller" 
+			on:mousedown={ e => dragging = true}
+			on:mouseup={ e => dragging = false}
+			on:mouseleave={ e => dragging = false}
+			on:mousemove={onMove}
+			on:scroll={onScroll} 
+			on:wheel={onWheel} 
+			class="abs fill overflow-auto" style="width:120%;height:120%;">
+			<div style="width:9000px; height:9000px" />
+		</div>
+		<div class="t1 r1 abs monospace hidden">
+			{calculate.width} x {calculate.height}
+		</div>
+		<div class="abs b0 l0 p1 flex row ">
+
+			<div class="flex row bg">
+				<button 
+					on:click={e => zoom > 0.05 ? zoom -= 0.05 : null }
+					class="p0 h3em m0 w3em" >-</button>
+				<input  
+					class="p0 h3em m0 br0-solid bl0-solid" 
+					type="range" 
+					min={0.01} 
+					max={3} 
+					step={0.001} 
+					bind:value={zoom} /> 
+				<button 
+					on:click={e => zoom < 2 ? zoom += 0.05 : null }
+					class="p0 h3em m0 w3em" >+</button>
+			</div>
+		</div>
 	</section>
 </main>
+
+<svelte:window on:resize={onResize} on:keydown={onKeyDown} on:keyup={onKeyUp} />

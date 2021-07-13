@@ -1,31 +1,34 @@
 <script>
 	import { onMount } from 'svelte'
 	import Project from './Project.svelte'
+	import Title from './Title.svelte'
 	import options from './options.js'
 	import { get, set } from 'idb-keyval'
 
 
 	onMount( setup )
 
-	let current = {
-		layers: [],
+	let intro = {
+		layers: [{}],
 		config: {
 			background: options.backgrounds[0].name,
-			size: options.sizes[0].name,
-			dpi: 300,
+			size: options.sizes[1].name,
+			dpi: 300, 
 			margin: 0
 		},
-		files: [ 'autr', 'test', 'alt']
+		multiple: false,
+		files: ['test'] //[ 'autr', 'test', 'alt']
 	}
 
 
 
 
 	let FILES = {}
-	let PROJECTS = []
+	let PROJECTS = [ intro ]
+	let IDX = 0
 
 	async function setup() {
-
+		
 		await loadDb()
 		await requestAll()
 
@@ -58,14 +61,24 @@
 	const PROJECTS_KEY = `${KEY}_PROJECTS`
 
 	function selectImage( handle ) {
-		console.log('IMAGE CLICKED!', handle)
-		if ( current.files.indexOf(handle.name) == -1 ) {
-			let cp = current.files
-			current.files = []
-			cp.push( handle.name )
-			current.files = cp
+
+		console.log('SELECTED IMAGE')
+		let idx = PROJECTS[ IDX ].files.indexOf(handle.name)
+		if (!PROJECTS[ IDX ].multiple) {
+			PROJECTS[ IDX ].files = [ handle.name ]
+		} else {
+
+			if ( idx == -1 ) {
+				let cp = PROJECTS[ IDX ].files
+				PROJECTS[ IDX ].files = []
+				cp.push( handle.name )
+				PROJECTS[ IDX ].files = cp
+			} else {
+				let cp = PROJECTS[ IDX ].files
+				cp.splice(idx, 1)
+				PROJECTS[ IDX ].files = cp
+			}
 		}
-		console.log(current.files)
 	}
 
 
@@ -147,4 +160,23 @@
 
 </script>
 
-<Project bind:project={current} bind:files={files} {handlers} />
+<Project bind:project={PROJECTS[IDX]} bind:files={files} {handlers}>
+
+	<Title>Projects</Title>
+	<div class="p1">
+		<button 
+			on:click={e => e} 
+			class="w100pc">
+			New
+		</button>
+	</div>
+	<div class="checker">
+		{#each PROJECTS as project,idx}
+			<div 
+				class:pop={idx == IDX}
+				class="p1 bb1-solid flex row-center-center " class:bt1-solid={idx==0}>
+				<img class="b1-solid" src={project.thumbnail} />
+			</div>
+		{/each}
+	</div>
+</Project>

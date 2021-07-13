@@ -2,6 +2,13 @@ export default `
 
 #define PI 3.14159265358979323846264338327
 
+
+float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+
+float noise(in vec2 xy, in float seed){
+       return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
+}
+
 float rand(vec2 n) { 
     return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
 }
@@ -89,12 +96,6 @@ vec2 rotate(vec2 origin, vec2 point, float angle) {
   );
 }
 
-
-float noise(vec2 n) {
-    const vec2 d = vec2(0.0, 1.0);
-  vec2 b = floor(n), f = smoothstep(vec2(0.0), vec2(1.0), fract(n));
-    return mix(mix(rand(b), rand(b + d.yx), f.x), mix(rand(b + d.xy), rand(b + d.yy), f.x), f.y);
-}
 
 float map(float oldValue, float oldMin, float oldMax, float newMin, float newMax) {
     float oldRange = oldMax - oldMin;

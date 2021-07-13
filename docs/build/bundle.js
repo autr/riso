@@ -4,6 +4,12 @@ var app = (function () {
     'use strict';
 
     function noop$1() { }
+    function assign(tar, src) {
+        // @ts-ignore
+        for (const k in src)
+            tar[k] = src[k];
+        return tar;
+    }
     function add_location(element, file, line, column, char) {
         element.__svelte_meta = {
             loc: { file, line, column, char }
@@ -26,6 +32,42 @@ var app = (function () {
     }
     function is_empty(obj) {
         return Object.keys(obj).length === 0;
+    }
+    function create_slot(definition, ctx, $$scope, fn) {
+        if (definition) {
+            const slot_ctx = get_slot_context(definition, ctx, $$scope, fn);
+            return definition[0](slot_ctx);
+        }
+    }
+    function get_slot_context(definition, ctx, $$scope, fn) {
+        return definition[1] && fn
+            ? assign($$scope.ctx.slice(), definition[1](fn(ctx)))
+            : $$scope.ctx;
+    }
+    function get_slot_changes(definition, $$scope, dirty, fn) {
+        if (definition[2] && fn) {
+            const lets = definition[2](fn(dirty));
+            if ($$scope.dirty === undefined) {
+                return lets;
+            }
+            if (typeof lets === 'object') {
+                const merged = [];
+                const len = Math.max($$scope.dirty.length, lets.length);
+                for (let i = 0; i < len; i += 1) {
+                    merged[i] = $$scope.dirty[i] | lets[i];
+                }
+                return merged;
+            }
+            return $$scope.dirty | lets;
+        }
+        return $$scope.dirty;
+    }
+    function update_slot(slot, slot_definition, ctx, $$scope, dirty, get_slot_changes_fn, get_slot_context_fn) {
+        const slot_changes = get_slot_changes(slot_definition, $$scope, dirty, get_slot_changes_fn);
+        if (slot_changes) {
+            const slot_context = get_slot_context(slot_definition, ctx, $$scope, get_slot_context_fn);
+            slot.p(slot_context, slot_changes);
+        }
     }
 
     // Track which nodes are claimed during hydration. Unclaimed nodes can then be removed from the DOM
@@ -549,6 +591,13 @@ var app = (function () {
 
 #define PI 3.14159265358979323846264338327
 
+
+float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
+
+float noise(in vec2 xy, in float seed){
+       return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
+}
+
 float rand(vec2 n) { 
     return fract(sin(dot(n, vec2(12.9898, 4.1414))) * 43758.5453);
 }
@@ -636,12 +685,6 @@ vec2 rotate(vec2 origin, vec2 point, float angle) {
   );
 }
 
-
-float noise(vec2 n) {
-    const vec2 d = vec2(0.0, 1.0);
-  vec2 b = floor(n), f = smoothstep(vec2(0.0), vec2(1.0), fract(n));
-    return mix(mix(rand(b), rand(b + d.yx), f.x), mix(rand(b + d.xy), rand(b + d.yy), f.x), f.y);
-}
 
 float map(float oldValue, float oldMin, float oldMax, float newMin, float newMax) {
     float oldRange = oldMax - oldMin;
@@ -18154,7 +18197,7 @@ vec3 rgb2hsv(vec3 rgb) {
     }());
 
     var tempPoints = [new Point(), new Point(), new Point(), new Point()];
-    var tempMatrix$1 = new Matrix();
+    var tempMatrix = new Matrix();
     /**
      * System plugin to the renderer to manage filters.
      *
@@ -18305,7 +18348,7 @@ vec3 rgb2hsv(vec3 rgb) {
                 var sourceFrameProjected = this.tempRect.copyFrom(renderTextureSystem.sourceFrame);
                 // Project source frame into world space (if projection is applied)
                 if (renderer.projection.transform) {
-                    this.transformAABB(tempMatrix$1.copyFrom(renderer.projection.transform).invert(), sourceFrameProjected);
+                    this.transformAABB(tempMatrix.copyFrom(renderer.projection.transform).invert(), sourceFrameProjected);
                 }
                 state.sourceFrame.fit(sourceFrameProjected);
             }
@@ -18577,7 +18620,7 @@ vec3 rgb2hsv(vec3 rgb) {
                     return;
                 }
             }
-            transform = transform ? tempMatrix$1.copyFrom(transform) : tempMatrix$1.identity();
+            transform = transform ? tempMatrix.copyFrom(transform) : tempMatrix.identity();
             // Get forward transform from world space to screen space
             transform
                 .translate(-bindingSourceFrame.x, -bindingSourceFrame.y)
@@ -23419,7 +23462,7 @@ vec3 rgb2hsv(vec3 rgb) {
         TextureSystem: TextureSystem
     };
 
-    var tempMatrix$1$1 = new Matrix();
+    var tempMatrix$1 = new Matrix();
     /**
      * The AbstractRenderer is the base for a PixiJS Renderer. It is extended by the {@link PIXI.CanvasRenderer}
      * and {@link PIXI.Renderer} which can be used for rendering a PixiJS scene.
@@ -23656,12 +23699,12 @@ vec3 rgb2hsv(vec3 rgb) {
                 scaleMode: scaleMode,
                 resolution: resolution,
             });
-            tempMatrix$1$1.tx = -region.x;
-            tempMatrix$1$1.ty = -region.y;
+            tempMatrix$1.tx = -region.x;
+            tempMatrix$1.ty = -region.y;
             this.render(displayObject, {
                 renderTexture: renderTexture,
                 clear: false,
-                transform: tempMatrix$1$1,
+                transform: tempMatrix$1,
                 skipUpdateTransform: !!displayObject.parent
             });
             return renderTexture;
@@ -33851,7 +33894,7 @@ vec3 rgb2hsv(vec3 rgb) {
      * @extends PIXI.Container
      * @memberof PIXI
      */
-    var Sprite$1 = /** @class */ (function (_super) {
+    var Sprite = /** @class */ (function (_super) {
         __extends$d(Sprite, _super);
         /**
          * @param {PIXI.Texture} [texture] - The texture for this sprite.
@@ -36437,7 +36480,7 @@ vec3 rgb2hsv(vec3 rgb) {
          */
         Text.nextLineHeightBehavior = false;
         return Text;
-    }(Sprite$1));
+    }(Sprite));
 
     /*!
      * @pixi/prepare - v6.0.4
@@ -37746,7 +37789,7 @@ vec3 rgb2hsv(vec3 rgb) {
             configurable: true
         });
         return TilingSprite;
-    }(Sprite$1));
+    }(Sprite));
 
     var vertex$3 = "attribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\n\nuniform mat3 projectionMatrix;\nuniform mat3 translationMatrix;\nuniform mat3 uTransform;\n\nvarying vec2 vTextureCoord;\n\nvoid main(void)\n{\n    gl_Position = vec4((projectionMatrix * translationMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);\n\n    vTextureCoord = (uTransform * vec3(aTextureCoord, 1.0)).xy;\n}\n";
 
@@ -42304,7 +42347,7 @@ vec3 rgb2hsv(vec3 rgb) {
         this.filterArea = null;
         this.alpha = cacheAlpha;
         // create our cached sprite
-        var cachedSprite = new Sprite$1(renderTexture);
+        var cachedSprite = new Sprite(renderTexture);
         cachedSprite.transform.worldTransform = this.transform.worldTransform;
         cachedSprite.anchor.x = -(bounds.x / bounds.width);
         cachedSprite.anchor.y = -(bounds.y / bounds.height);
@@ -42387,7 +42430,7 @@ vec3 rgb2hsv(vec3 rgb) {
         this.filterArea = null;
         this.alpha = cacheAlpha;
         // create our cached sprite
-        var cachedSprite = new Sprite$1(renderTexture);
+        var cachedSprite = new Sprite(renderTexture);
         cachedSprite.transform.worldTransform = this.transform.worldTransform;
         cachedSprite.anchor.x = -(bounds.x / bounds.width);
         cachedSprite.anchor.y = -(bounds.y / bounds.height);
@@ -43716,7 +43759,7 @@ vec3 rgb2hsv(vec3 rgb) {
             configurable: true
         });
         return AnimatedSprite;
-    }(Sprite$1));
+    }(Sprite));
 
     /*!
      * pixi.js - v6.0.4
@@ -43965,7 +44008,7 @@ vec3 rgb2hsv(vec3 rgb) {
         SimplePlane: SimplePlane,
         SimpleRope: SimpleRope,
         Runner: Runner,
-        Sprite: Sprite$1,
+        Sprite: Sprite,
         AnimatedSprite: AnimatedSprite,
         get TEXT_GRADIENT () { return TEXT_GRADIENT; },
         Text: Text,
@@ -43974,2329 +44017,6 @@ vec3 rgb2hsv(vec3 rgb) {
         isMobile: isMobile,
         settings: settings
     });
-
-    var colours = [
-        {
-            "name": "BLACK",
-            "japanese": "ブラック",
-            "rgb": "0, 0, 0",
-            "pantone": "BLACK U"
-        },
-        {
-            "name": "BURGUNDY",
-            "japanese": "バーガンディーレッド",
-            "rgb": "145, 78, 114",
-            "pantone": "235 U"
-        },
-        {
-            "name": "BLUE",
-            "japanese": "ブルー",
-            "rgb": "0, 120, 191",
-            "pantone": "3005 U"
-        },
-        {
-            "name": "GREEN",
-            "japanese": "グリーン",
-            "rgb": "0, 169, 92",
-            "pantone": "354 U"
-        },
-        {
-            "name": "MEDIUM BLUE",
-            "japanese": "ミディアムブルー",
-            "rgb": "50, 85, 164",
-            "pantone": "286 U"
-        },
-        {
-            "name": "BRIGHT RED",
-            "japanese": "ブライトレッド",
-            "rgb": "241, 80, 96",
-            "pantone": "185 U"
-        },
-        {
-            "name": "RISOFEDERAL BLUE",
-            "japanese": "リソー フェデラルブルー",
-            "rgb": "61, 85, 136",
-            "pantone": "288 U"
-        },
-        {
-            "name": "PURPLE",
-            "japanese": "パープル",
-            "rgb": "118, 91, 167",
-            "pantone": "2685 U"
-        },
-        {
-            "name": "TEAL",
-            "japanese": "ティールグリーソ",
-            "rgb": "0, 131, 138",
-            "pantone": "321 U"
-        },
-        {
-            "name": "FLAT GOLD",
-            "japanese": "フラットゴールド",
-            "rgb": "187, 139, 65",
-            "pantone": "1245 U"
-        },
-        {
-            "name": "HUNTER GREEN",
-            "japanese": "ハンターグリーン",
-            "rgb": "64, 112, 96",
-            "pantone": "342 U"
-        },
-        {
-            "name": "RED",
-            "japanese": "レッド",
-            "rgb": "255, 102, 94",
-            "pantone": "WARM RED U"
-        },
-        {
-            "name": "BROWN",
-            "japanese": "ブラウン",
-            "rgb": "146, 95, 82",
-            "pantone": "7526 U"
-        },
-        {
-            "name": "YELLOW",
-            "japanese": "イエロー",
-            "rgb": "255, 232, 0",
-            "pantone": "YELLOW U"
-        },
-        {
-            "name": "MARINE RED",
-            "japanese": "リソーマリーンレッド",
-            "rgb": "210, 81, 94",
-            "pantone": "186 U"
-        },
-        {
-            "name": "ORANGE",
-            "japanese": "オレンジ",
-            "rgb": "255, 108, 47",
-            "pantone": "ORANGE 021 U"
-        },
-        {
-            "name": "FLUORESCENT PINK",
-            "japanese": "蛍光ピンク",
-            "rgb": "255, 72, 176",
-            "pantone": "806 U"
-        },
-        {
-            "name": "LIGHT GRAY",
-            "japanese": "ライトグレー",
-            "rgb": "136, 137, 138",
-            "pantone": "424 U"
-        },
-        {
-            "name": "FLATALLIC GOLD",
-            "japanese": "フラッタリックゴールド",
-            "rgb": "180, 143, 80",
-            "pantone": ""
-        },
-        {
-            "name": "METALLIC GOLD",
-            "japanese": "金",
-            "rgb": "172, 147, 110",
-            "pantone": "872 U"
-        },
-        {
-            "name": "CRIMSON",
-            "japanese": "クリムゾン",
-            "rgb": "228, 93, 80",
-            "pantone": "485 U"
-        },
-        {
-            "name": "FLUORESCENT ORANGE",
-            "japanese": "蛍光オレンジ",
-            "rgb": "255, 116, 119",
-            "pantone": "805 U"
-        },
-        {
-            "name": "CORNFLOWER",
-            "japanese": "コーンフラワー",
-            "rgb": "98, 168, 229",
-            "pantone": "292 U"
-        },
-        {
-            "name": "SKY BLUE",
-            "japanese": "",
-            "rgb": "73, 130, 207",
-            "pantone": "285U"
-        },
-        {
-            "name": "SEA BLUE",
-            "japanese": "",
-            "rgb": "0, 116, 162",
-            "pantone": "307 U"
-        },
-        {
-            "name": "LAKE",
-            "japanese": "",
-            "rgb": "35, 91, 168",
-            "pantone": "293 U"
-        },
-        {
-            "name": "INDIGO",
-            "japanese": "",
-            "rgb": "72, 77, 122",
-            "pantone": "2758 U"
-        },
-        {
-            "name": "MIDNIGHT",
-            "japanese": "",
-            "rgb": "67, 80, 96",
-            "pantone": "296 U"
-        },
-        {
-            "name": "MIST",
-            "japanese": "",
-            "rgb": "184, 199, 196",
-            "pantone": "5527 U"
-        },
-        {
-            "name": "GRANITE",
-            "japanese": "",
-            "rgb": "165, 170, 168",
-            "pantone": "7538 U"
-        },
-        {
-            "name": "CHARCOAL",
-            "japanese": "",
-            "rgb": "112, 116, 124",
-            "pantone": "7540 U"
-        },
-        {
-            "name": "SMOKY TEAL",
-            "japanese": "",
-            "rgb": "95, 130, 137",
-            "pantone": "5483 U"
-        },
-        {
-            "name": "STEEL",
-            "japanese": "",
-            "rgb": "55, 94, 119",
-            "pantone": "302 U"
-        },
-        {
-            "name": "SLATE",
-            "japanese": "",
-            "rgb": "94, 105, 94",
-            "pantone": "5605 U"
-        },
-        {
-            "name": "TURQUOISE",
-            "japanese": "",
-            "rgb": "0, 170, 147",
-            "pantone": "3275 U"
-        },
-        {
-            "name": "EMERALD",
-            "japanese": "",
-            "rgb": "25, 151, 93",
-            "pantone": "355 U"
-        },
-        {
-            "name": "GRASS",
-            "japanese": "",
-            "rgb": "57, 126, 88",
-            "pantone": "356 U"
-        },
-        {
-            "name": "FOREST",
-            "japanese": "",
-            "rgb": "81, 110, 90",
-            "pantone": "357 U"
-        },
-        {
-            "name": "SPRUCE",
-            "japanese": "",
-            "rgb": "74, 99, 93",
-            "pantone": "567 U"
-        },
-        {
-            "name": "MOSS",
-            "japanese": "",
-            "rgb": "104, 114, 77",
-            "pantone": "371 U"
-        },
-        {
-            "name": "SEA FOAM",
-            "japanese": "",
-            "rgb": "98, 194, 177",
-            "pantone": "570 U"
-        },
-        {
-            "name": "KELLY GREEN",
-            "japanese": "ケリーグリーン",
-            "rgb": "103, 179, 70",
-            "pantone": "368 U"
-        },
-        {
-            "name": "LIGHT TEAL",
-            "japanese": "",
-            "rgb": "0, 157, 165",
-            "pantone": "320 U"
-        },
-        {
-            "name": "IVY",
-            "japanese": "",
-            "rgb": "22, 155, 98",
-            "pantone": "347 U"
-        },
-        {
-            "name": "PINE",
-            "japanese": "",
-            "rgb": "35, 126, 116",
-            "pantone": "3295 U"
-        },
-        {
-            "name": "LAGOON",
-            "japanese": "",
-            "rgb": "47, 97, 101",
-            "pantone": "323 U"
-        },
-        {
-            "name": "VIOLET",
-            "japanese": "ヴァイオレット",
-            "rgb": "157, 122, 210",
-            "pantone": "265 U"
-        },
-        {
-            "name": "ORCHID",
-            "japanese": "",
-            "rgb": "187, 118, 207",
-            "pantone": "2582 U"
-        },
-        {
-            "name": "PLUM",
-            "japanese": "",
-            "rgb": "132, 89, 145",
-            "pantone": "2603 U"
-        },
-        {
-            "name": "RAISIN",
-            "japanese": "",
-            "rgb": "119, 93, 122",
-            "pantone": "519 U"
-        },
-        {
-            "name": "GRAPE",
-            "japanese": "",
-            "rgb": "108, 93, 128",
-            "pantone": "2695 U"
-        },
-        {
-            "name": "SCARLET",
-            "japanese": "",
-            "rgb": "246, 80, 88",
-            "pantone": "RED 032 U"
-        },
-        {
-            "name": "TOMATO",
-            "japanese": "",
-            "rgb": "210, 81, 94",
-            "pantone": "186 U"
-        },
-        {
-            "name": "CRANBERRY",
-            "japanese": "",
-            "rgb": "194, 79, 93",
-            "pantone": "200 U"
-        },
-        {
-            "name": "MAROON",
-            "japanese": "",
-            "rgb": "158, 76, 110",
-            "pantone": "221 U"
-        },
-        {
-            "name": "RASPBERRY RED",
-            "japanese": "",
-            "rgb": "180, 75, 101",
-            "pantone": "207 U"
-        },
-        {
-            "name": "BRICK",
-            "japanese": "",
-            "rgb": "167, 81, 84",
-            "pantone": "1807 U"
-        },
-        {
-            "name": "LIGHT LIME",
-            "japanese": "黄緑",
-            "rgb": "227, 237, 85",
-            "pantone": "387 U"
-        },
-        {
-            "name": "SUNFLOWER",
-            "japanese": "",
-            "rgb": "255, 181, 17",
-            "pantone": "116 U"
-        },
-        {
-            "name": "MELON",
-            "japanese": "",
-            "rgb": "255, 174, 59",
-            "pantone": "1235 U"
-        },
-        {
-            "name": "APRICOT",
-            "japanese": "",
-            "rgb": "246, 160, 77",
-            "pantone": "143 U"
-        },
-        {
-            "name": "PAPRIKA",
-            "japanese": "",
-            "rgb": "238, 127, 75",
-            "pantone": "158 U"
-        },
-        {
-            "name": "PUMPKIN",
-            "japanese": "",
-            "rgb": "255, 111, 76",
-            "pantone": "1655 U"
-        },
-        {
-            "name": "BRIGHT OLIVE GREEN",
-            "japanese": "",
-            "rgb": "180, 159, 41",
-            "pantone": "103 U"
-        },
-        {
-            "name": "BRIGHT GOLD",
-            "japanese": "",
-            "rgb": "186, 128, 50",
-            "pantone": "131 U"
-        },
-        {
-            "name": "COPPER",
-            "japanese": "",
-            "rgb": "189, 100, 57",
-            "pantone": "1525 U"
-        },
-        {
-            "name": "MAHOGANY",
-            "japanese": "",
-            "rgb": "142, 89, 90",
-            "pantone": "491 U"
-        },
-        {
-            "name": "BISQUE",
-            "japanese": "",
-            "rgb": "242, 205, 207",
-            "pantone": "503 U"
-        },
-        {
-            "name": "BUBBLE GUM",
-            "japanese": "",
-            "rgb": "249, 132, 202",
-            "pantone": "231 U"
-        },
-        {
-            "name": "LIGHT MAUVE",
-            "japanese": "",
-            "rgb": "230, 181, 201",
-            "pantone": "7430 U"
-        },
-        {
-            "name": "DARK MAUVE",
-            "japanese": "",
-            "rgb": "189, 140, 166",
-            "pantone": "687 U"
-        },
-        {
-            "name": "WINE",
-            "japanese": "",
-            "rgb": "145, 78, 114",
-            "pantone": "235 U"
-        },
-        {
-            "name": "GRAY",
-            "japanese": "グレー",
-            "rgb": "146, 141, 136",
-            "pantone": "403 U"
-        },
-        {
-            "name": "CORAL",
-            "japanese": "コーラル",
-            "rgb": "255,142,145",
-            "pantone": "177 U"
-        },
-        {
-            "name": "WHITE",
-            "japanese": "白",
-            "rgb": "255, 255, 255",
-            "pantone": ""
-        },
-        {
-            "name": "AQUA",
-            "japanese": "アクア",
-            "rgb": "94, 200, 229",
-            "pantone": "637 U"
-        },
-        {
-            "name": "MINT",
-            "japanese": "ミント",
-            "rgb": "130, 216, 213",
-            "pantone": "324 U"
-        },
-        {
-            "name": "CLEAR MEDIUM",
-            "japanese": "透明な培地",
-            "rgb": "242,242,242",
-            "pantone": ""
-        },
-        {
-            "name": "FLUORESCENT YELLOW",
-            "japanese": "蛍光イエロー",
-            "rgb": "255, 233, 22",
-            "pantone": "803 U"
-        },
-        {
-            "name": "FLUORESCENT RED",
-            "japanese": "蛍光レッド",
-            "rgb": "255, 76, 101",
-            "pantone": "812 U"
-        },
-        {
-            "name": "FLUORESCENT GREEN",
-            "japanese": "蛍光グリーン",
-            "rgb": "68, 214, 44",
-            "pantone": "802 U"
-        }
-    ];
-
-    /* eslint-disable */
-
-    class BackdropFilter extends Filter {
-        constructor() {
-            super(...arguments);
-            this.backdropUniformName = null;
-            this._backdropActive = false;
-            this.clearColor = null;
-        }
-    }
-    const filterFrag = `
-varying vec2 vTextureCoord;
-
-uniform sampler2D uSampler;
-uniform sampler2D uBackdrop;
-uniform vec2 uBackdrop_flipY;
-
-%UNIFORM_CODE%
-
-void main(void)
-{
-   vec2 backdropCoord = vec2(vTextureCoord.x, uBackdrop_flipY.x + uBackdrop_flipY.y * vTextureCoord.y);
-   vec4 b_src = texture2D(uSampler, vTextureCoord);
-   vec4 b_dest = texture2D(uBackdrop, backdropCoord);
-   vec4 b_res = b_dest;
-   
-   %BLEND_CODE%
-
-   gl_FragColor = b_res;
-}`;
-    class BlendFilter extends BackdropFilter {
-        constructor(shaderParts) {
-            let fragCode = filterFrag;
-            fragCode = fragCode.replace('%UNIFORM_CODE%', shaderParts.uniformCode || "");
-            fragCode = fragCode.replace('%BLEND_CODE%', shaderParts.blendCode || "");
-            super(undefined, fragCode, shaderParts.uniforms);
-            this.backdropUniformName = 'uBackdrop';
-        }
-    }
-
-    const vert = `
-attribute vec2 aVertexPosition;
-
-uniform mat3 projectionMatrix;
-
-varying vec2 vTextureCoord;
-
-uniform vec4 inputSize;
-uniform vec4 outputFrame;
-uniform vec2 flipY;
-
-vec4 filterVertexPosition( void )
-{
-    vec2 position = aVertexPosition * max(outputFrame.zw, vec2(0.)) + outputFrame.xy;
-
-    return vec4((projectionMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
-}
-
-vec2 filterTextureCoord( void )
-{
-    return aVertexPosition * (outputFrame.zw * inputSize.zw);
-}
-
-void main(void)
-{
-    gl_Position = filterVertexPosition();
-    vTextureCoord = filterTextureCoord();
-    vTextureCoord.y = flipY.x + flipY.y * vTextureCoord.y;
-}
-
-`;
-    class FlipYFilter extends Filter {
-        constructor(frag, uniforms) {
-            const uni = uniforms || {};
-            if (!uni.flipY) {
-                uni.flipY = new Float32Array([0.0, 1.0]);
-            }
-            super(vert, frag, uni);
-        }
-    }
-
-    var MASK_CHANNEL;
-    (function (MASK_CHANNEL) {
-        MASK_CHANNEL[MASK_CHANNEL["RED"] = 0] = "RED";
-        MASK_CHANNEL[MASK_CHANNEL["GREEN"] = 1] = "GREEN";
-        MASK_CHANNEL[MASK_CHANNEL["BLUE"] = 2] = "BLUE";
-        MASK_CHANNEL[MASK_CHANNEL["ALPHA"] = 3] = "ALPHA";
-    })(MASK_CHANNEL || (MASK_CHANNEL = {}));
-    class MaskConfig {
-        constructor(maskBefore = false, channel = MASK_CHANNEL.ALPHA) {
-            this.maskBefore = maskBefore;
-            this.uniformCode = 'uniform vec4 uChannel;';
-            this.uniforms = {
-                uChannel: new Float32Array([0, 0, 0, 0]),
-            };
-            this.blendCode = `b_res = dot(b_src, uChannel) * b_dest;`;
-            this.safeFlipY = false;
-            this.uniforms.uChannel[channel] = 1.0;
-        }
-    }
-    const tmpArray = new Float32Array([0, 1]);
-    class MaskFilter extends BlendFilter {
-        constructor(baseFilter, config = new MaskConfig()) {
-            super(config);
-            this.baseFilter = baseFilter;
-            this.config = config;
-            this.padding = baseFilter.padding;
-            this.safeFlipY = config.safeFlipY;
-        }
-        apply(filterManager, input, output, clearMode) {
-            const target = filterManager.getFilterTexture(input);
-            if (this.config.maskBefore) {
-                const { blendMode } = this.state;
-                this.state.blendMode = BLEND_MODES$1.NONE;
-                filterManager.applyFilter(this, input, target, CLEAR_MODES$1.YES);
-                this.baseFilter.blendMode = blendMode;
-                this.baseFilter.apply(filterManager, target, output, clearMode);
-                this.state.blendMode = blendMode;
-            }
-            else {
-                const { uBackdrop, uBackdrop_flipY } = this.uniforms;
-                if (uBackdrop_flipY[1] > 0 || this.safeFlipY) {
-                    this.baseFilter.apply(filterManager, uBackdrop, target, CLEAR_MODES$1.YES);
-                }
-                else {
-                    const targetFlip = filterManager.getFilterTexture(input);
-                    if (!MaskFilter._flipYFilter) {
-                        MaskFilter._flipYFilter = new FlipYFilter();
-                    }
-                    MaskFilter._flipYFilter.uniforms.flipY[0] = uBackdrop_flipY[0];
-                    MaskFilter._flipYFilter.uniforms.flipY[1] = uBackdrop_flipY[1];
-                    MaskFilter._flipYFilter.apply(filterManager, uBackdrop, targetFlip, CLEAR_MODES$1.YES);
-                    this.baseFilter.apply(filterManager, targetFlip, target, CLEAR_MODES$1.YES);
-                    filterManager.returnFilterTexture(targetFlip);
-                    this.uniforms.uBackdrop_flipY = tmpArray;
-                }
-                this.uniforms.uBackdrop = target;
-                filterManager.applyFilter(this, input, output, clearMode);
-                this.uniforms.uBackdrop = uBackdrop;
-                this.uniforms.uBackdrop_flipY = uBackdrop_flipY;
-            }
-            filterManager.returnFilterTexture(target);
-        }
-    }
-    MaskFilter._flipYFilter = null;
-
-    const NPM_BLEND = `if (b_src.a == 0.0) {
-gl_FragColor = vec4(0, 0, 0, 0);
-return;
-}
-vec3 Cb = b_src.rgb / b_src.a, Cs;
-if (b_dest.a > 0.0) {
-Cs = b_dest.rgb / b_dest.a;
-}
-%NPM_BLEND%
-b_res.a = b_src.a + b_dest.a * (1.0-b_src.a);
-b_res.rgb = (1.0 - b_src.a) * Cs + b_src.a * B;
-b_res.rgb *= b_res.a;
-`;
-    const OVERLAY_PART = `vec3 multiply = Cb * Cs * 2.0;
-vec3 Cb2 = Cb * 2.0 - 1.0;
-vec3 screen = Cb2 + Cs - Cb2 * Cs;
-vec3 B;
-if (Cs.r <= 0.5) {
-B.r = multiply.r;
-} else {
-B.r = screen.r;
-}
-if (Cs.g <= 0.5) {
-B.g = multiply.g;
-} else {
-B.g = screen.g;
-}
-if (Cs.b <= 0.5) {
-B.b = multiply.b;
-} else {
-B.b = screen.b;
-}
-`;
-    const HARDLIGHT_PART = `vec3 multiply = Cb * Cs * 2.0;
-vec3 Cs2 = Cs * 2.0 - 1.0;
-vec3 screen = Cb + Cs2 - Cb * Cs2;
-vec3 B;
-if (Cb.r <= 0.5) {
-B.r = multiply.r;
-} else {
-B.r = screen.r;
-}
-if (Cb.g <= 0.5) {
-B.g = multiply.g;
-} else {
-B.g = screen.g;
-}
-if (Cb.b <= 0.5) {
-B.b = multiply.b;
-} else {
-B.b = screen.b;
-}
-`;
-    const SOFTLIGHT_PART = `vec3 first = Cb - (1.0 - 2.0 * Cs) * Cb * (1.0 - Cb);
-vec3 B;
-vec3 D;
-if (Cs.r <= 0.5)
-{
-B.r = first.r;
-}
-else
-{
-if (Cb.r <= 0.25)
-{
-D.r = ((16.0 * Cb.r - 12.0) * Cb.r + 4.0) * Cb.r;    
-}
-else
-{
-D.r = sqrt(Cb.r);
-}
-B.r = Cb.r + (2.0 * Cs.r - 1.0) * (D.r - Cb.r);
-}
-if (Cs.g <= 0.5)
-{
-B.g = first.g;
-}
-else
-{
-if (Cb.g <= 0.25)
-{
-D.g = ((16.0 * Cb.g - 12.0) * Cb.g + 4.0) * Cb.g;    
-}
-else
-{
-D.g = sqrt(Cb.g);
-}
-B.g = Cb.g + (2.0 * Cs.g - 1.0) * (D.g - Cb.g);
-}
-if (Cs.b <= 0.5)
-{
-B.b = first.b;
-}
-else
-{
-if (Cb.b <= 0.25)
-{
-D.b = ((16.0 * Cb.b - 12.0) * Cb.b + 4.0) * Cb.b;    
-}
-else
-{
-D.b = sqrt(Cb.b);
-}
-B.b = Cb.b + (2.0 * Cs.b - 1.0) * (D.b - Cb.b);
-}
-`;
-    const MULTIPLY_FULL = `if (dest.a > 0.0) {
-b_res.rgb = (dest.rgb / dest.a) * ((1.0 - src.a) + src.rgb);
-b_res.a = min(src.a + dest.a - src.a * dest.a, 1.0);
-b_res.rgb *= mult.a;
-}
-`;
-    const OVERLAY_FULL = NPM_BLEND.replace(`%NPM_BLEND%`, OVERLAY_PART);
-    const HARDLIGHT_FULL = NPM_BLEND.replace(`%NPM_BLEND%`, HARDLIGHT_PART);
-    const SOFTLIGHT_FULL = NPM_BLEND.replace(`%NPM_BLEND%`, SOFTLIGHT_PART);
-    const blendFullArray = [];
-    blendFullArray[BLEND_MODES$1.MULTIPLY] = MULTIPLY_FULL;
-    blendFullArray[BLEND_MODES$1.OVERLAY] = OVERLAY_FULL;
-    blendFullArray[BLEND_MODES$1.HARD_LIGHT] = HARDLIGHT_FULL;
-    blendFullArray[BLEND_MODES$1.SOFT_LIGHT] = SOFTLIGHT_FULL;
-    let filterCache = [];
-    let filterCacheArray = [];
-    function getBlendFilter(blendMode) {
-        if (!blendFullArray[blendMode]) {
-            return null;
-        }
-        if (!filterCache[blendMode]) {
-            filterCache[blendMode] = new BlendFilter({ blendCode: blendFullArray[blendMode] });
-        }
-        return filterCache[blendMode];
-    }
-    function getBlendFilterArray(blendMode) {
-        if (!blendFullArray[blendMode]) {
-            return null;
-        }
-        if (!filterCacheArray[blendMode]) {
-            filterCacheArray[blendMode] = [getBlendFilter(blendMode)];
-        }
-        return filterCacheArray[blendMode];
-    }
-
-    class Sprite extends Sprite$1 {
-        _render(renderer) {
-            const texture = this._texture;
-            if (!texture || !texture.valid) {
-                return;
-            }
-            const blendFilterArray = getBlendFilterArray(this.blendMode);
-            if (blendFilterArray) {
-                renderer.batch.flush();
-                if (!renderer.filter.pushWithCheck(this, blendFilterArray)) {
-                    return;
-                }
-            }
-            this.calculateVertices();
-            renderer.batch.setObjectRenderer(renderer.plugins[this.pluginName]);
-            renderer.plugins[this.pluginName].render(this);
-            if (blendFilterArray) {
-                renderer.batch.flush();
-                renderer.filter.pop();
-            }
-        }
-    }
-
-    function containsRect(rectOut, rectIn) {
-        let r1 = rectIn.x + rectIn.width;
-        let b1 = rectIn.y + rectIn.height;
-        let r2 = rectOut.x + rectOut.width;
-        let b2 = rectOut.y + rectOut.height;
-        return (rectIn.x >= rectOut.x) &&
-            (rectIn.x <= r2) &&
-            (rectIn.y >= rectOut.y) &&
-            (rectIn.y <= b2) &&
-            (r1 >= rectOut.x) &&
-            (r1 <= r2) &&
-            (b1 >= rectOut.y) &&
-            (b1 <= b2);
-    }
-    function bindForceLocation(texture, location = 0) {
-        const { gl } = this;
-        if (this.currentLocation !== location) {
-            this.currentLocation = location;
-            gl.activeTexture(gl.TEXTURE0 + location);
-        }
-        this.bind(texture, location);
-    }
-    const tempMatrix = new Matrix();
-    function pushWithCheck(target, filters, checkEmptyBounds = true) {
-        const renderer = this.renderer;
-        const filterStack = this.defaultFilterStack;
-        const state = this.statePool.pop() || new FilterState();
-        const renderTextureSystem = this.renderer.renderTexture;
-        let resolution = filters[0].resolution;
-        let padding = filters[0].padding;
-        let autoFit = filters[0].autoFit;
-        let legacy = filters[0].legacy;
-        for (let i = 1; i < filters.length; i++) {
-            const filter = filters[i];
-            resolution = Math.min(resolution, filter.resolution);
-            padding = this.useMaxPadding
-                ? Math.max(padding, filter.padding)
-                : padding + filter.padding;
-            autoFit = autoFit && filter.autoFit;
-            legacy = legacy || filter.legacy;
-        }
-        if (filterStack.length === 1) {
-            this.defaultFilterStack[0].renderTexture = renderTextureSystem.current;
-        }
-        filterStack.push(state);
-        state.resolution = resolution;
-        state.legacy = legacy;
-        state.target = target;
-        state.sourceFrame.copyFrom(target.filterArea || target.getBounds(true));
-        state.sourceFrame.pad(padding);
-        let canUseBackdrop = true;
-        if (autoFit) {
-            const sourceFrameProjected = this.tempRect.copyFrom(renderTextureSystem.sourceFrame);
-            if (renderer.projection.transform) {
-                this.transformAABB(tempMatrix.copyFrom(renderer.projection.transform).invert(), sourceFrameProjected);
-            }
-            state.sourceFrame.fit(sourceFrameProjected);
-        }
-        else {
-            canUseBackdrop = containsRect(this.renderer.renderTexture.sourceFrame, state.sourceFrame);
-        }
-        if (checkEmptyBounds && state.sourceFrame.width <= 1 && state.sourceFrame.height <= 1) {
-            filterStack.pop();
-            state.clear();
-            this.statePool.push(state);
-            return false;
-        }
-        this.roundFrame(state.sourceFrame, renderTextureSystem.current ? renderTextureSystem.current.resolution : renderer.resolution, renderTextureSystem.sourceFrame, renderTextureSystem.destinationFrame, renderer.projection.transform);
-        state.sourceFrame.ceil(resolution);
-        if (canUseBackdrop) {
-            let backdrop = null;
-            let backdropFlip = null;
-            for (let i = 0; i < filters.length; i++) {
-                const bName = filters[i].backdropUniformName;
-                if (bName) {
-                    const { uniforms } = filters[i];
-                    if (!uniforms[bName + '_flipY']) {
-                        uniforms[bName + '_flipY'] = new Float32Array([0.0, 1.0]);
-                    }
-                    const flip = uniforms[bName + '_flipY'];
-                    if (backdrop === null) {
-                        backdrop = this.prepareBackdrop(state.sourceFrame, flip);
-                        backdropFlip = flip;
-                    }
-                    else {
-                        flip[0] = backdropFlip[0];
-                        flip[1] = backdropFlip[1];
-                    }
-                    uniforms[bName] = backdrop;
-                    if (backdrop) {
-                        filters[i]._backdropActive = true;
-                    }
-                }
-            }
-        }
-        state.renderTexture = this.getOptimalFilterTexture(state.sourceFrame.width, state.sourceFrame.height, resolution);
-        state.filters = filters;
-        state.destinationFrame.width = state.renderTexture.width;
-        state.destinationFrame.height = state.renderTexture.height;
-        const destinationFrame = this.tempRect;
-        destinationFrame.x = 0;
-        destinationFrame.y = 0;
-        destinationFrame.width = state.sourceFrame.width;
-        destinationFrame.height = state.sourceFrame.height;
-        state.renderTexture.filterFrame = state.sourceFrame;
-        state.bindingSourceFrame.copyFrom(renderTextureSystem.sourceFrame);
-        state.bindingDestinationFrame.copyFrom(renderTextureSystem.destinationFrame);
-        state.transform = renderer.projection.transform;
-        renderer.projection.transform = null;
-        renderTextureSystem.bind(state.renderTexture, state.sourceFrame, destinationFrame);
-        const cc = filters[filters.length - 1].clearColor;
-        if (cc) {
-            renderer.framebuffer.clear(cc[0], cc[1], cc[2], cc[3]);
-        }
-        else {
-            renderer.framebuffer.clear(0, 0, 0, 0);
-        }
-        return true;
-    }
-    function push(target, filters) {
-        return this.pushWithCheck(target, filters, false);
-    }
-    function pop() {
-        const filterStack = this.defaultFilterStack;
-        const state = filterStack.pop();
-        const filters = state.filters;
-        this.activeState = state;
-        const globalUniforms = this.globalUniforms.uniforms;
-        globalUniforms.outputFrame = state.sourceFrame;
-        globalUniforms.resolution = state.resolution;
-        const inputSize = globalUniforms.inputSize;
-        const inputPixel = globalUniforms.inputPixel;
-        const inputClamp = globalUniforms.inputClamp;
-        inputSize[0] = state.destinationFrame.width;
-        inputSize[1] = state.destinationFrame.height;
-        inputSize[2] = 1.0 / inputSize[0];
-        inputSize[3] = 1.0 / inputSize[1];
-        inputPixel[0] = inputSize[0] * state.resolution;
-        inputPixel[1] = inputSize[1] * state.resolution;
-        inputPixel[2] = 1.0 / inputPixel[0];
-        inputPixel[3] = 1.0 / inputPixel[1];
-        inputClamp[0] = 0.5 * inputPixel[2];
-        inputClamp[1] = 0.5 * inputPixel[3];
-        inputClamp[2] = (state.sourceFrame.width * inputSize[2]) - (0.5 * inputPixel[2]);
-        inputClamp[3] = (state.sourceFrame.height * inputSize[3]) - (0.5 * inputPixel[3]);
-        if (state.legacy) {
-            const filterArea = globalUniforms.filterArea;
-            filterArea[0] = state.destinationFrame.width;
-            filterArea[1] = state.destinationFrame.height;
-            filterArea[2] = state.sourceFrame.x;
-            filterArea[3] = state.sourceFrame.y;
-            globalUniforms.filterClamp = globalUniforms.inputClamp;
-        }
-        this.globalUniforms.update();
-        const lastState = filterStack[filterStack.length - 1];
-        if (state.renderTexture.framebuffer.multisample > 1) {
-            this.renderer.framebuffer.blit();
-        }
-        if (filters.length === 1) {
-            filters[0].apply(this, state.renderTexture, lastState.renderTexture, CLEAR_MODES$1.BLEND, state);
-            this.returnFilterTexture(state.renderTexture);
-        }
-        else {
-            let flip = state.renderTexture;
-            let flop = this.getOptimalFilterTexture(flip.width, flip.height, state.resolution);
-            flop.filterFrame = flip.filterFrame;
-            let i = 0;
-            for (i = 0; i < filters.length - 1; ++i) {
-                filters[i].apply(this, flip, flop, CLEAR_MODES$1.CLEAR, state);
-                const t = flip;
-                flip = flop;
-                flop = t;
-            }
-            filters[i].apply(this, flip, lastState.renderTexture, CLEAR_MODES$1.BLEND, state);
-            this.returnFilterTexture(flip);
-            this.returnFilterTexture(flop);
-        }
-        let backdropFree = false;
-        for (let i = 0; i < filters.length; i++) {
-            if (filters[i]._backdropActive) {
-                const bName = filters[i].backdropUniformName;
-                if (!backdropFree) {
-                    this.returnFilterTexture(filters[i].uniforms[bName]);
-                    backdropFree = true;
-                }
-                filters[i].uniforms[bName] = null;
-                filters[i]._backdropActive = false;
-            }
-        }
-        state.clear();
-        this.statePool.push(state);
-    }
-    let hadBackbufferError = false;
-    function prepareBackdrop(bounds, flipY) {
-        const renderer = this.renderer;
-        const renderTarget = renderer.renderTexture.current;
-        const fr = this.renderer.renderTexture.sourceFrame;
-        const tf = renderer.projection.transform || Matrix.IDENTITY;
-        let resolution = 1;
-        if (renderTarget) {
-            resolution = renderTarget.baseTexture.resolution;
-            flipY[1] = 1.0;
-        }
-        else {
-            if (!renderer.useContextAlpha) {
-                if (!hadBackbufferError) {
-                    hadBackbufferError = true;
-                    console.warn('pixi-picture: you are trying to use Blend Filter on main framebuffer! That wont work.');
-                }
-                return null;
-            }
-            resolution = renderer.resolution;
-            flipY[1] = -1.0;
-        }
-        const x = Math.round((bounds.x - fr.x + tf.tx) * resolution);
-        const dy = bounds.y - fr.y + tf.ty;
-        const y = Math.round((flipY[1] < 0.0 ? fr.height - (dy + bounds.height) : dy) * resolution);
-        const w = Math.round(bounds.width * resolution);
-        const h = Math.round(bounds.height * resolution);
-        const gl = renderer.gl;
-        const rt = this.getOptimalFilterTexture(w, h, 1);
-        if (flipY[1] < 0) {
-            flipY[0] = h / rt.height;
-        }
-        rt.filterFrame = fr;
-        renderer.texture.bindForceLocation(rt.baseTexture, 0);
-        gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, x, y, w, h);
-        return rt;
-    }
-    function applyMixins() {
-        TextureSystem.prototype.bindForceLocation = bindForceLocation;
-        FilterSystem.prototype.push = push;
-        FilterSystem.prototype.pushWithCheck = pushWithCheck;
-        FilterSystem.prototype.pop = pop;
-        FilterSystem.prototype.prepareBackdrop = prepareBackdrop;
-    }
-
-    applyMixins();
-
-    const config = [
-    	{
-    		name: 'invert',
-    		type: 'bool',
-    		default: 0,
-    		label: 'Invert'
-    	},
-    	{
-    		name: 'hue_point',
-    		type: 'float',
-    		default: 0,
-    		label: 'Hue',
-    		link: 'picker'
-    	},
-    	{
-    		name: 'hue_width',
-    		type: 'float',
-    		default: 0.1,
-    		label: 'Width',
-    		link: 'picker'
-    	},
-    	{
-    		name: 'hue_falloff',
-    		type: 'float',
-    		default: 0.5,
-    		label: 'Falloff',
-    		link: 'picker'
-    	},
-    	{
-    		name: 'levels_low',
-    		type: 'float',
-    		default: 0,
-    		label: 'Levels'
-    	},
-    	{
-    		name: 'levels_mid',
-    		type: 'float',
-    		default: 0.5,
-    		label: false
-    	},
-    	{
-    		name: 'levels_high',
-    		type: 'float',
-    		default: 1,
-    		label: false
-    	},
-    	{
-    		name: 'opacity',
-    		type: 'float',
-    		default: 1,
-    		label: 'Opacity'
-    	}
-    ];
-
-
-    const header = config.map( g => {
-    	return `uniform ${g.type} ${g.name};`
-    }).join('\n') + (`
-uniform int colour;
-uniform int type;
-`);
-
-    var gui = { config, header };
-
-    /* src/Palette.svelte generated by Svelte v3.38.3 */
-
-    const { console: console_1$2 } = globals;
-    const file$2 = "src/Palette.svelte";
-
-    function create_fragment$3(ctx) {
-    	let div0;
-    	let t;
-    	let div1;
-    	let div1_style_value;
-
-    	const block = {
-    		c: function create() {
-    			div0 = element("div");
-    			t = space();
-    			div1 = element("div");
-    			attr_dev(div0, "class", "rel no-basis flex grow");
-    			add_location(div0, file$2, 91, 0, 2151);
-    			attr_dev(div1, "class", "rel no-basis flex grow");
-    			attr_dev(div1, "style", div1_style_value = `background-color: rgb(${colours?.[/*layer*/ ctx[0].colour]?.rgb})`);
-    			add_location(div1, file$2, 92, 0, 2205);
-    		},
-    		l: function claim(nodes) {
-    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div0, anchor);
-    			/*div0_binding*/ ctx[4](div0);
-    			insert_dev(target, t, anchor);
-    			insert_dev(target, div1, anchor);
-    		},
-    		p: function update(ctx, [dirty]) {
-    			if (dirty & /*layer*/ 1 && div1_style_value !== (div1_style_value = `background-color: rgb(${colours?.[/*layer*/ ctx[0].colour]?.rgb})`)) {
-    				attr_dev(div1, "style", div1_style_value);
-    			}
-    		},
-    		i: noop$1,
-    		o: noop$1,
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div0);
-    			/*div0_binding*/ ctx[4](null);
-    			if (detaching) detach_dev(t);
-    			if (detaching) detach_dev(div1);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_fragment$3.name,
-    		type: "component",
-    		source: "",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    function instance$3($$self, $$props, $$invalidate) {
-    	let { $$slots: slots = {}, $$scope } = $$props;
-    	validate_slots("Palette", slots, []);
-    	let { layer } = $$props;
-    	let { target } = $$props;
-    	let { vertical = false } = $$props;
-    	let el;
-    	onMount(setup);
-
-    	async function setup(t) {
-    		// if (!target) return
-    		let config = {
-    			width: vertical ? 1 : 360,
-    			height: vertical ? 360 : 1,
-    			antialias: false,
-    			transparent: true,
-    			resolution: 1,
-    			forceCanvas: true
-    		};
-
-    		let app = new Application(config);
-    		let graphic = new Graphics();
-
-    		// graphic.beginFill( 0x000000 )
-    		graphic.drawRect(0, 0, config.width, config.height);
-
-    		const fragment = window.palette = `
-${lib}
-${gui.header}
-varying vec2 vTextureCoord;
-uniform sampler2D uSampler;
-
-vec4 extract() {
-
-	float width = hue_width / 2.0;
-	float falloff = hue_falloff / 2.0;
-	float low = hue_point - width;
-	float high = hue_point + width;
-	float very_low = low - falloff;
-	float very_high = high + falloff;
-
-
-	float hue = map( vTextureCoord.${vertical ? "y" : "x"}, 0.0, 1.0, very_low, very_high);
-	float alpha = 1.0;
-
-	if ( within( hue, very_low, low ) != 0 ) {
-		alpha = map( hue, very_low, low, 0.0, 1.0 );
-	}
-	if ( within( hue, high, very_high ) != 0 ) {
-		alpha = map( hue, high, very_high, 1.0, 0.0 );
-	}
-
-	vec3 hsv = vec3( hue, 1.0, 1.0 );
-	vec3 rgb =  hsv2rgb( hsv );
-	vec3 bg = hsv2rgb( vec3( 200.0 / 360.0, 0.01, 0.9 ) );
-	vec3 final = ( rgb * alpha ) + ( bg * (1.0 - alpha) );
-	return vec4( final, alpha);
-
-}
-
-void main(void) {
-
-	if (type == 0) {
-		gl_FragColor = extract();
-	} else {
-
-		if (type == 1) gl_FragColor = vec4(0.0,1.0,1.0,1.0);
-		if (type == 2) gl_FragColor = vec4(1.0,0.0,1.0,1.0);
-		if (type == 3) gl_FragColor = vec4(1.0,1.0,0.0,1.0);
-		if (type == 4) gl_FragColor = vec4(0.0);
-		if (type == 5) gl_FragColor = vec4(1.0,0.0,0.0,1.0);
-		if (type == 6) gl_FragColor = vec4(0.0,1.0,0.0,1.0);
-		if (type == 7) gl_FragColor = vec4(0.0,0.0,1.0,1.0);
-	}
-
-}`;
-
-    		console.log("[Palette] setup");
-    		graphic.filters = [new Filter(null, fragment, layer)];
-    		app.stage.addChild(graphic);
-    		if (el) el.appendChild(app.view);
-    	}
-
-    	const writable_props = ["layer", "target", "vertical"];
-
-    	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$2.warn(`<Palette> was created with unknown prop '${key}'`);
-    	});
-
-    	function div0_binding($$value) {
-    		binding_callbacks[$$value ? "unshift" : "push"](() => {
-    			el = $$value;
-    			$$invalidate(1, el);
-    		});
-    	}
-
-    	$$self.$$set = $$props => {
-    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
-    		if ("target" in $$props) $$invalidate(2, target = $$props.target);
-    		if ("vertical" in $$props) $$invalidate(3, vertical = $$props.vertical);
-    	};
-
-    	$$self.$capture_state = () => ({
-    		PIXI,
-    		onMount,
-    		gui,
-    		lib,
-    		colours,
-    		layer,
-    		target,
-    		vertical,
-    		el,
-    		setup
-    	});
-
-    	$$self.$inject_state = $$props => {
-    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
-    		if ("target" in $$props) $$invalidate(2, target = $$props.target);
-    		if ("vertical" in $$props) $$invalidate(3, vertical = $$props.vertical);
-    		if ("el" in $$props) $$invalidate(1, el = $$props.el);
-    	};
-
-    	if ($$props && "$$inject" in $$props) {
-    		$$self.$inject_state($$props.$$inject);
-    	}
-
-    	$$self.$$.update = () => {
-    		if ($$self.$$.dirty & /*target*/ 4) {
-    			setup();
-    		}
-    	};
-
-    	return [layer, el, target, vertical, div0_binding];
-    }
-
-    class Palette extends SvelteComponentDev {
-    	constructor(options) {
-    		super(options);
-    		init$1(this, options, instance$3, create_fragment$3, safe_not_equal, { layer: 0, target: 2, vertical: 3 });
-
-    		dispatch_dev("SvelteRegisterComponent", {
-    			component: this,
-    			tagName: "Palette",
-    			options,
-    			id: create_fragment$3.name
-    		});
-
-    		const { ctx } = this.$$;
-    		const props = options.props || {};
-
-    		if (/*layer*/ ctx[0] === undefined && !("layer" in props)) {
-    			console_1$2.warn("<Palette> was created without expected prop 'layer'");
-    		}
-
-    		if (/*target*/ ctx[2] === undefined && !("target" in props)) {
-    			console_1$2.warn("<Palette> was created without expected prop 'target'");
-    		}
-    	}
-
-    	get layer() {
-    		throw new Error("<Palette>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set layer(value) {
-    		throw new Error("<Palette>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get target() {
-    		throw new Error("<Palette>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set target(value) {
-    		throw new Error("<Palette>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get vertical() {
-    		throw new Error("<Palette>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set vertical(value) {
-    		throw new Error("<Palette>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-    }
-
-    /* src/Layer.svelte generated by Svelte v3.38.3 */
-    const file$1 = "src/Layer.svelte";
-
-    function get_each_context$1(ctx, list, i) {
-    	const child_ctx = ctx.slice();
-    	child_ctx[18] = list[i];
-    	child_ctx[19] = list;
-    	child_ctx[20] = i;
-    	return child_ctx;
-    }
-
-    function get_each_context_1$1(ctx, list, i) {
-    	const child_ctx = ctx.slice();
-    	child_ctx[21] = list[i];
-    	child_ctx[23] = i;
-    	return child_ctx;
-    }
-
-    function get_each_context_2$1(ctx, list, i) {
-    	const child_ctx = ctx.slice();
-    	child_ctx[24] = list[i];
-    	child_ctx[23] = i;
-    	return child_ctx;
-    }
-
-    function get_each_context_3$1(ctx, list, i) {
-    	const child_ctx = ctx.slice();
-    	child_ctx[26] = list[i];
-    	child_ctx[23] = i;
-    	return child_ctx;
-    }
-
-    // (158:5) {#each types as t,i}
-    function create_each_block_3$1(ctx) {
-    	let option;
-    	let t_value = /*t*/ ctx[26] + "";
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			option = element("option");
-    			t = text(t_value);
-    			option.__value = /*i*/ ctx[23];
-    			option.value = option.__value;
-    			attr_dev(option, "name", /*t*/ ctx[26]);
-    			add_location(option, file$1, 158, 6, 3846);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, option, anchor);
-    			append_dev(option, t);
-    		},
-    		p: noop$1,
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(option);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_3$1.name,
-    		type: "each",
-    		source: "(158:5) {#each types as t,i}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (175:5) {#each colours as c, i}
-    function create_each_block_2$1(ctx) {
-    	let div;
-    	let span2;
-    	let span0;
-    	let t0_value = /*c*/ ctx[24].name + "";
-    	let t0;
-    	let t1;
-    	let span1;
-    	let t2_value = (/*c*/ ctx[24].japanese || "-") + "";
-    	let t2;
-    	let mounted;
-    	let dispose;
-
-    	function click_handler_1(...args) {
-    		return /*click_handler_1*/ ctx[10](/*i*/ ctx[23], ...args);
-    	}
-
-    	const block = {
-    		c: function create() {
-    			div = element("div");
-    			span2 = element("span");
-    			span0 = element("span");
-    			t0 = text(t0_value);
-    			t1 = space();
-    			span1 = element("span");
-    			t2 = text(t2_value);
-    			add_location(span0, file$1, 181, 8, 4633);
-    			add_location(span1, file$1, 182, 8, 4663);
-    			attr_dev(span2, "class", "inverted flex column p1");
-    			add_location(span2, file$1, 179, 7, 4577);
-    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[24].rgb});margin-top:-1px`);
-    			attr_dev(div, "class", "flex column pointer no-basis grow minw16em clickable minh0em");
-    			add_location(div, file$1, 175, 6, 4388);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			append_dev(div, span2);
-    			append_dev(span2, span0);
-    			append_dev(span0, t0);
-    			append_dev(span2, t1);
-    			append_dev(span2, span1);
-    			append_dev(span1, t2);
-
-    			if (!mounted) {
-    				dispose = listen_dev(div, "click", click_handler_1, false, false, false);
-    				mounted = true;
-    			}
-    		},
-    		p: function update(new_ctx, dirty) {
-    			ctx = new_ctx;
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
-    			mounted = false;
-    			dispose();
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_2$1.name,
-    		type: "each",
-    		source: "(175:5) {#each colours as c, i}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (187:5) {#each new Array(10) as ii,i}
-    function create_each_block_1$1(ctx) {
-    	let span;
-
-    	const block = {
-    		c: function create() {
-    			span = element("span");
-    			attr_dev(span, "class", "flex column pointer no-basis grow minw16em clickable h0em");
-    			set_style(span, "line-height", "0px");
-    			set_style(span, "max-height", "0px");
-    			add_location(span, file$1, 187, 6, 4778);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, span, anchor);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(span);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_1$1.name,
-    		type: "each",
-    		source: "(187:5) {#each new Array(10) as ii,i}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (196:4) {#if ui.label}
-    function create_if_block_2(ctx) {
-    	let label;
-    	let span;
-    	let t0_value = /*ui*/ ctx[18].label + "";
-    	let t0;
-    	let t1;
-    	let if_block = /*ui*/ ctx[18].type == "float" && create_if_block_3(ctx);
-
-    	const block = {
-    		c: function create() {
-    			label = element("label");
-    			span = element("span");
-    			t0 = text(t0_value);
-    			t1 = space();
-    			if (if_block) if_block.c();
-    			add_location(span, file$1, 198, 6, 5091);
-    			attr_dev(label, "class", "capitalize flex row-space-between-flex-start");
-    			add_location(label, file$1, 197, 5, 5024);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, label, anchor);
-    			append_dev(label, span);
-    			append_dev(span, t0);
-    			append_dev(label, t1);
-    			if (if_block) if_block.m(label, null);
-    		},
-    		p: function update(ctx, dirty) {
-    			if (/*ui*/ ctx[18].type == "float") if_block.p(ctx, dirty);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(label);
-    			if (if_block) if_block.d();
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_2.name,
-    		type: "if",
-    		source: "(196:4) {#if ui.label}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (200:6) {#if ui.type =='float'}
-    function create_if_block_3(ctx) {
-    	let span;
-    	let t_value = /*layer*/ ctx[0][/*ui*/ ctx[18].name].toFixed(2) + "";
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			span = element("span");
-    			t = text(t_value);
-    			attr_dev(span, "class", "monospace");
-    			add_location(span, file$1, 200, 7, 5152);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, span, anchor);
-    			append_dev(span, t);
-    		},
-    		p: function update(ctx, dirty) {
-    			if (dirty & /*layer*/ 1 && t_value !== (t_value = /*layer*/ ctx[0][/*ui*/ ctx[18].name].toFixed(2) + "")) set_data_dev(t, t_value);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(span);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_3.name,
-    		type: "if",
-    		source: "(200:6) {#if ui.type =='float'}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (207:33) 
-    function create_if_block_1$1(ctx) {
-    	let input;
-    	let mounted;
-    	let dispose;
-
-    	function input_change_input_handler() {
-    		/*input_change_input_handler*/ ctx[12].call(input, /*ui*/ ctx[18]);
-    	}
-
-    	const block = {
-    		c: function create() {
-    			input = element("input");
-    			attr_dev(input, "type", "range");
-    			attr_dev(input, "min", "0");
-    			attr_dev(input, "max", "1");
-    			attr_dev(input, "step", 1 / 360);
-    			add_location(input, file$1, 207, 5, 5378);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, input, anchor);
-    			set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[18].name]);
-
-    			if (!mounted) {
-    				dispose = [
-    					listen_dev(input, "change", input_change_input_handler),
-    					listen_dev(input, "input", input_change_input_handler)
-    				];
-
-    				mounted = true;
-    			}
-    		},
-    		p: function update(new_ctx, dirty) {
-    			ctx = new_ctx;
-
-    			if (dirty & /*layer, gui*/ 1) {
-    				set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[18].name]);
-    			}
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(input);
-    			mounted = false;
-    			run_all(dispose);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_1$1.name,
-    		type: "if",
-    		source: "(207:33) ",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (205:4) {#if ui.type == 'boolean'}
-    function create_if_block$1(ctx) {
-    	let input;
-    	let mounted;
-    	let dispose;
-
-    	function input_change_handler() {
-    		/*input_change_handler*/ ctx[11].call(input, /*ui*/ ctx[18]);
-    	}
-
-    	const block = {
-    		c: function create() {
-    			input = element("input");
-    			attr_dev(input, "type", "checkbox");
-    			add_location(input, file$1, 205, 5, 5283);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, input, anchor);
-    			input.checked = /*layer*/ ctx[0][/*ui*/ ctx[18].name];
-
-    			if (!mounted) {
-    				dispose = listen_dev(input, "change", input_change_handler);
-    				mounted = true;
-    			}
-    		},
-    		p: function update(new_ctx, dirty) {
-    			ctx = new_ctx;
-
-    			if (dirty & /*layer, gui*/ 1) {
-    				input.checked = /*layer*/ ctx[0][/*ui*/ ctx[18].name];
-    			}
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(input);
-    			mounted = false;
-    			dispose();
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block$1.name,
-    		type: "if",
-    		source: "(205:4) {#if ui.type == 'boolean'}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (194:2) {#each gui.config as ui}
-    function create_each_block$1(ctx) {
-    	let div;
-    	let t0;
-    	let t1;
-    	let if_block0 = /*ui*/ ctx[18].label && create_if_block_2(ctx);
-
-    	function select_block_type(ctx, dirty) {
-    		if (/*ui*/ ctx[18].type == "boolean") return create_if_block$1;
-    		if (/*ui*/ ctx[18].type == "float") return create_if_block_1$1;
-    	}
-
-    	let current_block_type = select_block_type(ctx);
-    	let if_block1 = current_block_type && current_block_type(ctx);
-
-    	const block = {
-    		c: function create() {
-    			div = element("div");
-    			if (if_block0) if_block0.c();
-    			t0 = space();
-    			if (if_block1) if_block1.c();
-    			t1 = space();
-    			attr_dev(div, "class", "flex column cmb0-2");
-    			add_location(div, file$1, 194, 3, 4966);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			if (if_block0) if_block0.m(div, null);
-    			append_dev(div, t0);
-    			if (if_block1) if_block1.m(div, null);
-    			append_dev(div, t1);
-    		},
-    		p: function update(ctx, dirty) {
-    			if (/*ui*/ ctx[18].label) if_block0.p(ctx, dirty);
-    			if (if_block1) if_block1.p(ctx, dirty);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
-    			if (if_block0) if_block0.d();
-
-    			if (if_block1) {
-    				if_block1.d();
-    			}
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block$1.name,
-    		type: "each",
-    		source: "(194:2) {#each gui.config as ui}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    function create_fragment$2(ctx) {
-    	let div5;
-    	let div4;
-    	let div3;
-    	let div0;
-    	let select_1;
-    	let t0;
-    	let div2;
-    	let span1;
-    	let span0;
-    	let t1_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "";
-    	let t1;
-    	let t2;
-    	let div1;
-    	let t3;
-    	let t4;
-    	let mounted;
-    	let dispose;
-    	let each_value_3 = /*types*/ ctx[3];
-    	validate_each_argument(each_value_3);
-    	let each_blocks_3 = [];
-
-    	for (let i = 0; i < each_value_3.length; i += 1) {
-    		each_blocks_3[i] = create_each_block_3$1(get_each_context_3$1(ctx, each_value_3, i));
-    	}
-
-    	let each_value_2 = colours;
-    	validate_each_argument(each_value_2);
-    	let each_blocks_2 = [];
-
-    	for (let i = 0; i < each_value_2.length; i += 1) {
-    		each_blocks_2[i] = create_each_block_2$1(get_each_context_2$1(ctx, each_value_2, i));
-    	}
-
-    	let each_value_1 = new Array(10);
-    	validate_each_argument(each_value_1);
-    	let each_blocks_1 = [];
-
-    	for (let i = 0; i < each_value_1.length; i += 1) {
-    		each_blocks_1[i] = create_each_block_1$1(get_each_context_1$1(ctx, each_value_1, i));
-    	}
-
-    	let each_value = gui.config;
-    	validate_each_argument(each_value);
-    	let each_blocks = [];
-
-    	for (let i = 0; i < each_value.length; i += 1) {
-    		each_blocks[i] = create_each_block$1(get_each_context$1(ctx, each_value, i));
-    	}
-
-    	const block = {
-    		c: function create() {
-    			div5 = element("div");
-    			div4 = element("div");
-    			div3 = element("div");
-    			div0 = element("div");
-    			select_1 = element("select");
-
-    			for (let i = 0; i < each_blocks_3.length; i += 1) {
-    				each_blocks_3[i].c();
-    			}
-
-    			t0 = space();
-    			div2 = element("div");
-    			span1 = element("span");
-    			span0 = element("span");
-    			t1 = text(t1_value);
-    			t2 = space();
-    			div1 = element("div");
-
-    			for (let i = 0; i < each_blocks_2.length; i += 1) {
-    				each_blocks_2[i].c();
-    			}
-
-    			t3 = space();
-
-    			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				each_blocks_1[i].c();
-    			}
-
-    			t4 = space();
-
-    			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].c();
-    			}
-
-    			attr_dev(select_1, "class", "br0-solid");
-    			set_style(select_1, "letter-spacing", "4em");
-    			if (/*layer*/ ctx[0].type === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[8].call(select_1));
-    			add_location(select_1, file$1, 156, 4, 3735);
-    			attr_dev(div0, "class", "basis5em h100pc select");
-    			add_location(div0, file$1, 155, 3, 3694);
-    			attr_dev(span0, "class", "flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable");
-    			add_location(span0, file$1, 167, 5, 4068);
-    			attr_dev(span1, "class", "select grow");
-    			add_location(span1, file$1, 164, 4, 3994);
-    			attr_dev(div1, "class", "flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99");
-    			toggle_class(div1, "none", !/*overlay*/ ctx[1]);
-    			add_location(div1, file$1, 171, 4, 4225);
-    			attr_dev(div2, "class", "flex no-basis h100pc grow ");
-    			add_location(div2, file$1, 163, 3, 3949);
-    			attr_dev(div3, "class", "flex row-stretch-stretch grow w100pc");
-    			add_location(div3, file$1, 154, 2, 3640);
-    			attr_dev(div4, "class", "mb0-5");
-    			add_location(div4, file$1, 153, 1, 3618);
-    			attr_dev(div5, "class", "flex column");
-    			add_location(div5, file$1, 152, 0, 3591);
-    		},
-    		l: function claim(nodes) {
-    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div5, anchor);
-    			append_dev(div5, div4);
-    			append_dev(div4, div3);
-    			append_dev(div3, div0);
-    			append_dev(div0, select_1);
-
-    			for (let i = 0; i < each_blocks_3.length; i += 1) {
-    				each_blocks_3[i].m(select_1, null);
-    			}
-
-    			select_option(select_1, /*layer*/ ctx[0].type);
-    			append_dev(div3, t0);
-    			append_dev(div3, div2);
-    			append_dev(div2, span1);
-    			append_dev(span1, span0);
-    			append_dev(span0, t1);
-    			append_dev(div2, t2);
-    			append_dev(div2, div1);
-
-    			for (let i = 0; i < each_blocks_2.length; i += 1) {
-    				each_blocks_2[i].m(div1, null);
-    			}
-
-    			append_dev(div1, t3);
-
-    			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				each_blocks_1[i].m(div1, null);
-    			}
-
-    			append_dev(div4, t4);
-
-    			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].m(div4, null);
-    			}
-
-    			if (!mounted) {
-    				dispose = [
-    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[8]),
-    					listen_dev(span1, "click", /*click_handler*/ ctx[9], false, false, false)
-    				];
-
-    				mounted = true;
-    			}
-    		},
-    		p: function update(ctx, [dirty]) {
-    			if (dirty & /*types*/ 8) {
-    				each_value_3 = /*types*/ ctx[3];
-    				validate_each_argument(each_value_3);
-    				let i;
-
-    				for (i = 0; i < each_value_3.length; i += 1) {
-    					const child_ctx = get_each_context_3$1(ctx, each_value_3, i);
-
-    					if (each_blocks_3[i]) {
-    						each_blocks_3[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks_3[i] = create_each_block_3$1(child_ctx);
-    						each_blocks_3[i].c();
-    						each_blocks_3[i].m(select_1, null);
-    					}
-    				}
-
-    				for (; i < each_blocks_3.length; i += 1) {
-    					each_blocks_3[i].d(1);
-    				}
-
-    				each_blocks_3.length = each_value_3.length;
-    			}
-
-    			if (dirty & /*layer*/ 1) {
-    				select_option(select_1, /*layer*/ ctx[0].type);
-    			}
-
-    			if (dirty & /*layer*/ 1 && t1_value !== (t1_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "")) set_data_dev(t1, t1_value);
-
-    			if (dirty & /*colours, select*/ 4) {
-    				each_value_2 = colours;
-    				validate_each_argument(each_value_2);
-    				let i;
-
-    				for (i = 0; i < each_value_2.length; i += 1) {
-    					const child_ctx = get_each_context_2$1(ctx, each_value_2, i);
-
-    					if (each_blocks_2[i]) {
-    						each_blocks_2[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks_2[i] = create_each_block_2$1(child_ctx);
-    						each_blocks_2[i].c();
-    						each_blocks_2[i].m(div1, t3);
-    					}
-    				}
-
-    				for (; i < each_blocks_2.length; i += 1) {
-    					each_blocks_2[i].d(1);
-    				}
-
-    				each_blocks_2.length = each_value_2.length;
-    			}
-
-    			if (dirty & /*overlay*/ 2) {
-    				toggle_class(div1, "none", !/*overlay*/ ctx[1]);
-    			}
-
-    			if (dirty & /*layer, gui*/ 1) {
-    				each_value = gui.config;
-    				validate_each_argument(each_value);
-    				let i;
-
-    				for (i = 0; i < each_value.length; i += 1) {
-    					const child_ctx = get_each_context$1(ctx, each_value, i);
-
-    					if (each_blocks[i]) {
-    						each_blocks[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks[i] = create_each_block$1(child_ctx);
-    						each_blocks[i].c();
-    						each_blocks[i].m(div4, null);
-    					}
-    				}
-
-    				for (; i < each_blocks.length; i += 1) {
-    					each_blocks[i].d(1);
-    				}
-
-    				each_blocks.length = each_value.length;
-    			}
-    		},
-    		i: noop$1,
-    		o: noop$1,
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div5);
-    			destroy_each(each_blocks_3, detaching);
-    			destroy_each(each_blocks_2, detaching);
-    			destroy_each(each_blocks_1, detaching);
-    			destroy_each(each_blocks, detaching);
-    			mounted = false;
-    			run_all(dispose);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_fragment$2.name,
-    		type: "component",
-    		source: "",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    function instance$2($$self, $$props, $$invalidate) {
-    	let { $$slots: slots = {}, $$scope } = $$props;
-    	validate_slots("Layer", slots, []);
-    	let { layer = {} } = $$props;
-    	let { index = 0 } = $$props;
-    	let { container } = $$props;
-    	let { images } = $$props;
-    	let { target } = $$props;
-    	let group;
-
-    	function setDefaults(layer_) {
-    		for (const g of gui.config) if (!layer[g.name]) $$invalidate(0, layer[g.name] = g.default, layer);
-    	}
-
-    	onMount(setup);
-    	let type = 0;
-
-    	async function setup() {
-    		// var gl = PIXI.instances[0].gl
-    		// PIXI.blendModes.NORMAL2 = 'normal2'
-    		// PIXI.blendModesWebGL[PIXI.blendModes.NORMAL2] = [gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA]
-    		// filter.blendMode = PIXI.BLEND_MODES.SCREEN
-    		// sprite.blendMode = PIXI.BLEND_MODES.SCREEN
-    		$$invalidate(0, layer.type = 0, layer);
-
-    		$$invalidate(0, layer.colour = parseInt(Math.random() * colours.length), layer);
-
-    		$$invalidate(
-    			0,
-    			layer.colours = colours.map(c => {
-    				return c.rgb.split(",").map(l => {
-    					return parseFloat((parseFloat(l) / 255).toFixed(3));
-    				});
-    			}).flat(),
-    			layer
-    		);
-
-    		group = new Container();
-    		group.addChild(images);
-
-    		let header = `
-uniform vec3 colours[${colours.length}];
-${gui.header}
-varying vec2 vTextureCoord;
-uniform sampler2D uSampler;`;
-
-    		let program = `
-vec4 extract( vec3 hsv, vec3 ink ) {
-
-	float width = hue_width;
-	float falloff = hue_falloff;
-	float low = hue_point - width;
-	float high = hue_point + width;
-	float very_low = low - falloff;
-	float very_high = high + falloff;
-
-	vec3 inked = rgb2hsv( vec3(ink) );
-
-	if ( within( hsv.x, very_low, very_high ) != 0 ) {
-
-		float sat = hsv.y;
-		float bright = hsv.z;
-
-		int LOW = within( hsv.x, very_low, low );
-		int HIGH = within( hsv.x, high, very_high );
-		float HUE = hsv.x;
-
-		if ( LOW != 0 ) {
-			if (LOW == 2) HUE += 1.0;
-			if (LOW == 3) HUE -= 1.0;
-			sat *= map( HUE, very_low, low, 0.0, 1.0 );
-		} else if ( HIGH != 0 ) {
-			if (HIGH == 2) HUE += 1.0;
-			if (HIGH == 3) HUE -= 1.0;
-			sat *= map( HUE, high, very_high, 1.0, 0.0 );
-		}
-
-		sat = map(sat + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 );
-		if (sat > inked.z && inked.y != 0.0) sat = inked.z;
-
-		vec4 end = vec4(ink, 1.0);
-		end *= sat * opacity;
-		return end;
-	} else {
-		return vec4(0.0,0.0,0.0,0.0);
-	}
-}
-
-vec3 getInk() {
-    for (int i=0; i < ${colours.length}; i++) {
-        if (i == colour) return colours[i];
-    }
-}
-
-void main(void) {
-
-	vec3 color = vec3(texture2D(uSampler, vTextureCoord));
-	if (invert) color = vec3(1.0-color.r,1.0-color.g,1.0-color.b);
-	vec3 hsv = rgb2hsv( color );
-	vec3 ink = getInk();
-
-
-	if (type == 0) {
-		gl_FragColor = extract( hsv, ink );
-	} else {
-		vec4 cmyk = RGBtoCMYK( color );
-		if (type == 1) gl_FragColor = vec4(ink * cmyk.x, 1.0);
-		if (type == 2) gl_FragColor = vec4(ink * cmyk.y, 1.0);
-		if (type == 3) gl_FragColor = vec4(ink * cmyk.z, 1.0);
-		if (type == 4) gl_FragColor = vec4(ink * cmyk.w, 1.0);
-		if (type == 5) gl_FragColor = vec4(ink * color.r, 1.0);
-		if (type == 6) gl_FragColor = vec4(ink * color.g, 1.0);
-		if (type == 7) gl_FragColor = vec4(ink * color.b, 1.0);
-	}
-
-}`;
-
-    		let fragment = window.fragment = `${lib}\n${header}\n${program}`;
-    		group.filters = [new Filter(null, fragment, layer)];
-    		container.addChild(group);
-    	} // visualise()
-
-    	function select(i) {
-    		layer.colour == i;
-    		$$invalidate(1, overlay = false);
-    	}
-
-    	let overlay = false;
-    	let types = ["Picker", "Cyan", "Magenta", "Yellow", "Key", "Red", "Green", "Blue"];
-    	let TEST;
-    	const writable_props = ["layer", "index", "container", "images", "target"];
-
-    	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Layer> was created with unknown prop '${key}'`);
-    	});
-
-    	function select_1_change_handler() {
-    		layer.type = select_value(this);
-    		$$invalidate(0, layer);
-    	}
-
-    	const click_handler = e => $$invalidate(1, overlay = true);
-    	const click_handler_1 = (i, e) => select(i);
-
-    	function input_change_handler(ui) {
-    		layer[ui.name] = this.checked;
-    		$$invalidate(0, layer);
-    	}
-
-    	function input_change_input_handler(ui) {
-    		layer[ui.name] = to_number(this.value);
-    		$$invalidate(0, layer);
-    	}
-
-    	$$self.$$set = $$props => {
-    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
-    		if ("index" in $$props) $$invalidate(4, index = $$props.index);
-    		if ("container" in $$props) $$invalidate(5, container = $$props.container);
-    		if ("images" in $$props) $$invalidate(6, images = $$props.images);
-    		if ("target" in $$props) $$invalidate(7, target = $$props.target);
-    	};
-
-    	$$self.$capture_state = () => ({
-    		lib,
-    		colours,
-    		PIXI,
-    		Sprite,
-    		getBlendFilter,
-    		onMount,
-    		gui,
-    		Palette,
-    		layer,
-    		index,
-    		container,
-    		images,
-    		target,
-    		group,
-    		setDefaults,
-    		type,
-    		setup,
-    		select,
-    		overlay,
-    		types,
-    		TEST
-    	});
-
-    	$$self.$inject_state = $$props => {
-    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
-    		if ("index" in $$props) $$invalidate(4, index = $$props.index);
-    		if ("container" in $$props) $$invalidate(5, container = $$props.container);
-    		if ("images" in $$props) $$invalidate(6, images = $$props.images);
-    		if ("target" in $$props) $$invalidate(7, target = $$props.target);
-    		if ("group" in $$props) group = $$props.group;
-    		if ("type" in $$props) type = $$props.type;
-    		if ("overlay" in $$props) $$invalidate(1, overlay = $$props.overlay);
-    		if ("types" in $$props) $$invalidate(3, types = $$props.types);
-    		if ("TEST" in $$props) TEST = $$props.TEST;
-    	};
-
-    	if ($$props && "$$inject" in $$props) {
-    		$$self.$inject_state($$props.$$inject);
-    	}
-
-    	$$self.$$.update = () => {
-    		if ($$self.$$.dirty & /*layer*/ 1) {
-    			setDefaults();
-    		}
-    	};
-
-    	return [
-    		layer,
-    		overlay,
-    		select,
-    		types,
-    		index,
-    		container,
-    		images,
-    		target,
-    		select_1_change_handler,
-    		click_handler,
-    		click_handler_1,
-    		input_change_handler,
-    		input_change_input_handler
-    	];
-    }
-
-    class Layer extends SvelteComponentDev {
-    	constructor(options) {
-    		super(options);
-
-    		init$1(this, options, instance$2, create_fragment$2, safe_not_equal, {
-    			layer: 0,
-    			index: 4,
-    			container: 5,
-    			images: 6,
-    			target: 7
-    		});
-
-    		dispatch_dev("SvelteRegisterComponent", {
-    			component: this,
-    			tagName: "Layer",
-    			options,
-    			id: create_fragment$2.name
-    		});
-
-    		const { ctx } = this.$$;
-    		const props = options.props || {};
-
-    		if (/*container*/ ctx[5] === undefined && !("container" in props)) {
-    			console.warn("<Layer> was created without expected prop 'container'");
-    		}
-
-    		if (/*images*/ ctx[6] === undefined && !("images" in props)) {
-    			console.warn("<Layer> was created without expected prop 'images'");
-    		}
-
-    		if (/*target*/ ctx[7] === undefined && !("target" in props)) {
-    			console.warn("<Layer> was created without expected prop 'target'");
-    		}
-    	}
-
-    	get layer() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set layer(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get index() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set index(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get container() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set container(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get images() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set images(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get target() {
-    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set target(value) {
-    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-    }
 
     function promisifyRequest(request) {
         return new Promise((resolve, reject) => {
@@ -46843,55 +44563,2223 @@ void main(void) {
     	]
     };
 
+    var colours = [
+        {
+            "name": "BLACK",
+            "japanese": "ブラック",
+            "rgb": "0, 0, 0",
+            "pantone": "BLACK U"
+        },
+        {
+            "name": "BURGUNDY",
+            "japanese": "バーガンディーレッド",
+            "rgb": "145, 78, 114",
+            "pantone": "235 U"
+        },
+        {
+            "name": "BLUE",
+            "japanese": "ブルー",
+            "rgb": "0, 120, 191",
+            "pantone": "3005 U"
+        },
+        {
+            "name": "GREEN",
+            "japanese": "グリーン",
+            "rgb": "0, 169, 92",
+            "pantone": "354 U"
+        },
+        {
+            "name": "MEDIUM BLUE",
+            "japanese": "ミディアムブルー",
+            "rgb": "50, 85, 164",
+            "pantone": "286 U"
+        },
+        {
+            "name": "BRIGHT RED",
+            "japanese": "ブライトレッド",
+            "rgb": "241, 80, 96",
+            "pantone": "185 U"
+        },
+        {
+            "name": "RISOFEDERAL BLUE",
+            "japanese": "リソー フェデラルブルー",
+            "rgb": "61, 85, 136",
+            "pantone": "288 U"
+        },
+        {
+            "name": "PURPLE",
+            "japanese": "パープル",
+            "rgb": "118, 91, 167",
+            "pantone": "2685 U"
+        },
+        {
+            "name": "TEAL",
+            "japanese": "ティールグリーソ",
+            "rgb": "0, 131, 138",
+            "pantone": "321 U"
+        },
+        {
+            "name": "FLAT GOLD",
+            "japanese": "フラットゴールド",
+            "rgb": "187, 139, 65",
+            "pantone": "1245 U"
+        },
+        {
+            "name": "HUNTER GREEN",
+            "japanese": "ハンターグリーン",
+            "rgb": "64, 112, 96",
+            "pantone": "342 U"
+        },
+        {
+            "name": "RED",
+            "japanese": "レッド",
+            "rgb": "255, 102, 94",
+            "pantone": "WARM RED U"
+        },
+        {
+            "name": "BROWN",
+            "japanese": "ブラウン",
+            "rgb": "146, 95, 82",
+            "pantone": "7526 U"
+        },
+        {
+            "name": "YELLOW",
+            "japanese": "イエロー",
+            "rgb": "255, 232, 0",
+            "pantone": "YELLOW U"
+        },
+        {
+            "name": "MARINE RED",
+            "japanese": "リソーマリーンレッド",
+            "rgb": "210, 81, 94",
+            "pantone": "186 U"
+        },
+        {
+            "name": "ORANGE",
+            "japanese": "オレンジ",
+            "rgb": "255, 108, 47",
+            "pantone": "ORANGE 021 U"
+        },
+        {
+            "name": "FLUORESCENT PINK",
+            "japanese": "蛍光ピンク",
+            "rgb": "255, 72, 176",
+            "pantone": "806 U"
+        },
+        {
+            "name": "LIGHT GRAY",
+            "japanese": "ライトグレー",
+            "rgb": "136, 137, 138",
+            "pantone": "424 U"
+        },
+        {
+            "name": "FLATALLIC GOLD",
+            "japanese": "フラッタリックゴールド",
+            "rgb": "180, 143, 80",
+            "pantone": ""
+        },
+        {
+            "name": "METALLIC GOLD",
+            "japanese": "金",
+            "rgb": "172, 147, 110",
+            "pantone": "872 U"
+        },
+        {
+            "name": "CRIMSON",
+            "japanese": "クリムゾン",
+            "rgb": "228, 93, 80",
+            "pantone": "485 U"
+        },
+        {
+            "name": "FLUORESCENT ORANGE",
+            "japanese": "蛍光オレンジ",
+            "rgb": "255, 116, 119",
+            "pantone": "805 U"
+        },
+        {
+            "name": "CORNFLOWER",
+            "japanese": "コーンフラワー",
+            "rgb": "98, 168, 229",
+            "pantone": "292 U"
+        },
+        {
+            "name": "SKY BLUE",
+            "japanese": "",
+            "rgb": "73, 130, 207",
+            "pantone": "285U"
+        },
+        {
+            "name": "SEA BLUE",
+            "japanese": "",
+            "rgb": "0, 116, 162",
+            "pantone": "307 U"
+        },
+        {
+            "name": "LAKE",
+            "japanese": "",
+            "rgb": "35, 91, 168",
+            "pantone": "293 U"
+        },
+        {
+            "name": "INDIGO",
+            "japanese": "",
+            "rgb": "72, 77, 122",
+            "pantone": "2758 U"
+        },
+        {
+            "name": "MIDNIGHT",
+            "japanese": "",
+            "rgb": "67, 80, 96",
+            "pantone": "296 U"
+        },
+        {
+            "name": "MIST",
+            "japanese": "",
+            "rgb": "184, 199, 196",
+            "pantone": "5527 U"
+        },
+        {
+            "name": "GRANITE",
+            "japanese": "",
+            "rgb": "165, 170, 168",
+            "pantone": "7538 U"
+        },
+        {
+            "name": "CHARCOAL",
+            "japanese": "",
+            "rgb": "112, 116, 124",
+            "pantone": "7540 U"
+        },
+        {
+            "name": "SMOKY TEAL",
+            "japanese": "",
+            "rgb": "95, 130, 137",
+            "pantone": "5483 U"
+        },
+        {
+            "name": "STEEL",
+            "japanese": "",
+            "rgb": "55, 94, 119",
+            "pantone": "302 U"
+        },
+        {
+            "name": "SLATE",
+            "japanese": "",
+            "rgb": "94, 105, 94",
+            "pantone": "5605 U"
+        },
+        {
+            "name": "TURQUOISE",
+            "japanese": "",
+            "rgb": "0, 170, 147",
+            "pantone": "3275 U"
+        },
+        {
+            "name": "EMERALD",
+            "japanese": "",
+            "rgb": "25, 151, 93",
+            "pantone": "355 U"
+        },
+        {
+            "name": "GRASS",
+            "japanese": "",
+            "rgb": "57, 126, 88",
+            "pantone": "356 U"
+        },
+        {
+            "name": "FOREST",
+            "japanese": "",
+            "rgb": "81, 110, 90",
+            "pantone": "357 U"
+        },
+        {
+            "name": "SPRUCE",
+            "japanese": "",
+            "rgb": "74, 99, 93",
+            "pantone": "567 U"
+        },
+        {
+            "name": "MOSS",
+            "japanese": "",
+            "rgb": "104, 114, 77",
+            "pantone": "371 U"
+        },
+        {
+            "name": "SEA FOAM",
+            "japanese": "",
+            "rgb": "98, 194, 177",
+            "pantone": "570 U"
+        },
+        {
+            "name": "KELLY GREEN",
+            "japanese": "ケリーグリーン",
+            "rgb": "103, 179, 70",
+            "pantone": "368 U"
+        },
+        {
+            "name": "LIGHT TEAL",
+            "japanese": "",
+            "rgb": "0, 157, 165",
+            "pantone": "320 U"
+        },
+        {
+            "name": "IVY",
+            "japanese": "",
+            "rgb": "22, 155, 98",
+            "pantone": "347 U"
+        },
+        {
+            "name": "PINE",
+            "japanese": "",
+            "rgb": "35, 126, 116",
+            "pantone": "3295 U"
+        },
+        {
+            "name": "LAGOON",
+            "japanese": "",
+            "rgb": "47, 97, 101",
+            "pantone": "323 U"
+        },
+        {
+            "name": "VIOLET",
+            "japanese": "ヴァイオレット",
+            "rgb": "157, 122, 210",
+            "pantone": "265 U"
+        },
+        {
+            "name": "ORCHID",
+            "japanese": "",
+            "rgb": "187, 118, 207",
+            "pantone": "2582 U"
+        },
+        {
+            "name": "PLUM",
+            "japanese": "",
+            "rgb": "132, 89, 145",
+            "pantone": "2603 U"
+        },
+        {
+            "name": "RAISIN",
+            "japanese": "",
+            "rgb": "119, 93, 122",
+            "pantone": "519 U"
+        },
+        {
+            "name": "GRAPE",
+            "japanese": "",
+            "rgb": "108, 93, 128",
+            "pantone": "2695 U"
+        },
+        {
+            "name": "SCARLET",
+            "japanese": "",
+            "rgb": "246, 80, 88",
+            "pantone": "RED 032 U"
+        },
+        {
+            "name": "TOMATO",
+            "japanese": "",
+            "rgb": "210, 81, 94",
+            "pantone": "186 U"
+        },
+        {
+            "name": "CRANBERRY",
+            "japanese": "",
+            "rgb": "194, 79, 93",
+            "pantone": "200 U"
+        },
+        {
+            "name": "MAROON",
+            "japanese": "",
+            "rgb": "158, 76, 110",
+            "pantone": "221 U"
+        },
+        {
+            "name": "RASPBERRY RED",
+            "japanese": "",
+            "rgb": "180, 75, 101",
+            "pantone": "207 U"
+        },
+        {
+            "name": "BRICK",
+            "japanese": "",
+            "rgb": "167, 81, 84",
+            "pantone": "1807 U"
+        },
+        {
+            "name": "LIGHT LIME",
+            "japanese": "黄緑",
+            "rgb": "227, 237, 85",
+            "pantone": "387 U"
+        },
+        {
+            "name": "SUNFLOWER",
+            "japanese": "",
+            "rgb": "255, 181, 17",
+            "pantone": "116 U"
+        },
+        {
+            "name": "MELON",
+            "japanese": "",
+            "rgb": "255, 174, 59",
+            "pantone": "1235 U"
+        },
+        {
+            "name": "APRICOT",
+            "japanese": "",
+            "rgb": "246, 160, 77",
+            "pantone": "143 U"
+        },
+        {
+            "name": "PAPRIKA",
+            "japanese": "",
+            "rgb": "238, 127, 75",
+            "pantone": "158 U"
+        },
+        {
+            "name": "PUMPKIN",
+            "japanese": "",
+            "rgb": "255, 111, 76",
+            "pantone": "1655 U"
+        },
+        {
+            "name": "BRIGHT OLIVE GREEN",
+            "japanese": "",
+            "rgb": "180, 159, 41",
+            "pantone": "103 U"
+        },
+        {
+            "name": "BRIGHT GOLD",
+            "japanese": "",
+            "rgb": "186, 128, 50",
+            "pantone": "131 U"
+        },
+        {
+            "name": "COPPER",
+            "japanese": "",
+            "rgb": "189, 100, 57",
+            "pantone": "1525 U"
+        },
+        {
+            "name": "MAHOGANY",
+            "japanese": "",
+            "rgb": "142, 89, 90",
+            "pantone": "491 U"
+        },
+        {
+            "name": "BISQUE",
+            "japanese": "",
+            "rgb": "242, 205, 207",
+            "pantone": "503 U"
+        },
+        {
+            "name": "BUBBLE GUM",
+            "japanese": "",
+            "rgb": "249, 132, 202",
+            "pantone": "231 U"
+        },
+        {
+            "name": "LIGHT MAUVE",
+            "japanese": "",
+            "rgb": "230, 181, 201",
+            "pantone": "7430 U"
+        },
+        {
+            "name": "DARK MAUVE",
+            "japanese": "",
+            "rgb": "189, 140, 166",
+            "pantone": "687 U"
+        },
+        {
+            "name": "WINE",
+            "japanese": "",
+            "rgb": "145, 78, 114",
+            "pantone": "235 U"
+        },
+        {
+            "name": "GRAY",
+            "japanese": "グレー",
+            "rgb": "146, 141, 136",
+            "pantone": "403 U"
+        },
+        {
+            "name": "CORAL",
+            "japanese": "コーラル",
+            "rgb": "255,142,145",
+            "pantone": "177 U"
+        },
+        {
+            "name": "WHITE",
+            "japanese": "白",
+            "rgb": "255, 255, 255",
+            "pantone": ""
+        },
+        {
+            "name": "AQUA",
+            "japanese": "アクア",
+            "rgb": "94, 200, 229",
+            "pantone": "637 U"
+        },
+        {
+            "name": "MINT",
+            "japanese": "ミント",
+            "rgb": "130, 216, 213",
+            "pantone": "324 U"
+        },
+        {
+            "name": "CLEAR MEDIUM",
+            "japanese": "透明な培地",
+            "rgb": "242,242,242",
+            "pantone": ""
+        },
+        {
+            "name": "FLUORESCENT YELLOW",
+            "japanese": "蛍光イエロー",
+            "rgb": "255, 233, 22",
+            "pantone": "803 U"
+        },
+        {
+            "name": "FLUORESCENT RED",
+            "japanese": "蛍光レッド",
+            "rgb": "255, 76, 101",
+            "pantone": "812 U"
+        },
+        {
+            "name": "FLUORESCENT GREEN",
+            "japanese": "蛍光グリーン",
+            "rgb": "68, 214, 44",
+            "pantone": "802 U"
+        }
+    ];
+
+    const config = [
+    	{
+    		name: 'invert',
+    		type: 'bool',
+    		default: 0,
+    		label: 'Invert'
+    	},
+    	{
+    		name: 'hue_point',
+    		type: 'float',
+    		default: 0,
+    		label: 'Hue',
+    		link: 'picker'
+    	},
+    	{
+    		name: 'hue_width',
+    		type: 'float',
+    		default: 0.1,
+    		label: 'Width',
+    		link: 'picker'
+    	},
+    	{
+    		name: 'hue_falloff',
+    		type: 'float',
+    		default: 0.5,
+    		label: 'Falloff',
+    		link: 'picker'
+    	},
+    	{
+    		name: 'levels_low',
+    		type: 'float',
+    		default: 0,
+    		label: 'Levels'
+    	},
+    	{
+    		name: 'levels_mid',
+    		type: 'float',
+    		default: 0.5,
+    		label: false
+    	},
+    	{
+    		name: 'levels_high',
+    		type: 'float',
+    		default: 1,
+    		label: false
+    	},
+    	{
+    		name: 'opacity',
+    		type: 'float',
+    		default: 1,
+    		label: 'Opacity'
+    	}
+    ];
+
+
+    const header = config.map( g => {
+    	return `uniform ${g.type} ${g.name};`
+    }).join('\n') + (`
+uniform int colour;
+uniform int type;
+`);
+
+    var gui = { config, header };
+
+    /* src/Palette.svelte generated by Svelte v3.38.3 */
+    const file$4 = "src/Palette.svelte";
+
+    function create_fragment$4(ctx) {
+    	let div0;
+    	let div0_style_value;
+    	let t;
+    	let div1;
+
+    	const block = {
+    		c: function create() {
+    			div0 = element("div");
+    			t = space();
+    			div1 = element("div");
+    			attr_dev(div0, "class", "rel basis70pc bb1-solid flex grow palette");
+    			attr_dev(div0, "style", div0_style_value = `background-color: rgb(${colours?.[/*layer*/ ctx[0].colour]?.rgb})`);
+    			add_location(div0, file$4, 91, 0, 2154);
+    			attr_dev(div1, "class", "rel basis30pc flex grow palette");
+    			add_location(div1, file$4, 92, 0, 2277);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div0, anchor);
+    			insert_dev(target, t, anchor);
+    			insert_dev(target, div1, anchor);
+    			/*div1_binding*/ ctx[4](div1);
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*layer*/ 1 && div0_style_value !== (div0_style_value = `background-color: rgb(${colours?.[/*layer*/ ctx[0].colour]?.rgb})`)) {
+    				attr_dev(div0, "style", div0_style_value);
+    			}
+    		},
+    		i: noop$1,
+    		o: noop$1,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div0);
+    			if (detaching) detach_dev(t);
+    			if (detaching) detach_dev(div1);
+    			/*div1_binding*/ ctx[4](null);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$4.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$4($$self, $$props, $$invalidate) {
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots("Palette", slots, []);
+    	let { layer } = $$props;
+    	let { target } = $$props;
+    	let { vertical = false } = $$props;
+    	let el;
+    	onMount(setup);
+
+    	async function setup(t) {
+    		// if (!target) return
+    		let config = {
+    			width: vertical ? 1 : 360,
+    			height: vertical ? 360 : 1,
+    			antialias: false,
+    			transparent: true,
+    			resolution: 1,
+    			forceCanvas: true
+    		};
+
+    		let app = new Application(config);
+    		let graphic = new Graphics();
+
+    		// graphic.beginFill( 0x000000 )
+    		graphic.drawRect(0, 0, config.width, config.height);
+
+    		const fragment = window.palette = `
+${lib}
+${gui.header}
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;
+
+vec4 extract() {
+
+	float width = hue_width / 2.0;
+	float falloff = hue_falloff / 2.0;
+	float low = hue_point - width;
+	float high = hue_point + width;
+	float very_low = low - falloff;
+	float very_high = high + falloff;
+
+
+	float hue = map( vTextureCoord.${vertical ? "y" : "x"}, 0.0, 1.0, very_low, very_high);
+	float alpha = 1.0;
+
+	if ( within( hue, very_low, low ) != 0 ) {
+		alpha = map( hue, very_low, low, 0.0, 1.0 );
+	}
+	if ( within( hue, high, very_high ) != 0 ) {
+		alpha = map( hue, high, very_high, 1.0, 0.0 );
+	}
+
+	vec3 hsv = vec3( hue, 1.0, 1.0 );
+	vec3 rgb =  hsv2rgb( hsv );
+	vec3 bg = hsv2rgb( vec3( 200.0 / 360.0, 0.01, 0.9 ) );
+	vec3 final = ( rgb * alpha ) + ( bg * (1.0 - alpha) );
+	return vec4( final, alpha);
+
+}
+
+void main(void) {
+
+	if (type == 0) {
+		gl_FragColor = extract();
+	} else {
+
+		if (type == 1) gl_FragColor = vec4(0.0,1.0,1.0,1.0);
+		if (type == 2) gl_FragColor = vec4(1.0,0.0,1.0,1.0);
+		if (type == 3) gl_FragColor = vec4(1.0,1.0,0.0,1.0);
+		if (type == 4) gl_FragColor = vec4(0.0);
+		if (type == 5) gl_FragColor = vec4(1.0,0.0,0.0,1.0);
+		if (type == 6) gl_FragColor = vec4(0.0,1.0,0.0,1.0);
+		if (type == 7) gl_FragColor = vec4(0.0,0.0,1.0,1.0);
+	}
+
+}`;
+
+    		// console.log('[Palette] setup')
+    		graphic.filters = [new Filter(null, fragment, layer)];
+
+    		app.stage.addChild(graphic);
+    		if (el) el.appendChild(app.view);
+    	}
+
+    	const writable_props = ["layer", "target", "vertical"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Palette> was created with unknown prop '${key}'`);
+    	});
+
+    	function div1_binding($$value) {
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			el = $$value;
+    			$$invalidate(1, el);
+    		});
+    	}
+
+    	$$self.$$set = $$props => {
+    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
+    		if ("target" in $$props) $$invalidate(2, target = $$props.target);
+    		if ("vertical" in $$props) $$invalidate(3, vertical = $$props.vertical);
+    	};
+
+    	$$self.$capture_state = () => ({
+    		PIXI,
+    		onMount,
+    		gui,
+    		lib,
+    		colours,
+    		layer,
+    		target,
+    		vertical,
+    		el,
+    		setup
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
+    		if ("target" in $$props) $$invalidate(2, target = $$props.target);
+    		if ("vertical" in $$props) $$invalidate(3, vertical = $$props.vertical);
+    		if ("el" in $$props) $$invalidate(1, el = $$props.el);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*target*/ 4) {
+    			setup();
+    		}
+    	};
+
+    	return [layer, el, target, vertical, div1_binding];
+    }
+
+    class Palette extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init$1(this, options, instance$4, create_fragment$4, safe_not_equal, { layer: 0, target: 2, vertical: 3 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Palette",
+    			options,
+    			id: create_fragment$4.name
+    		});
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+
+    		if (/*layer*/ ctx[0] === undefined && !("layer" in props)) {
+    			console.warn("<Palette> was created without expected prop 'layer'");
+    		}
+
+    		if (/*target*/ ctx[2] === undefined && !("target" in props)) {
+    			console.warn("<Palette> was created without expected prop 'target'");
+    		}
+    	}
+
+    	get layer() {
+    		throw new Error("<Palette>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set layer(value) {
+    		throw new Error("<Palette>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get target() {
+    		throw new Error("<Palette>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set target(value) {
+    		throw new Error("<Palette>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get vertical() {
+    		throw new Error("<Palette>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set vertical(value) {
+    		throw new Error("<Palette>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src/Layer.svelte generated by Svelte v3.38.3 */
+
+    const { console: console_1$2 } = globals;
+    const file$3 = "src/Layer.svelte";
+
+    function get_each_context$2(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[32] = list[i];
+    	child_ctx[33] = list;
+    	child_ctx[34] = i;
+    	return child_ctx;
+    }
+
+    function get_each_context_1$1(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[35] = list[i];
+    	child_ctx[37] = i;
+    	return child_ctx;
+    }
+
+    function get_each_context_2$1(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[38] = list[i];
+    	child_ctx[37] = i;
+    	return child_ctx;
+    }
+
+    function get_each_context_3$1(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[40] = list[i];
+    	child_ctx[37] = i;
+    	return child_ctx;
+    }
+
+    // (244:5) {#each types as t,i}
+    function create_each_block_3$1(ctx) {
+    	let option;
+    	let t_value = /*t*/ ctx[40] + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			option = element("option");
+    			t = text(t_value);
+    			option.__value = /*i*/ ctx[37];
+    			option.value = option.__value;
+    			attr_dev(option, "name", /*t*/ ctx[40]);
+    			add_location(option, file$3, 244, 6, 5571);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t);
+    		},
+    		p: noop$1,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(option);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_3$1.name,
+    		type: "each",
+    		source: "(244:5) {#each types as t,i}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (264:5) {#each colours as c, i}
+    function create_each_block_2$1(ctx) {
+    	let div;
+    	let span2;
+    	let span0;
+    	let t0_value = /*c*/ ctx[38].name + "";
+    	let t0;
+    	let t1;
+    	let span1;
+    	let t2_value = (/*c*/ ctx[38].japanese || "-") + "";
+    	let t2;
+    	let mounted;
+    	let dispose;
+
+    	function click_handler_5(...args) {
+    		return /*click_handler_5*/ ctx[21](/*i*/ ctx[37], ...args);
+    	}
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			span2 = element("span");
+    			span0 = element("span");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			span1 = element("span");
+    			t2 = text(t2_value);
+    			add_location(span0, file$3, 270, 8, 6405);
+    			add_location(span1, file$3, 271, 8, 6435);
+    			attr_dev(span2, "class", "inverted flex column p1");
+    			add_location(span2, file$3, 268, 7, 6349);
+    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[38].rgb});margin-top:-1px;margin-left:-1px`);
+    			attr_dev(div, "class", "b1-solid flex column pointer no-basis grow minw16em minh0em");
+    			add_location(div, file$3, 264, 6, 6144);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			append_dev(div, span2);
+    			append_dev(span2, span0);
+    			append_dev(span0, t0);
+    			append_dev(span2, t1);
+    			append_dev(span2, span1);
+    			append_dev(span1, t2);
+
+    			if (!mounted) {
+    				dispose = listen_dev(div, "click", click_handler_5, false, false, false);
+    				mounted = true;
+    			}
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			mounted = false;
+    			dispose();
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_2$1.name,
+    		type: "each",
+    		source: "(264:5) {#each colours as c, i}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (276:5) {#each new Array(10) as ii,i}
+    function create_each_block_1$1(ctx) {
+    	let span;
+
+    	const block = {
+    		c: function create() {
+    			span = element("span");
+    			attr_dev(span, "class", "flex column pointer no-basis grow minw16em clickable h0em");
+    			set_style(span, "line-height", "0px");
+    			set_style(span, "max-height", "0px");
+    			add_location(span, file$3, 276, 6, 6550);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, span, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(span);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_1$1.name,
+    		type: "each",
+    		source: "(276:5) {#each new Array(10) as ii,i}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (288:4) {#if ui.label}
+    function create_if_block_2$1(ctx) {
+    	let label;
+    	let span;
+    	let t0_value = /*ui*/ ctx[32].label + "";
+    	let t0;
+    	let t1;
+    	let if_block = /*ui*/ ctx[32].type == "float" && create_if_block_3(ctx);
+
+    	const block = {
+    		c: function create() {
+    			label = element("label");
+    			span = element("span");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			if (if_block) if_block.c();
+    			add_location(span, file$3, 290, 6, 6866);
+    			attr_dev(label, "class", "capitalize flex row-space-between-flex-start");
+    			add_location(label, file$3, 289, 5, 6799);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, label, anchor);
+    			append_dev(label, span);
+    			append_dev(span, t0);
+    			append_dev(label, t1);
+    			if (if_block) if_block.m(label, null);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (/*ui*/ ctx[32].type == "float") if_block.p(ctx, dirty);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(label);
+    			if (if_block) if_block.d();
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_2$1.name,
+    		type: "if",
+    		source: "(288:4) {#if ui.label}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (292:6) {#if ui.type =='float'}
+    function create_if_block_3(ctx) {
+    	let span;
+    	let t_value = /*layer*/ ctx[0][/*ui*/ ctx[32].name].toFixed(2) + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			span = element("span");
+    			t = text(t_value);
+    			attr_dev(span, "class", "monospace");
+    			add_location(span, file$3, 292, 7, 6927);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, span, anchor);
+    			append_dev(span, t);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty[0] & /*layer*/ 1 && t_value !== (t_value = /*layer*/ ctx[0][/*ui*/ ctx[32].name].toFixed(2) + "")) set_data_dev(t, t_value);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(span);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_3.name,
+    		type: "if",
+    		source: "(292:6) {#if ui.type =='float'}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (299:33) 
+    function create_if_block_1$1(ctx) {
+    	let input;
+    	let mounted;
+    	let dispose;
+
+    	function input_change_input_handler() {
+    		/*input_change_input_handler*/ ctx[23].call(input, /*ui*/ ctx[32]);
+    	}
+
+    	const block = {
+    		c: function create() {
+    			input = element("input");
+    			attr_dev(input, "class", "round radius1em");
+    			attr_dev(input, "type", "range");
+    			attr_dev(input, "min", "0");
+    			attr_dev(input, "max", "1");
+    			attr_dev(input, "step", 1 / 360);
+    			add_location(input, file$3, 299, 5, 7153);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, input, anchor);
+    			set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[32].name]);
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(input, "change", input_change_input_handler),
+    					listen_dev(input, "input", input_change_input_handler)
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+
+    			if (dirty[0] & /*layer*/ 1) {
+    				set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[32].name]);
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(input);
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1$1.name,
+    		type: "if",
+    		source: "(299:33) ",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (297:4) {#if ui.type == 'boolean'}
+    function create_if_block$1(ctx) {
+    	let input;
+    	let mounted;
+    	let dispose;
+
+    	function input_change_handler() {
+    		/*input_change_handler*/ ctx[22].call(input, /*ui*/ ctx[32]);
+    	}
+
+    	const block = {
+    		c: function create() {
+    			input = element("input");
+    			attr_dev(input, "type", "checkbox");
+    			add_location(input, file$3, 297, 5, 7058);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, input, anchor);
+    			input.checked = /*layer*/ ctx[0][/*ui*/ ctx[32].name];
+
+    			if (!mounted) {
+    				dispose = listen_dev(input, "change", input_change_handler);
+    				mounted = true;
+    			}
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+
+    			if (dirty[0] & /*layer*/ 1) {
+    				input.checked = /*layer*/ ctx[0][/*ui*/ ctx[32].name];
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(input);
+    			mounted = false;
+    			dispose();
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block$1.name,
+    		type: "if",
+    		source: "(297:4) {#if ui.type == 'boolean'}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (286:2) {#each gui.config as ui}
+    function create_each_block$2(ctx) {
+    	let div;
+    	let t0;
+    	let t1;
+    	let if_block0 = /*ui*/ ctx[32].label && create_if_block_2$1(ctx);
+
+    	function select_block_type(ctx, dirty) {
+    		if (/*ui*/ ctx[32].type == "boolean") return create_if_block$1;
+    		if (/*ui*/ ctx[32].type == "float") return create_if_block_1$1;
+    	}
+
+    	let current_block_type = select_block_type(ctx);
+    	let if_block1 = current_block_type && current_block_type(ctx);
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			if (if_block0) if_block0.c();
+    			t0 = space();
+    			if (if_block1) if_block1.c();
+    			t1 = space();
+    			attr_dev(div, "class", "flex column cmb0-2");
+    			add_location(div, file$3, 286, 3, 6741);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			if (if_block0) if_block0.m(div, null);
+    			append_dev(div, t0);
+    			if (if_block1) if_block1.m(div, null);
+    			append_dev(div, t1);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (/*ui*/ ctx[32].label) if_block0.p(ctx, dirty);
+    			if (if_block1) if_block1.p(ctx, dirty);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			if (if_block0) if_block0.d();
+
+    			if (if_block1) {
+    				if_block1.d();
+    			}
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block$2.name,
+    		type: "each",
+    		source: "(286:2) {#each gui.config as ui}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$3(ctx) {
+    	let div8;
+    	let div7;
+    	let div0;
+    	let palette;
+    	let updating_layer;
+    	let t0;
+    	let t1;
+    	let t2;
+    	let t3_value = /*layer*/ ctx[0].solo + "";
+    	let t3;
+    	let t4;
+    	let t5_value = /*layer*/ ctx[0].muted + "";
+    	let t5;
+    	let t6;
+    	let div2;
+    	let span0;
+    	let t7;
+    	let t8_value = (/*index*/ ctx[2] + 1).toString().padStart(3, "0") + "";
+    	let t8;
+    	let t9;
+    	let div1;
+    	let button0;
+    	let t10;
+    	let t11;
+    	let button1;
+    	let t12;
+    	let t13;
+    	let button2;
+    	let t14;
+    	let button3;
+    	let t15;
+    	let button4;
+    	let span1;
+    	let t16;
+    	let div6;
+    	let div3;
+    	let select_1;
+    	let t17;
+    	let div5;
+    	let span3;
+    	let span2;
+    	let t18_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "";
+    	let t18;
+    	let t19;
+    	let div4;
+    	let t20;
+    	let t21;
+    	let current;
+    	let mounted;
+    	let dispose;
+
+    	function palette_layer_binding(value) {
+    		/*palette_layer_binding*/ ctx[14](value);
+    	}
+
+    	let palette_props = {};
+
+    	if (/*layer*/ ctx[0] !== void 0) {
+    		palette_props.layer = /*layer*/ ctx[0];
+    	}
+
+    	palette = new Palette({ props: palette_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(palette, "layer", palette_layer_binding));
+    	let each_value_3 = /*types*/ ctx[5];
+    	validate_each_argument(each_value_3);
+    	let each_blocks_3 = [];
+
+    	for (let i = 0; i < each_value_3.length; i += 1) {
+    		each_blocks_3[i] = create_each_block_3$1(get_each_context_3$1(ctx, each_value_3, i));
+    	}
+
+    	let each_value_2 = colours;
+    	validate_each_argument(each_value_2);
+    	let each_blocks_2 = [];
+
+    	for (let i = 0; i < each_value_2.length; i += 1) {
+    		each_blocks_2[i] = create_each_block_2$1(get_each_context_2$1(ctx, each_value_2, i));
+    	}
+
+    	let each_value_1 = new Array(10);
+    	validate_each_argument(each_value_1);
+    	let each_blocks_1 = [];
+
+    	for (let i = 0; i < each_value_1.length; i += 1) {
+    		each_blocks_1[i] = create_each_block_1$1(get_each_context_1$1(ctx, each_value_1, i));
+    	}
+
+    	let each_value = gui.config;
+    	validate_each_argument(each_value);
+    	let each_blocks = [];
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block$2(get_each_context$2(ctx, each_value, i));
+    	}
+
+    	const block = {
+    		c: function create() {
+    			div8 = element("div");
+    			div7 = element("div");
+    			div0 = element("div");
+    			create_component(palette.$$.fragment);
+    			t0 = text("\n\t\t> ");
+    			t1 = text(/*solo*/ ctx[1]);
+    			t2 = text(" / S ");
+    			t3 = text(t3_value);
+    			t4 = text(" / M ");
+    			t5 = text(t5_value);
+    			t6 = space();
+    			div2 = element("div");
+    			span0 = element("span");
+    			t7 = text("L");
+    			t8 = text(t8_value);
+    			t9 = space();
+    			div1 = element("div");
+    			button0 = element("button");
+    			t10 = text("M");
+    			t11 = space();
+    			button1 = element("button");
+    			t12 = text("S");
+    			t13 = space();
+    			button2 = element("button");
+    			t14 = space();
+    			button3 = element("button");
+    			t15 = space();
+    			button4 = element("button");
+    			span1 = element("span");
+    			t16 = space();
+    			div6 = element("div");
+    			div3 = element("div");
+    			select_1 = element("select");
+
+    			for (let i = 0; i < each_blocks_3.length; i += 1) {
+    				each_blocks_3[i].c();
+    			}
+
+    			t17 = space();
+    			div5 = element("div");
+    			span3 = element("span");
+    			span2 = element("span");
+    			t18 = text(t18_value);
+    			t19 = space();
+    			div4 = element("div");
+
+    			for (let i = 0; i < each_blocks_2.length; i += 1) {
+    				each_blocks_2[i].c();
+    			}
+
+    			t20 = space();
+
+    			for (let i = 0; i < each_blocks_1.length; i += 1) {
+    				each_blocks_1[i].c();
+    			}
+
+    			t21 = space();
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			attr_dev(div0, "class", "h2em flex column mb1 w100pc b1-solid");
+    			add_location(div0, file$3, 206, 2, 4368);
+    			attr_dev(span0, "class", " sink h3em flex row-flex-start-center pl1 grow mr1");
+    			add_location(span0, file$3, 215, 3, 4628);
+    			attr_dev(button0, "class", /*topRight*/ ctx[9]);
+    			toggle_class(button0, "filled", /*layer*/ ctx[0].muted);
+    			add_location(button0, file$3, 223, 4, 4806);
+    			attr_dev(button1, "class", "" + (/*topRight*/ ctx[9] + " br1-solid"));
+    			toggle_class(button1, "filled", /*solo*/ ctx[1] == /*index*/ ctx[2]);
+    			add_location(button1, file$3, 227, 4, 4937);
+    			attr_dev(button2, "class", "" + (/*topRight*/ ctx[9] + " arrow rotate180 br1-solid bl0-solid ml1"));
+    			add_location(button2, file$3, 231, 4, 5054);
+    			attr_dev(button3, "class", "" + (/*topRight*/ ctx[9] + " arrow bl1-solid "));
+    			add_location(button3, file$3, 234, 4, 5172);
+    			attr_dev(span1, "class", "cross block w1em h1em");
+    			add_location(span1, file$3, 237, 31, 5296);
+    			attr_dev(button4, "class", /*topRight*/ ctx[9]);
+    			add_location(button4, file$3, 237, 4, 5269);
+    			attr_dev(div1, "class", "flex row ");
+    			add_location(div1, file$3, 222, 3, 4778);
+    			attr_dev(div2, "class", "mb1 flex row-space-between-center br1-solid");
+    			add_location(div2, file$3, 212, 2, 4548);
+    			attr_dev(select_1, "class", "br0-solid");
+    			set_style(select_1, "letter-spacing", "4em");
+    			if (/*layer*/ ctx[0].type === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[19].call(select_1));
+    			add_location(select_1, file$3, 242, 4, 5460);
+    			attr_dev(div3, "class", "basis5em h100pc select");
+    			add_location(div3, file$3, 241, 3, 5419);
+    			attr_dev(span2, "class", "flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable");
+    			add_location(span2, file$3, 253, 5, 5793);
+    			attr_dev(span3, "class", "select grow");
+    			add_location(span3, file$3, 250, 4, 5719);
+    			attr_dev(div4, "class", "flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99");
+    			toggle_class(div4, "none", !/*overlay*/ ctx[3]);
+    			add_location(div4, file$3, 260, 4, 5981);
+    			attr_dev(div5, "class", "flex no-basis h100pc grow ");
+    			add_location(div5, file$3, 249, 3, 5674);
+    			attr_dev(div6, "class", "flex row-stretch-stretch grow w100pc");
+    			add_location(div6, file$3, 240, 2, 5365);
+    			attr_dev(div7, "class", "mb0-5");
+    			add_location(div7, file$3, 205, 1, 4346);
+    			attr_dev(div8, "class", "flex column");
+    			add_location(div8, file$3, 204, 0, 4319);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div8, anchor);
+    			append_dev(div8, div7);
+    			append_dev(div7, div0);
+    			mount_component(palette, div0, null);
+    			append_dev(div7, t0);
+    			append_dev(div7, t1);
+    			append_dev(div7, t2);
+    			append_dev(div7, t3);
+    			append_dev(div7, t4);
+    			append_dev(div7, t5);
+    			append_dev(div7, t6);
+    			append_dev(div7, div2);
+    			append_dev(div2, span0);
+    			append_dev(span0, t7);
+    			append_dev(span0, t8);
+    			append_dev(div2, t9);
+    			append_dev(div2, div1);
+    			append_dev(div1, button0);
+    			append_dev(button0, t10);
+    			append_dev(div1, t11);
+    			append_dev(div1, button1);
+    			append_dev(button1, t12);
+    			append_dev(div1, t13);
+    			append_dev(div1, button2);
+    			append_dev(div1, t14);
+    			append_dev(div1, button3);
+    			append_dev(div1, t15);
+    			append_dev(div1, button4);
+    			append_dev(button4, span1);
+    			append_dev(div7, t16);
+    			append_dev(div7, div6);
+    			append_dev(div6, div3);
+    			append_dev(div3, select_1);
+
+    			for (let i = 0; i < each_blocks_3.length; i += 1) {
+    				each_blocks_3[i].m(select_1, null);
+    			}
+
+    			select_option(select_1, /*layer*/ ctx[0].type);
+    			append_dev(div6, t17);
+    			append_dev(div6, div5);
+    			append_dev(div5, span3);
+    			append_dev(span3, span2);
+    			append_dev(span2, t18);
+    			append_dev(div5, t19);
+    			append_dev(div5, div4);
+
+    			for (let i = 0; i < each_blocks_2.length; i += 1) {
+    				each_blocks_2[i].m(div4, null);
+    			}
+
+    			append_dev(div4, t20);
+
+    			for (let i = 0; i < each_blocks_1.length; i += 1) {
+    				each_blocks_1[i].m(div4, null);
+    			}
+
+    			append_dev(div7, t21);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div7, null);
+    			}
+
+    			current = true;
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(div0, "click", /*click_handler*/ ctx[15], false, false, false),
+    					listen_dev(button0, "click", /*click_handler_1*/ ctx[16], false, false, false),
+    					listen_dev(button1, "click", /*onSolo*/ ctx[6], false, false, false),
+    					listen_dev(button2, "click", /*click_handler_2*/ ctx[17], false, false, false),
+    					listen_dev(button3, "click", /*click_handler_3*/ ctx[18], false, false, false),
+    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[19]),
+    					listen_dev(span3, "click", /*click_handler_4*/ ctx[20], false, false, false)
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, dirty) {
+    			const palette_changes = {};
+
+    			if (!updating_layer && dirty[0] & /*layer*/ 1) {
+    				updating_layer = true;
+    				palette_changes.layer = /*layer*/ ctx[0];
+    				add_flush_callback(() => updating_layer = false);
+    			}
+
+    			palette.$set(palette_changes);
+    			if (!current || dirty[0] & /*solo*/ 2) set_data_dev(t1, /*solo*/ ctx[1]);
+    			if ((!current || dirty[0] & /*layer*/ 1) && t3_value !== (t3_value = /*layer*/ ctx[0].solo + "")) set_data_dev(t3, t3_value);
+    			if ((!current || dirty[0] & /*layer*/ 1) && t5_value !== (t5_value = /*layer*/ ctx[0].muted + "")) set_data_dev(t5, t5_value);
+    			if ((!current || dirty[0] & /*index*/ 4) && t8_value !== (t8_value = (/*index*/ ctx[2] + 1).toString().padStart(3, "0") + "")) set_data_dev(t8, t8_value);
+
+    			if (dirty[0] & /*layer*/ 1) {
+    				toggle_class(button0, "filled", /*layer*/ ctx[0].muted);
+    			}
+
+    			if (dirty[0] & /*solo, index*/ 6) {
+    				toggle_class(button1, "filled", /*solo*/ ctx[1] == /*index*/ ctx[2]);
+    			}
+
+    			if (dirty[0] & /*types*/ 32) {
+    				each_value_3 = /*types*/ ctx[5];
+    				validate_each_argument(each_value_3);
+    				let i;
+
+    				for (i = 0; i < each_value_3.length; i += 1) {
+    					const child_ctx = get_each_context_3$1(ctx, each_value_3, i);
+
+    					if (each_blocks_3[i]) {
+    						each_blocks_3[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks_3[i] = create_each_block_3$1(child_ctx);
+    						each_blocks_3[i].c();
+    						each_blocks_3[i].m(select_1, null);
+    					}
+    				}
+
+    				for (; i < each_blocks_3.length; i += 1) {
+    					each_blocks_3[i].d(1);
+    				}
+
+    				each_blocks_3.length = each_value_3.length;
+    			}
+
+    			if (dirty[0] & /*layer*/ 1) {
+    				select_option(select_1, /*layer*/ ctx[0].type);
+    			}
+
+    			if ((!current || dirty[0] & /*layer*/ 1) && t18_value !== (t18_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "")) set_data_dev(t18, t18_value);
+
+    			if (dirty[0] & /*select*/ 16) {
+    				each_value_2 = colours;
+    				validate_each_argument(each_value_2);
+    				let i;
+
+    				for (i = 0; i < each_value_2.length; i += 1) {
+    					const child_ctx = get_each_context_2$1(ctx, each_value_2, i);
+
+    					if (each_blocks_2[i]) {
+    						each_blocks_2[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks_2[i] = create_each_block_2$1(child_ctx);
+    						each_blocks_2[i].c();
+    						each_blocks_2[i].m(div4, t20);
+    					}
+    				}
+
+    				for (; i < each_blocks_2.length; i += 1) {
+    					each_blocks_2[i].d(1);
+    				}
+
+    				each_blocks_2.length = each_value_2.length;
+    			}
+
+    			if (dirty[0] & /*overlay*/ 8) {
+    				toggle_class(div4, "none", !/*overlay*/ ctx[3]);
+    			}
+
+    			if (dirty[0] & /*layer*/ 1) {
+    				each_value = gui.config;
+    				validate_each_argument(each_value);
+    				let i;
+
+    				for (i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context$2(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks[i] = create_each_block$2(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(div7, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+
+    				each_blocks.length = each_value.length;
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(palette.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(palette.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div8);
+    			destroy_component(palette);
+    			destroy_each(each_blocks_3, detaching);
+    			destroy_each(each_blocks_2, detaching);
+    			destroy_each(each_blocks_1, detaching);
+    			destroy_each(each_blocks, detaching);
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$3.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$3($$self, $$props, $$invalidate) {
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots("Layer", slots, []);
+    	let { layer = {} } = $$props;
+    	let { index = 0 } = $$props;
+    	let { container } = $$props;
+    	let { images } = $$props;
+    	let { target } = $$props;
+    	let { solo = null } = $$props;
+    	let { project = {} } = $$props;
+    	let group;
+
+    	function setDefaults(layer_) {
+    		for (const g of gui.config) if (!layer[g.name]) $$invalidate(0, layer[g.name] = g.default, layer);
+    	}
+
+    	onMount(setup);
+    	let type = 0;
+
+    	async function setup() {
+    		if (layer.solo == null) $$invalidate(0, layer.solo = false, layer);
+    		$$invalidate(0, layer.muted = false, layer);
+    		$$invalidate(0, layer.type = 0, layer);
+    		$$invalidate(0, layer.colour = parseInt(Math.random() * colours.length), layer);
+    		$$invalidate(0, layer.seed = Math.random(), layer);
+
+    		$$invalidate(
+    			0,
+    			layer.colours = colours.map(c => {
+    				return c.rgb.split(",").map(l => {
+    					return parseFloat((parseFloat(l) / 255).toFixed(3));
+    				});
+    			}).flat(),
+    			layer
+    		);
+
+    		let header = `
+uniform vec3 colours[${colours.length}];
+uniform bool solo;
+uniform float seed;
+${gui.header}
+varying vec2 vTextureCoord;
+uniform sampler2D uSampler;`;
+
+    		let program = `
+float extract( vec3 hsv ) {
+
+	float width = hue_width;
+	float falloff = hue_falloff;
+	float low = hue_point - width;
+	float high = hue_point + width;
+	float very_low = low - falloff;
+	float very_high = high + falloff;
+
+	// vec3 inked = rgb2hsv( vec3(ink) );
+
+	if ( within( hsv.x, very_low, very_high ) != 0 ) {
+
+		float sat = hsv.y;
+		float bright = hsv.z;
+
+		int LOW = within( hsv.x, very_low, low );
+		int HIGH = within( hsv.x, high, very_high );
+		float HUE = hsv.x;
+
+		if ( LOW != 0 ) {
+			if (LOW == 2) HUE += 1.0;
+			if (LOW == 3) HUE -= 1.0;
+			sat *= map( HUE, very_low, low, 0.0, 1.0 );
+		} else if ( HIGH != 0 ) {
+			if (HIGH == 2) HUE += 1.0;
+			if (HIGH == 3) HUE -= 1.0;
+			sat *= map( HUE, high, very_high, 1.0, 0.0 );
+		}
+
+		return map(sat + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 );
+
+	} else {
+		return 0.0;
+	}
+}
+
+vec3 getInk() {
+    for (int i=0; i < ${colours.length}; i++) {
+        if (i == colour) return colours[i];
+    }
+}
+
+void main(void) {
+
+	vec3 color = vec3(texture2D(uSampler, vTextureCoord));
+	if (invert) color = vec3(1.0-color.r,1.0-color.g,1.0-color.b);
+	vec3 hsv = rgb2hsv( color );
+	vec3 ink = getInk();
+
+	if (solo) ink = vec3(1.0,1.0,1.0);
+	float power = 0.0;
+
+	if (type == 0) {
+		power = extract( hsv );
+	} else {
+		vec4 cmyk = RGBtoCMYK( color );
+		if (type == 1) power = cmyk.x;
+		if (type == 2) power = cmyk.y;
+		if (type == 3) power = cmyk.z;
+		if (type == 4) power = cmyk.w;
+		if (type == 5) power = color.r;
+		if (type == 6) power = color.g;
+		if (type == 7) power = color.b;
+	}
+
+
+	// vec4 end = vec4(ink, 1.0);
+	// end *= power * opacity;
+
+	float noiz = map( noise(vec2(hsv.z, hsv.x), 99999999.0 * seed), 0.0, 1.0, opacity - 0.2, opacity);
+
+	gl_FragColor = vec4(ink,1.0) * noiz * power;
+
+}`;
+
+    		let fragment = window.fragment = `${lib}\n${header}\n${program}`;
+    		group = new Container();
+    		group.filters = [new Filter(null, fragment, layer)];
+    		container.addChild(group);
+
+    		// if (layer.flag) return
+    		group.addChild(images);
+    	} // visualise()
+
+    	function select(i) {
+    		$$invalidate(0, layer.colour = i, layer);
+    		$$invalidate(3, overlay = false);
+    	}
+
+    	let overlay = false;
+    	let types = ["Picker", "Cyan", "Magenta", "Yellow", "Key", "Red", "Green", "Blue"];
+    	let TEST;
+
+    	function onMute(muted_, solo_) {
+    		if (group) {
+    			if (solo_ != null) {
+    				console.log(`[Layer:${index}] 👁  solo set`);
+    				group.visible = solo_ == index;
+    			} else if (group.visible != !muted_) {
+    				group.visible = !muted_;
+    				console.log(`[Layer:${index}] 🔊  muted is set ${group.visible}`);
+    			}
+    		}
+    	}
+
+    	function onSolo() {
+    		$$invalidate(1, solo = solo == null ? index : null);
+    		$$invalidate(0, layer.solo = solo == index && solo != null, layer);
+    	}
+
+    	function move(from, to) {
+    		let cp = project.files;
+    		$$invalidate(10, project.layers = [], project);
+    		let i = cp.splice(from, 1)[0];
+    		cp.splice(to, 0, i);
+    		$$invalidate(10, project.layers = cp, project);
+    	}
+
+    	function onLayerDown(idx) {
+    		let to = idx + 1;
+    		if (to >= project.files.length) return;
+    		move(idx, to);
+    	}
+
+    	function onLayerUp(idx) {
+    		let to = idx - 1;
+    		if (to < 0) return;
+    		move(idx, to);
+    	}
+
+    	let topRight = `h3em w3em p0 m0 br0-solid flex row-center-center`;
+    	let arrowClass = `p0 no-grow flex row-center-center w3em b0-solid`;
+    	const writable_props = ["layer", "index", "container", "images", "target", "solo", "project"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$2.warn(`<Layer> was created with unknown prop '${key}'`);
+    	});
+
+    	function palette_layer_binding(value) {
+    		layer = value;
+    		$$invalidate(0, layer);
+    	}
+
+    	const click_handler = e => $$invalidate(3, overlay = true);
+    	const click_handler_1 = e => $$invalidate(0, layer.muted = !layer.muted, layer);
+    	const click_handler_2 = e => onLayerUp(idx);
+    	const click_handler_3 = e => onLayerDown(idx);
+
+    	function select_1_change_handler() {
+    		layer.type = select_value(this);
+    		$$invalidate(0, layer);
+    	}
+
+    	const click_handler_4 = e => $$invalidate(3, overlay = true);
+    	const click_handler_5 = (i, e) => select(i);
+
+    	function input_change_handler(ui) {
+    		layer[ui.name] = this.checked;
+    		$$invalidate(0, layer);
+    	}
+
+    	function input_change_input_handler(ui) {
+    		layer[ui.name] = to_number(this.value);
+    		$$invalidate(0, layer);
+    	}
+
+    	$$self.$$set = $$props => {
+    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
+    		if ("index" in $$props) $$invalidate(2, index = $$props.index);
+    		if ("container" in $$props) $$invalidate(11, container = $$props.container);
+    		if ("images" in $$props) $$invalidate(12, images = $$props.images);
+    		if ("target" in $$props) $$invalidate(13, target = $$props.target);
+    		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
+    		if ("project" in $$props) $$invalidate(10, project = $$props.project);
+    	};
+
+    	$$self.$capture_state = () => ({
+    		lib,
+    		colours,
+    		PIXI,
+    		onMount,
+    		gui,
+    		Palette,
+    		layer,
+    		index,
+    		container,
+    		images,
+    		target,
+    		solo,
+    		project,
+    		group,
+    		setDefaults,
+    		type,
+    		setup,
+    		select,
+    		overlay,
+    		types,
+    		TEST,
+    		onMute,
+    		onSolo,
+    		move,
+    		onLayerDown,
+    		onLayerUp,
+    		topRight,
+    		arrowClass
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
+    		if ("index" in $$props) $$invalidate(2, index = $$props.index);
+    		if ("container" in $$props) $$invalidate(11, container = $$props.container);
+    		if ("images" in $$props) $$invalidate(12, images = $$props.images);
+    		if ("target" in $$props) $$invalidate(13, target = $$props.target);
+    		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
+    		if ("project" in $$props) $$invalidate(10, project = $$props.project);
+    		if ("group" in $$props) group = $$props.group;
+    		if ("type" in $$props) type = $$props.type;
+    		if ("overlay" in $$props) $$invalidate(3, overlay = $$props.overlay);
+    		if ("types" in $$props) $$invalidate(5, types = $$props.types);
+    		if ("TEST" in $$props) TEST = $$props.TEST;
+    		if ("topRight" in $$props) $$invalidate(9, topRight = $$props.topRight);
+    		if ("arrowClass" in $$props) arrowClass = $$props.arrowClass;
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty[0] & /*layer*/ 1) {
+    			setDefaults();
+    		}
+
+    		if ($$self.$$.dirty[0] & /*layer, solo*/ 3) {
+    			onMute(layer.muted, solo);
+    		}
+    	};
+
+    	return [
+    		layer,
+    		solo,
+    		index,
+    		overlay,
+    		select,
+    		types,
+    		onSolo,
+    		onLayerDown,
+    		onLayerUp,
+    		topRight,
+    		project,
+    		container,
+    		images,
+    		target,
+    		palette_layer_binding,
+    		click_handler,
+    		click_handler_1,
+    		click_handler_2,
+    		click_handler_3,
+    		select_1_change_handler,
+    		click_handler_4,
+    		click_handler_5,
+    		input_change_handler,
+    		input_change_input_handler
+    	];
+    }
+
+    class Layer extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+
+    		init$1(
+    			this,
+    			options,
+    			instance$3,
+    			create_fragment$3,
+    			safe_not_equal,
+    			{
+    				layer: 0,
+    				index: 2,
+    				container: 11,
+    				images: 12,
+    				target: 13,
+    				solo: 1,
+    				project: 10
+    			},
+    			[-1, -1]
+    		);
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Layer",
+    			options,
+    			id: create_fragment$3.name
+    		});
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+
+    		if (/*container*/ ctx[11] === undefined && !("container" in props)) {
+    			console_1$2.warn("<Layer> was created without expected prop 'container'");
+    		}
+
+    		if (/*images*/ ctx[12] === undefined && !("images" in props)) {
+    			console_1$2.warn("<Layer> was created without expected prop 'images'");
+    		}
+
+    		if (/*target*/ ctx[13] === undefined && !("target" in props)) {
+    			console_1$2.warn("<Layer> was created without expected prop 'target'");
+    		}
+    	}
+
+    	get layer() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set layer(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get index() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set index(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get container() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set container(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get images() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set images(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get target() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set target(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get solo() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set solo(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get project() {
+    		throw new Error("<Layer>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set project(value) {
+    		throw new Error("<Layer>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src/Title.svelte generated by Svelte v3.38.3 */
+
+    const file$2 = "src/Title.svelte";
+
+    function create_fragment$2(ctx) {
+    	let div1;
+    	let div0;
+    	let current;
+    	const default_slot_template = /*#slots*/ ctx[1].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[0], null);
+
+    	const block = {
+    		c: function create() {
+    			div1 = element("div");
+    			div0 = element("div");
+    			if (default_slot) default_slot.c();
+    			attr_dev(div0, "class", "pb0 mb0 f1 ");
+    			add_location(div0, file$2, 1, 1, 24);
+    			attr_dev(div1, "class", "plr1 pt1");
+    			add_location(div1, file$2, 0, 0, 0);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div1, anchor);
+    			append_dev(div1, div0);
+
+    			if (default_slot) {
+    				default_slot.m(div0, null);
+    			}
+
+    			current = true;
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (default_slot) {
+    				if (default_slot.p && (!current || dirty & /*$$scope*/ 1)) {
+    					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[0], !current ? -1 : dirty, null, null);
+    				}
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(default_slot, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(default_slot, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div1);
+    			if (default_slot) default_slot.d(detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$2.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$2($$self, $$props, $$invalidate) {
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots("Title", slots, ['default']);
+    	const writable_props = [];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console.warn(`<Title> was created with unknown prop '${key}'`);
+    	});
+
+    	$$self.$$set = $$props => {
+    		if ("$$scope" in $$props) $$invalidate(0, $$scope = $$props.$$scope);
+    	};
+
+    	return [$$scope, slots];
+    }
+
+    class Title extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init$1(this, options, instance$2, create_fragment$2, safe_not_equal, {});
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Title",
+    			options,
+    			id: create_fragment$2.name
+    		});
+    	}
+    }
+
     /* src/Project.svelte generated by Svelte v3.38.3 */
 
-    const { Object: Object_1, console: console_1$1 } = globals;
-    const file = "src/Project.svelte";
+    const { Object: Object_1, console: console_1$1, window: window_1 } = globals;
+    const file$1 = "src/Project.svelte";
 
-    function get_each_context(ctx, list, i) {
+    function get_each_context$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[39] = list[i];
-    	child_ctx[41] = i;
+    	child_ctx[76] = list[i];
+    	child_ctx[77] = list;
+    	child_ctx[78] = i;
     	return child_ctx;
     }
 
     function get_each_context_1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[39] = list[i];
-    	child_ctx[42] = list;
-    	child_ctx[43] = i;
+    	child_ctx[79] = list[i];
     	return child_ctx;
     }
 
     function get_each_context_2(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[44] = list[i];
+    	child_ctx[82] = list[i];
     	return child_ctx;
     }
 
     function get_each_context_3(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[47] = list[i];
+    	child_ctx[85] = list[i];
+    	child_ctx[87] = i;
     	return child_ctx;
     }
 
     function get_each_context_4(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[50] = list[i];
+    	child_ctx[88] = list[i];
+    	child_ctx[90] = i;
     	return child_ctx;
     }
 
-    function get_each_context_5(ctx, list, i) {
-    	const child_ctx = ctx.slice();
-    	child_ctx[53] = list[i];
-    	child_ctx[41] = i;
-    	return child_ctx;
+    // (459:4) <Title>
+    function create_default_slot_2(ctx) {
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			t = text("Files");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, t, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(t);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_default_slot_2.name,
+    		type: "slot",
+    		source: "(459:4) <Title>",
+    		ctx
+    	});
+
+    	return block;
     }
 
-    // (243:7) {:else}
+    // (503:8) {:else}
     function create_else_block(ctx) {
     	let div;
-    	let t_value = /*handle*/ ctx[53].name + "";
+    	let t_value = /*handle*/ ctx[88].name + "";
     	let t;
 
     	const block = {
@@ -46899,14 +46787,14 @@ void main(void) {
     			div = element("div");
     			t = text(t_value);
     			attr_dev(div, "class", " minh8em flex row-center-center");
-    			add_location(div, file, 243, 8, 5960);
+    			add_location(div, file$1, 503, 9, 11386);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
     			append_dev(div, t);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*files*/ 2 && t_value !== (t_value = /*handle*/ ctx[53].name + "")) set_data_dev(t, t_value);
+    			if (dirty[0] & /*files*/ 2 && t_value !== (t_value = /*handle*/ ctx[88].name + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
@@ -46917,36 +46805,48 @@ void main(void) {
     		block,
     		id: create_else_block.name,
     		type: "else",
-    		source: "(243:7) {:else}",
+    		source: "(503:8) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (238:7) {#if files.srcs[handle.name]}
-    function create_if_block_1(ctx) {
+    // (497:8) {#if files.srcs[handle.name]}
+    function create_if_block_2(ctx) {
     	let img;
+    	let img_style_value;
     	let img_src_value;
     	let img_alt_value;
 
     	const block = {
     		c: function create() {
     			img = element("img");
-    			attr_dev(img, "class", "pointer");
-    			if (img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[53].name].url)) attr_dev(img, "src", img_src_value);
-    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[53].name);
-    			add_location(img, file, 238, 9, 5828);
+
+    			attr_dev(img, "style", img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1
+			? "1;"
+			: "0.8;filter: grayscale(100%);"}`);
+
+    			attr_dev(img, "class", "");
+    			if (img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[88].name].url)) attr_dev(img, "src", img_src_value);
+    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[88].name);
+    			add_location(img, file$1, 497, 10, 11145);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, img, anchor);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*files*/ 2 && img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[53].name].url)) {
+    			if (dirty[0] & /*project, files*/ 3 && img_style_value !== (img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1
+			? "1;"
+			: "0.8;filter: grayscale(100%);"}`)) {
+    				attr_dev(img, "style", img_style_value);
+    			}
+
+    			if (dirty[0] & /*files*/ 2 && img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[88].name].url)) {
     				attr_dev(img, "src", img_src_value);
     			}
 
-    			if (dirty[0] & /*files*/ 2 && img_alt_value !== (img_alt_value = /*handle*/ ctx[53].name)) {
+    			if (dirty[0] & /*files*/ 2 && img_alt_value !== (img_alt_value = /*handle*/ ctx[88].name)) {
     				attr_dev(img, "alt", img_alt_value);
     			}
     		},
@@ -46957,17 +46857,17 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_1.name,
+    		id: create_if_block_2.name,
     		type: "if",
-    		source: "(238:7) {#if files.srcs[handle.name]}",
+    		source: "(497:8) {#if files.srcs[handle.name]}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (220:4) {#each files.handles as handle, i}
-    function create_each_block_5(ctx) {
+    // (479:5) {#each files.handles as handle, i}
+    function create_each_block_4(ctx) {
     	let div2;
     	let div0;
     	let button0;
@@ -46977,19 +46877,20 @@ void main(void) {
     	let t2;
     	let t3;
     	let div1;
+    	let t4;
     	let mounted;
     	let dispose;
 
     	function click_handler(...args) {
-    		return /*click_handler*/ ctx[12](/*handle*/ ctx[53], ...args);
+    		return /*click_handler*/ ctx[25](/*handle*/ ctx[88], ...args);
     	}
 
     	function click_handler_1(...args) {
-    		return /*click_handler_1*/ ctx[13](/*handle*/ ctx[53], ...args);
+    		return /*click_handler_1*/ ctx[26](/*handle*/ ctx[88], ...args);
     	}
 
     	function select_block_type(ctx, dirty) {
-    		if (/*files*/ ctx[1].srcs[/*handle*/ ctx[53].name]) return create_if_block_1;
+    		if (/*files*/ ctx[1].srcs[/*handle*/ ctx[88].name]) return create_if_block_2;
     		return create_else_block;
     	}
 
@@ -46997,7 +46898,7 @@ void main(void) {
     	let if_block = current_block_type(ctx);
 
     	function click_handler_2(...args) {
-    		return /*click_handler_2*/ ctx[14](/*handle*/ ctx[53], ...args);
+    		return /*click_handler_2*/ ctx[27](/*handle*/ ctx[88], ...args);
     	}
 
     	const block = {
@@ -47012,16 +46913,19 @@ void main(void) {
     			t3 = space();
     			div1 = element("div");
     			if_block.c();
-    			attr_dev(button0, "class", /*classes*/ ctx[11].miniButtons);
-    			add_location(button0, file, 225, 7, 5443);
-    			attr_dev(button1, "class", /*classes*/ ctx[11].miniButtons);
-    			add_location(button1, file, 230, 7, 5580);
-    			attr_dev(div0, "class", "overlay abs t0 r0 flex grow row-flex-end-flex-start z-index2");
-    			add_location(div0, file, 223, 6, 5298);
-    			add_location(div1, file, 236, 6, 5731);
-    			attr_dev(div2, "class", "rel bb1-solid file");
-    			toggle_class(div2, "bt1-solid", /*i*/ ctx[41] == 0);
-    			add_location(div2, file, 220, 5, 5223);
+    			t4 = space();
+    			attr_dev(button0, "class", /*classes*/ ctx[16].miniButtons);
+    			add_location(button0, file$1, 484, 8, 10725);
+    			attr_dev(button1, "class", /*classes*/ ctx[16].miniButtons);
+    			add_location(button1, file$1, 489, 8, 10867);
+    			attr_dev(div0, "class", "overlay abs t1 l1 bt1-solid br1-solid flex grow row-flex-end-flex-start z-index2");
+    			add_location(div0, file$1, 483, 7, 10622);
+    			attr_dev(div1, "class", "b1-solid flex");
+    			add_location(div1, file$1, 495, 7, 11024);
+    			attr_dev(div2, "class", "rel bb1-solid file p1");
+    			toggle_class(div2, "bt1-solid", /*i*/ ctx[90] == 0);
+    			toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1);
+    			add_location(div2, file$1, 479, 6, 10483);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div2, anchor);
@@ -47034,6 +46938,7 @@ void main(void) {
     			append_dev(div2, t3);
     			append_dev(div2, div1);
     			if_block.m(div1, null);
+    			append_dev(div2, t4);
 
     			if (!mounted) {
     				dispose = [
@@ -47059,6 +46964,10 @@ void main(void) {
     					if_block.m(div1, null);
     				}
     			}
+
+    			if (dirty[0] & /*project, files*/ 3) {
+    				toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[88].name) != -1);
+    			}
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div2);
@@ -47070,17 +46979,17 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block_5.name,
+    		id: create_each_block_4.name,
     		type: "each",
-    		source: "(220:4) {#each files.handles as handle, i}",
+    		source: "(479:5) {#each files.handles as handle, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (254:4) {#if files.handles.length == 0 }
-    function create_if_block(ctx) {
+    // (515:4) {#if files.handles.length == 0 }
+    function create_if_block_1(ctx) {
     	let div;
 
     	const block = {
@@ -47088,7 +46997,64 @@ void main(void) {
     			div = element("div");
     			div.textContent = "No files";
     			attr_dev(div, "class", "p1");
-    			add_location(div, file, 254, 5, 6153);
+    			add_location(div, file$1, 515, 5, 11597);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1.name,
+    		type: "if",
+    		source: "(515:4) {#if files.handles.length == 0 }",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (546:4) <Title>
+    function create_default_slot_1$1(ctx) {
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			t = text("Layout");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, t, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(t);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_default_slot_1$1.name,
+    		type: "slot",
+    		source: "(546:4) <Title>",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (574:6) {#if !project.files || project.files.length == 0}
+    function create_if_block(ctx) {
+    	let div;
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			div.textContent = "No image(s) selected";
+    			attr_dev(div, "class", "button b1-solid error");
+    			add_location(div, file$1, 574, 7, 12831);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -47102,111 +47068,82 @@ void main(void) {
     		block,
     		id: create_if_block.name,
     		type: "if",
-    		source: "(254:4) {#if files.handles.length == 0 }",
+    		source: "(574:6) {#if !project.files || project.files.length == 0}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (270:6) {#each project.files as file}
-    function create_each_block_4(ctx) {
-    	let div1;
-    	let div0;
-    	let button0;
+    // (577:6) {#each project.files as file, idx}
+    function create_each_block_3(ctx) {
+    	let div;
+    	let span;
+    	let t0_value = /*file*/ ctx[85] + "";
+    	let t0;
     	let t1;
+    	let button0;
+    	let t2;
     	let button1;
     	let t3;
-    	let span;
-    	let t4_value = /*file*/ ctx[50] + "";
-    	let t4;
-    	let t5;
-    	let button2;
-    	let t6;
+    	let mounted;
+    	let dispose;
+
+    	function click_handler_5(...args) {
+    		return /*click_handler_5*/ ctx[31](/*idx*/ ctx[87], ...args);
+    	}
+
+    	function click_handler_6(...args) {
+    		return /*click_handler_6*/ ctx[32](/*idx*/ ctx[87], ...args);
+    	}
 
     	const block = {
     		c: function create() {
-    			div1 = element("div");
-    			div0 = element("div");
-    			button0 = element("button");
-    			button0.textContent = "^";
-    			t1 = space();
-    			button1 = element("button");
-    			button1.textContent = ",";
-    			t3 = space();
+    			div = element("div");
     			span = element("span");
-    			t4 = text(t4_value);
-    			t5 = space();
-    			button2 = element("button");
-    			t6 = space();
-    			attr_dev(button0, "class", "p0 no-basis grow flex row-center-center w2em");
-    			add_location(button0, file, 272, 9, 6568);
-    			attr_dev(button1, "class", "p0 no-basis grow flex row-center-center w2em bt0-solid");
-    			add_location(button1, file, 273, 9, 6649);
-    			attr_dev(div0, "class", "flex column-stretch-stretch");
-    			add_location(div0, file, 271, 8, 6517);
-    			attr_dev(span, "class", "bt1-solid bb1-solid h4em flex column-flex-start-center plr1 grow");
-    			add_location(span, file, 275, 8, 6754);
-    			attr_dev(button2, "class", "cross w2em p0 h4em");
-    			add_location(button2, file, 276, 8, 6855);
-    			attr_dev(div1, "class", "flex row-stretch-stretch");
-    			set_style(div1, "margin-top", "-1px");
-    			add_location(div1, file, 270, 7, 6446);
+    			t0 = text(t0_value);
+    			t1 = space();
+    			button0 = element("button");
+    			t2 = space();
+    			button1 = element("button");
+    			t3 = space();
+    			attr_dev(span, "class", "h3em flex column-flex-start-center plr1 grow");
+    			add_location(span, file$1, 578, 8, 13033);
+    			attr_dev(button0, "class", "" + (/*arrowClass*/ ctx[17] + " arrow rotate180 br1-solid"));
+    			add_location(button0, file$1, 579, 8, 13114);
+    			attr_dev(button1, "class", "" + (/*arrowClass*/ ctx[17] + " arrow bl1-solid "));
+    			add_location(button1, file$1, 582, 8, 13231);
+    			attr_dev(div, "class", "flex row-stretch-stretch b1-solid");
+    			set_style(div, "margin-top", "-1px");
+    			add_location(div, file$1, 577, 7, 12953);
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div1, anchor);
-    			append_dev(div1, div0);
-    			append_dev(div0, button0);
-    			append_dev(div0, t1);
-    			append_dev(div0, button1);
-    			append_dev(div1, t3);
-    			append_dev(div1, span);
-    			append_dev(span, t4);
-    			append_dev(div1, t5);
-    			append_dev(div1, button2);
-    			append_dev(div1, t6);
+    			insert_dev(target, div, anchor);
+    			append_dev(div, span);
+    			append_dev(span, t0);
+    			append_dev(div, t1);
+    			append_dev(div, button0);
+    			append_dev(div, t2);
+    			append_dev(div, button1);
+    			append_dev(div, t3);
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(button0, "click", click_handler_5, false, false, false),
+    					listen_dev(button1, "click", click_handler_6, false, false, false)
+    				];
+
+    				mounted = true;
+    			}
     		},
-    		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*project*/ 1 && t4_value !== (t4_value = /*file*/ ctx[50] + "")) set_data_dev(t4, t4_value);
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+    			if (dirty[0] & /*project*/ 1 && t0_value !== (t0_value = /*file*/ ctx[85] + "")) set_data_dev(t0, t0_value);
     		},
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div1);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_4.name,
-    		type: "each",
-    		source: "(270:6) {#each project.files as file}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (287:7) {#each options.backgrounds as bg}
-    function create_each_block_3(ctx) {
-    	let option;
-    	let t_value = /*bg*/ ctx[47].name + "";
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			option = element("option");
-    			t = text(t_value);
-    			option.__value = /*bg*/ ctx[47].name;
-    			option.value = option.__value;
-    			attr_dev(option, "name", /*bg*/ ctx[47].name);
-    			add_location(option, file, 287, 8, 7133);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, option, anchor);
-    			append_dev(option, t);
-    		},
-    		p: noop$1,
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(option);
+    			if (detaching) detach_dev(div);
+    			mounted = false;
+    			run_all(dispose);
     		}
     	};
 
@@ -47214,27 +47151,27 @@ void main(void) {
     		block,
     		id: create_each_block_3.name,
     		type: "each",
-    		source: "(287:7) {#each options.backgrounds as bg}",
+    		source: "(577:6) {#each project.files as file, idx}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (294:7) {#each options.sizes as sz}
+    // (597:7) {#each options.backgrounds as bg}
     function create_each_block_2(ctx) {
     	let option;
-    	let t_value = /*sz*/ ctx[44].name + "";
+    	let t_value = /*bg*/ ctx[82].name + "";
     	let t;
 
     	const block = {
     		c: function create() {
     			option = element("option");
     			t = text(t_value);
-    			option.__value = /*sz*/ ctx[44].name;
+    			option.__value = /*bg*/ ctx[82].name;
     			option.value = option.__value;
-    			attr_dev(option, "name", /*sz*/ ctx[44].name);
-    			add_location(option, file, 294, 8, 7351);
+    			attr_dev(option, "name", /*bg*/ ctx[82].name);
+    			add_location(option, file$1, 597, 8, 13678);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -47250,79 +47187,152 @@ void main(void) {
     		block,
     		id: create_each_block_2.name,
     		type: "each",
-    		source: "(294:7) {#each options.sizes as sz}",
+    		source: "(597:7) {#each options.backgrounds as bg}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (322:4) {#each project.layers as layer, index}
+    // (604:7) {#each options.sizes as sz}
     function create_each_block_1(ctx) {
+    	let option;
+    	let t_value = /*sz*/ ctx[79].name + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			option = element("option");
+    			t = text(t_value);
+    			option.__value = /*sz*/ ctx[79].name;
+    			option.value = option.__value;
+    			attr_dev(option, "name", /*sz*/ ctx[79].name);
+    			add_location(option, file$1, 604, 8, 13896);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t);
+    		},
+    		p: noop$1,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(option);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_1.name,
+    		type: "each",
+    		source: "(604:7) {#each options.sizes as sz}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (630:4) <Title>
+    function create_default_slot$1(ctx) {
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			t = text("Layers");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, t, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(t);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_default_slot$1.name,
+    		type: "slot",
+    		source: "(630:4) <Title>",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (631:4) {#each project.layers as layer, index}
+    function create_each_block$1(ctx) {
+    	let div;
     	let layer;
+    	let updating_solo;
     	let updating_container;
-    	let updating_images;
     	let updating_layer;
     	let current;
 
-    	function layer_container_binding(value) {
-    		/*layer_container_binding*/ ctx[19](value);
+    	function layer_solo_binding(value) {
+    		/*layer_solo_binding*/ ctx[37](value);
     	}
 
-    	function layer_images_binding(value) {
-    		/*layer_images_binding*/ ctx[20](value);
+    	function layer_container_binding(value) {
+    		/*layer_container_binding*/ ctx[38](value);
     	}
 
     	function layer_layer_binding(value) {
-    		/*layer_layer_binding*/ ctx[21](value, /*layer*/ ctx[39], /*each_value_1*/ ctx[42], /*index*/ ctx[43]);
+    		/*layer_layer_binding*/ ctx[39](value, /*layer*/ ctx[76], /*each_value*/ ctx[77], /*index*/ ctx[78]);
     	}
 
-    	let layer_props = { index: /*index*/ ctx[43] };
+    	let layer_props = {
+    		index: /*index*/ ctx[78],
+    		images: /*layers*/ ctx[8].images
+    	};
 
-    	if (/*layers*/ ctx[6].processed !== void 0) {
-    		layer_props.container = /*layers*/ ctx[6].processed;
+    	if (/*solo*/ ctx[7] !== void 0) {
+    		layer_props.solo = /*solo*/ ctx[7];
     	}
 
-    	if (/*layers*/ ctx[6].images !== void 0) {
-    		layer_props.images = /*layers*/ ctx[6].images;
+    	if (/*layers*/ ctx[8].processed !== void 0) {
+    		layer_props.container = /*layers*/ ctx[8].processed;
     	}
 
-    	if (/*layer*/ ctx[39] !== void 0) {
-    		layer_props.layer = /*layer*/ ctx[39];
+    	if (/*layer*/ ctx[76] !== void 0) {
+    		layer_props.layer = /*layer*/ ctx[76];
     	}
 
     	layer = new Layer({ props: layer_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(layer, "solo", layer_solo_binding));
     	binding_callbacks.push(() => bind$1(layer, "container", layer_container_binding));
-    	binding_callbacks.push(() => bind$1(layer, "images", layer_images_binding));
     	binding_callbacks.push(() => bind$1(layer, "layer", layer_layer_binding));
 
     	const block = {
     		c: function create() {
+    			div = element("div");
     			create_component(layer.$$.fragment);
+    			attr_dev(div, "class", "p1");
+    			toggle_class(div, "bt1-solid", /*index*/ ctx[78] != 0);
+    			add_location(div, file$1, 631, 5, 14458);
     		},
     		m: function mount(target, anchor) {
-    			mount_component(layer, target, anchor);
+    			insert_dev(target, div, anchor);
+    			mount_component(layer, div, null);
     			current = true;
     		},
     		p: function update(new_ctx, dirty) {
     			ctx = new_ctx;
     			const layer_changes = {};
+    			if (dirty[0] & /*layers*/ 256) layer_changes.images = /*layers*/ ctx[8].images;
 
-    			if (!updating_container && dirty[0] & /*layers*/ 64) {
-    				updating_container = true;
-    				layer_changes.container = /*layers*/ ctx[6].processed;
-    				add_flush_callback(() => updating_container = false);
+    			if (!updating_solo && dirty[0] & /*solo*/ 128) {
+    				updating_solo = true;
+    				layer_changes.solo = /*solo*/ ctx[7];
+    				add_flush_callback(() => updating_solo = false);
     			}
 
-    			if (!updating_images && dirty[0] & /*layers*/ 64) {
-    				updating_images = true;
-    				layer_changes.images = /*layers*/ ctx[6].images;
-    				add_flush_callback(() => updating_images = false);
+    			if (!updating_container && dirty[0] & /*layers*/ 256) {
+    				updating_container = true;
+    				layer_changes.container = /*layers*/ ctx[8].processed;
+    				add_flush_callback(() => updating_container = false);
     			}
 
     			if (!updating_layer && dirty[0] & /*project*/ 1) {
     				updating_layer = true;
-    				layer_changes.layer = /*layer*/ ctx[39];
+    				layer_changes.layer = /*layer*/ ctx[76];
     				add_flush_callback(() => updating_layer = false);
     			}
 
@@ -47338,83 +47348,16 @@ void main(void) {
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			destroy_component(layer, detaching);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_1.name,
-    		type: "each",
-    		source: "(322:4) {#each project.layers as layer, index}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (336:2) {#each project.layers as layer, i}
-    function create_each_block(ctx) {
-    	let div;
-    	let palette;
-    	let t0;
-    	let span;
-    	let t1;
-    	let t2;
-    	let current;
-
-    	palette = new Palette({
-    			props: { layer: /*layer*/ ctx[39], vertical: true },
-    			$$inline: true
-    		});
-
-    	const block = {
-    		c: function create() {
-    			div = element("div");
-    			create_component(palette.$$.fragment);
-    			t0 = space();
-    			span = element("span");
-    			t1 = text(/*i*/ ctx[41]);
-    			t2 = space();
-    			attr_dev(span, "class", "abs hidden");
-    			add_location(span, file, 339, 4, 8479);
-    			attr_dev(div, "class", "flex pointer minw2em bb1-solid no-basis row grow");
-    			add_location(div, file, 336, 3, 8367);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			mount_component(palette, div, null);
-    			append_dev(div, t0);
-    			append_dev(div, span);
-    			append_dev(span, t1);
-    			append_dev(div, t2);
-    			current = true;
-    		},
-    		p: function update(ctx, dirty) {
-    			const palette_changes = {};
-    			if (dirty[0] & /*project*/ 1) palette_changes.layer = /*layer*/ ctx[39];
-    			palette.$set(palette_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(palette.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(palette.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
-    			destroy_component(palette);
+    			destroy_component(layer);
     		}
     	};
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block.name,
+    		id: create_each_block$1.name,
     		type: "each",
-    		source: "(336:2) {#each project.layers as layer, i}",
+    		source: "(631:4) {#each project.layers as layer, index}",
     		ctx
     	});
 
@@ -47423,66 +47366,98 @@ void main(void) {
 
     function create_fragment$1(ctx) {
     	let main_1;
-    	let div5;
+    	let div10;
     	let sidebar;
     	let section0;
+    	let title0;
+    	let t0;
     	let div0;
     	let button0;
-    	let t0;
     	let t1;
+    	let t2;
     	let button1;
-    	let t3;
+    	let t4;
     	let button2;
-    	let t5;
     	let t6;
+    	let div1;
     	let t7;
-    	let section1;
     	let t8;
+    	let section1;
     	let t9;
     	let section2;
-    	let div4;
-    	let aside;
+    	let title1;
     	let t10;
-    	let div1;
-    	let t11_value = /*calculate*/ ctx[7].width + "";
+    	let div2;
+    	let canvas;
     	let t11;
+    	let img;
+    	let img_src_value;
     	let t12;
-    	let t13_value = /*calculate*/ ctx[7].height + "";
+    	let div8;
+    	let div5;
+    	let div3;
+    	let span1;
+    	let span0;
     	let t13;
     	let t14;
-    	let div2;
-    	let select0;
+    	let div4;
+    	let span3;
+    	let span2;
     	let t15;
-    	let div3;
-    	let select1;
     	let t16;
-    	let input0;
+    	let aside;
     	let t17;
+    	let t18;
+    	let div6;
+    	let select0;
+    	let t19;
+    	let div7;
+    	let select1;
+    	let t20;
+    	let input0;
+    	let t21;
     	let input1;
     	let input1_max_value;
-    	let t18;
-    	let button3;
-    	let t20;
-    	let t21;
-    	let footer;
+    	let t22;
+    	let title2;
     	let t23;
-    	let section3;
     	let t24;
-    	let section4;
-    	let div6;
+    	let div9;
+    	let button3;
+    	let t26;
+    	let section3;
+    	let div11;
+    	let t27;
+    	let div13;
+    	let div12;
+    	let t28;
+    	let div14;
+    	let t29_value = /*calculate*/ ctx[11].width + "";
+    	let t29;
+    	let t30;
+    	let t31_value = /*calculate*/ ctx[11].height + "";
+    	let t31;
+    	let t32;
+    	let div16;
+    	let div15;
+    	let button4;
+    	let t34;
+    	let input2;
+    	let t35;
+    	let button5;
     	let current;
     	let mounted;
     	let dispose;
-    	let each_value_5 = /*files*/ ctx[1].handles;
-    	validate_each_argument(each_value_5);
-    	let each_blocks_5 = [];
 
-    	for (let i = 0; i < each_value_5.length; i += 1) {
-    		each_blocks_5[i] = create_each_block_5(get_each_context_5(ctx, each_value_5, i));
-    	}
+    	title0 = new Title({
+    			props: {
+    				$$slots: { default: [create_default_slot_2] },
+    				$$scope: { ctx }
+    			},
+    			$$inline: true
+    		});
 
-    	let if_block = /*files*/ ctx[1].handles.length == 0 && create_if_block(ctx);
-    	let each_value_4 = /*project*/ ctx[0].files;
+    	let each_value_4 = /*files*/ ctx[1].handles;
     	validate_each_argument(each_value_4);
     	let each_blocks_4 = [];
 
@@ -47490,7 +47465,20 @@ void main(void) {
     		each_blocks_4[i] = create_each_block_4(get_each_context_4(ctx, each_value_4, i));
     	}
 
-    	let each_value_3 = options.backgrounds;
+    	let if_block0 = /*files*/ ctx[1].handles.length == 0 && create_if_block_1(ctx);
+    	const default_slot_template = /*#slots*/ ctx[24].default;
+    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[50], null);
+
+    	title1 = new Title({
+    			props: {
+    				$$slots: { default: [create_default_slot_1$1] },
+    				$$scope: { ctx }
+    			},
+    			$$inline: true
+    		});
+
+    	let if_block1 = (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) && create_if_block(ctx);
+    	let each_value_3 = /*project*/ ctx[0].files;
     	validate_each_argument(each_value_3);
     	let each_blocks_3 = [];
 
@@ -47498,7 +47486,7 @@ void main(void) {
     		each_blocks_3[i] = create_each_block_3(get_each_context_3(ctx, each_value_3, i));
     	}
 
-    	let each_value_2 = options.sizes;
+    	let each_value_2 = options.backgrounds;
     	validate_each_argument(each_value_2);
     	let each_blocks_2 = [];
 
@@ -47506,7 +47494,7 @@ void main(void) {
     		each_blocks_2[i] = create_each_block_2(get_each_context_2(ctx, each_value_2, i));
     	}
 
-    	let each_value_1 = /*project*/ ctx[0].layers;
+    	let each_value_1 = options.sizes;
     	validate_each_argument(each_value_1);
     	let each_blocks_1 = [];
 
@@ -47514,251 +47502,369 @@ void main(void) {
     		each_blocks_1[i] = create_each_block_1(get_each_context_1(ctx, each_value_1, i));
     	}
 
-    	const out = i => transition_out(each_blocks_1[i], 1, 1, () => {
-    		each_blocks_1[i] = null;
-    	});
+    	title2 = new Title({
+    			props: {
+    				$$slots: { default: [create_default_slot$1] },
+    				$$scope: { ctx }
+    			},
+    			$$inline: true
+    		});
 
     	let each_value = /*project*/ ctx[0].layers;
     	validate_each_argument(each_value);
     	let each_blocks = [];
 
     	for (let i = 0; i < each_value.length; i += 1) {
-    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    		each_blocks[i] = create_each_block$1(get_each_context$1(ctx, each_value, i));
     	}
 
-    	const out_1 = i => transition_out(each_blocks[i], 1, 1, () => {
+    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
     		each_blocks[i] = null;
     	});
 
     	const block = {
     		c: function create() {
     			main_1 = element("main");
-    			div5 = element("div");
+    			div10 = element("div");
     			sidebar = element("sidebar");
     			section0 = element("section");
+    			create_component(title0.$$.fragment);
+    			t0 = space();
     			div0 = element("div");
     			button0 = element("button");
-    			t0 = text("Sync files");
-    			t1 = space();
+    			t1 = text("Sync files");
+    			t2 = space();
     			button1 = element("button");
     			button1.textContent = "Add files";
-    			t3 = space();
+    			t4 = space();
     			button2 = element("button");
     			button2.textContent = "Clear all";
-    			t5 = space();
-
-    			for (let i = 0; i < each_blocks_5.length; i += 1) {
-    				each_blocks_5[i].c();
-    			}
-
     			t6 = space();
-    			if (if_block) if_block.c();
-    			t7 = space();
-    			section1 = element("section");
-    			t8 = text("PROJECTS");
-    			t9 = space();
-    			section2 = element("section");
-    			div4 = element("div");
-    			aside = element("aside");
+    			div1 = element("div");
 
     			for (let i = 0; i < each_blocks_4.length; i += 1) {
     				each_blocks_4[i].c();
     			}
 
+    			t7 = space();
+    			if (if_block0) if_block0.c();
+    			t8 = space();
+    			section1 = element("section");
+    			if (default_slot) default_slot.c();
+    			t9 = space();
+    			section2 = element("section");
+    			create_component(title1.$$.fragment);
     			t10 = space();
-    			div1 = element("div");
-    			t11 = text(t11_value);
-    			t12 = text(" x ");
-    			t13 = text(t13_value);
-    			t14 = space();
     			div2 = element("div");
-    			select0 = element("select");
+    			canvas = element("canvas");
+    			t11 = space();
+    			img = element("img");
+    			t12 = space();
+    			div8 = element("div");
+    			div5 = element("div");
+    			div3 = element("div");
+    			span1 = element("span");
+    			span0 = element("span");
+    			t13 = text("\n\t\t\t\t\t\t\tSingle");
+    			t14 = space();
+    			div4 = element("div");
+    			span3 = element("span");
+    			span2 = element("span");
+    			t15 = text("\n\t\t\t\t\t\t\tMultiple");
+    			t16 = space();
+    			aside = element("aside");
+    			if (if_block1) if_block1.c();
+    			t17 = space();
 
     			for (let i = 0; i < each_blocks_3.length; i += 1) {
     				each_blocks_3[i].c();
     			}
 
-    			t15 = space();
-    			div3 = element("div");
-    			select1 = element("select");
+    			t18 = space();
+    			div6 = element("div");
+    			select0 = element("select");
 
     			for (let i = 0; i < each_blocks_2.length; i += 1) {
     				each_blocks_2[i].c();
     			}
 
-    			t16 = space();
-    			input0 = element("input");
-    			t17 = space();
-    			input1 = element("input");
-    			t18 = space();
-    			button3 = element("button");
-    			button3.textContent = "Add layer";
-    			t20 = space();
+    			t19 = space();
+    			div7 = element("div");
+    			select1 = element("select");
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
     				each_blocks_1[i].c();
     			}
 
+    			t20 = space();
+    			input0 = element("input");
     			t21 = space();
-    			footer = element("footer");
-    			footer.textContent = "RISO3000";
+    			input1 = element("input");
+    			t22 = space();
+    			create_component(title2.$$.fragment);
     			t23 = space();
-    			section3 = element("section");
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
     			t24 = space();
-    			section4 = element("section");
-    			div6 = element("div");
-    			button0.disabled = /*needsSync*/ ctx[8];
+    			div9 = element("div");
+    			button3 = element("button");
+    			button3.textContent = "Add layer";
+    			t26 = space();
+    			section3 = element("section");
+    			div11 = element("div");
+    			t27 = space();
+    			div13 = element("div");
+    			div12 = element("div");
+    			t28 = space();
+    			div14 = element("div");
+    			t29 = text(t29_value);
+    			t30 = text(" x ");
+    			t31 = text(t31_value);
+    			t32 = space();
+    			div16 = element("div");
+    			div15 = element("div");
+    			button4 = element("button");
+    			button4.textContent = "-";
+    			t34 = space();
+    			input2 = element("input");
+    			t35 = space();
+    			button5 = element("button");
+    			button5.textContent = "+";
+    			button0.disabled = /*needsSync*/ ctx[12];
     			attr_dev(button0, "class", "w100pc");
-    			add_location(button0, file, 202, 5, 4816);
+    			add_location(button0, file$1, 460, 5, 10048);
     			attr_dev(button1, "class", "w100pc mt1");
-    			add_location(button1, file, 208, 5, 4949);
+    			add_location(button1, file$1, 466, 5, 10181);
     			attr_dev(button2, "class", "w100pc mt1");
-    			add_location(button2, file, 213, 5, 5059);
+    			add_location(button2, file$1, 471, 5, 10291);
     			attr_dev(div0, "class", "p1");
-    			add_location(div0, file, 201, 4, 4794);
-    			attr_dev(section0, "class", /*classes*/ ctx[11].lanes);
-    			add_location(section0, file, 200, 3, 4758);
-    			attr_dev(section1, "class", /*classes*/ ctx[11].lanes + " basis0pc");
-    			add_location(section1, file, 260, 3, 6214);
-    			add_location(aside, file, 268, 5, 6395);
-    			add_location(div1, file, 281, 5, 6941);
-    			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[15].call(select0));
-    			add_location(select0, file, 285, 6, 7036);
-    			attr_dev(div2, "class", "select");
-    			add_location(div2, file, 284, 5, 7009);
-    			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[16].call(select1));
-    			add_location(select1, file, 292, 6, 7266);
-    			attr_dev(div3, "class", "select");
-    			add_location(div3, file, 291, 5, 7239);
+    			add_location(div0, file$1, 459, 4, 10026);
+    			attr_dev(div1, "class", "checker");
+    			add_location(div1, file$1, 477, 4, 10415);
+    			attr_dev(section0, "class", /*classes*/ ctx[16].lanes);
+    			add_location(section0, file$1, 457, 3, 9965);
+    			attr_dev(section1, "class", /*classes*/ ctx[16].lanes + " basis0pc");
+    			add_location(section1, file$1, 528, 3, 11692);
+    			attr_dev(canvas, "id", "thumbnail");
+    			add_location(canvas, file$1, 547, 5, 11981);
+    			if (img.src !== (img_src_value = /*project*/ ctx[0].thumbnail)) attr_dev(img, "src", img_src_value);
+    			add_location(img, file$1, 548, 5, 12034);
+    			attr_dev(div2, "class", "hidden abs");
+    			set_style(div2, "left", "-99999px");
+    			set_style(div2, "top", "-99999px");
+    			add_location(div2, file$1, 546, 4, 11916);
+    			attr_dev(span0, "class", "fill");
+    			toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
+    			add_location(span0, file$1, 557, 8, 12351);
+    			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block mr1");
+    			add_location(span1, file$1, 555, 7, 12278);
+    			attr_dev(div3, "class", "br0-solid flex row-flex-start-center mr1 ");
+    			add_location(div3, file$1, 552, 6, 12159);
+    			attr_dev(span2, "class", "fill");
+    			toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
+    			add_location(span2, file$1, 566, 8, 12644);
+    			attr_dev(span3, "class", "b1-solid rel checker w2em h2em block mr1");
+    			add_location(span3, file$1, 564, 7, 12571);
+    			attr_dev(div4, "class", "br0-solid flex row-flex-start-center mr1 ");
+    			add_location(div4, file$1, 561, 6, 12453);
+    			attr_dev(div5, "class", "flex row");
+    			add_location(div5, file$1, 551, 5, 12130);
+    			add_location(aside, file$1, 572, 5, 12759);
+    			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[33].call(select0));
+    			add_location(select0, file$1, 595, 6, 13581);
+    			attr_dev(div6, "class", "select");
+    			add_location(div6, file$1, 594, 5, 13554);
+    			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[34].call(select1));
+    			add_location(select1, file$1, 602, 6, 13811);
+    			attr_dev(div7, "class", "select");
+    			add_location(div7, file$1, 601, 5, 13784);
     			attr_dev(input0, "min", 150);
     			attr_dev(input0, "max", 600);
     			attr_dev(input0, "step", 50);
     			attr_dev(input0, "type", "number");
     			attr_dev(input0, "placeholder", "DPI");
-    			add_location(input0, file, 298, 5, 7457);
+    			add_location(input0, file$1, 608, 5, 14002);
     			attr_dev(input1, "min", 0);
-    			attr_dev(input1, "max", input1_max_value = Math.max(/*_uniforms*/ ctx[3].size[0], /*_uniforms*/ ctx[3].size[1]) * 0.4);
+    			attr_dev(input1, "max", input1_max_value = Math.max(/*_uniforms*/ ctx[4].size[0], /*_uniforms*/ ctx[4].size[1]) * 0.4);
     			attr_dev(input1, "step", 1);
     			attr_dev(input1, "type", "number");
     			attr_dev(input1, "placeholder", "Margin");
-    			add_location(input1, file, 305, 5, 7605);
-    			attr_dev(button3, "class", "w100pc");
-    			add_location(button3, file, 312, 5, 7808);
-    			attr_dev(div4, "class", "p1 flex column cmb1");
-    			add_location(div4, file, 266, 4, 6355);
+    			add_location(input1, file$1, 615, 5, 14150);
+    			attr_dev(div8, "class", "p1 flex column cmb1 bb1-solid");
+    			add_location(div8, file$1, 550, 4, 12081);
+    			attr_dev(button3, "class", "w100pc mb1");
+    			add_location(button3, file$1, 641, 5, 14709);
+    			attr_dev(div9, "class", "plr1");
+    			add_location(div9, file$1, 640, 4, 14685);
     			attr_dev(section2, "id", "layers");
-    			attr_dev(section2, "class", /*classes*/ ctx[11].lanes + " basis20pc");
-    			add_location(section2, file, 265, 3, 6292);
+    			attr_dev(section2, "class", /*classes*/ ctx[16].lanes + " basis30pc");
+    			add_location(section2, file$1, 540, 3, 11804);
     			attr_dev(sidebar, "class", "flex row grow overflow-hidden");
-    			add_location(sidebar, file, 198, 2, 4703);
-    			attr_dev(footer, "class", "p1 bt1-solid br1-solid");
-    			add_location(footer, file, 330, 2, 8163);
-    			attr_dev(div5, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh");
-    			add_location(div5, file, 197, 1, 4606);
-    			attr_dev(section3, "class", "no-basis minw2em br1-solid maxh100vh flex column overflow-hidden palette");
-    			add_location(section3, file, 334, 1, 8236);
-    			attr_dev(div6, "class", "flex p4");
-    			add_location(div6, file, 347, 2, 8759);
-    			attr_dev(section4, "class", "basis70pc minw50em pointer grow flex row-center-flex-start overflow-auto maxh100vh overflow-auto");
-    			add_location(section4, file, 343, 1, 8548);
+    			add_location(sidebar, file$1, 450, 2, 9888);
+    			attr_dev(div10, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh");
+    			add_location(div10, file$1, 446, 1, 9788);
+    			attr_dev(div11, "id", "zoom");
+    			attr_dev(div11, "class", "flex fill");
+    			add_location(div11, file$1, 659, 2, 15168);
+    			set_style(div12, "width", "9000px");
+    			set_style(div12, "height", "9000px");
+    			add_location(div12, file$1, 672, 3, 15522);
+    			attr_dev(div13, "id", "scroller");
+    			attr_dev(div13, "class", "abs fill overflow-auto");
+    			set_style(div13, "width", "120%");
+    			set_style(div13, "height", "120%");
+    			add_location(div13, file$1, 663, 2, 15234);
+    			attr_dev(div14, "class", "t1 r1 abs monospace hidden");
+    			add_location(div14, file$1, 674, 2, 15577);
+    			attr_dev(button4, "class", "p0 h3em m0 w3em");
+    			add_location(button4, file$1, 680, 4, 15742);
+    			attr_dev(input2, "class", "p0 h3em m0 br0-solid bl0-solid");
+    			attr_dev(input2, "type", "range");
+    			attr_dev(input2, "min", 0.01);
+    			attr_dev(input2, "max", 3);
+    			attr_dev(input2, "step", 0.001);
+    			add_location(input2, file$1, 683, 4, 15852);
+    			attr_dev(button5, "class", "p0 h3em m0 w3em");
+    			add_location(button5, file$1, 690, 4, 16006);
+    			attr_dev(div15, "class", "flex row bg");
+    			add_location(div15, file$1, 679, 3, 15712);
+    			attr_dev(div16, "class", "abs b0 l0 p1 flex row ");
+    			add_location(div16, file$1, 677, 2, 15671);
+    			attr_dev(section3, "class", "rel basis70pc minw50em pointer grow flex row-center-flex-start maxh100vh overflow-hidden");
+    			add_location(section3, file$1, 655, 1, 14965);
     			attr_dev(main_1, "class", "flex row-stretch-stretch bg overflow-auto");
-    			add_location(main_1, file, 194, 0, 4522);
+    			add_location(main_1, file$1, 443, 0, 9704);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, main_1, anchor);
-    			append_dev(main_1, div5);
-    			append_dev(div5, sidebar);
+    			append_dev(main_1, div10);
+    			append_dev(div10, sidebar);
     			append_dev(sidebar, section0);
+    			mount_component(title0, section0, null);
+    			append_dev(section0, t0);
     			append_dev(section0, div0);
     			append_dev(div0, button0);
-    			append_dev(button0, t0);
-    			append_dev(div0, t1);
+    			append_dev(button0, t1);
+    			append_dev(div0, t2);
     			append_dev(div0, button1);
-    			append_dev(div0, t3);
+    			append_dev(div0, t4);
     			append_dev(div0, button2);
-    			append_dev(section0, t5);
-
-    			for (let i = 0; i < each_blocks_5.length; i += 1) {
-    				each_blocks_5[i].m(section0, null);
-    			}
-
     			append_dev(section0, t6);
-    			if (if_block) if_block.m(section0, null);
-    			append_dev(sidebar, t7);
-    			append_dev(sidebar, section1);
-    			append_dev(section1, t8);
-    			append_dev(sidebar, t9);
-    			append_dev(sidebar, section2);
-    			append_dev(section2, div4);
-    			append_dev(div4, aside);
+    			append_dev(section0, div1);
 
     			for (let i = 0; i < each_blocks_4.length; i += 1) {
-    				each_blocks_4[i].m(aside, null);
+    				each_blocks_4[i].m(div1, null);
     			}
 
-    			append_dev(div4, t10);
-    			append_dev(div4, div1);
-    			append_dev(div1, t11);
-    			append_dev(div1, t12);
-    			append_dev(div1, t13);
-    			append_dev(div4, t14);
-    			append_dev(div4, div2);
-    			append_dev(div2, select0);
+    			append_dev(section0, t7);
+    			if (if_block0) if_block0.m(section0, null);
+    			append_dev(sidebar, t8);
+    			append_dev(sidebar, section1);
+
+    			if (default_slot) {
+    				default_slot.m(section1, null);
+    			}
+
+    			append_dev(sidebar, t9);
+    			append_dev(sidebar, section2);
+    			mount_component(title1, section2, null);
+    			append_dev(section2, t10);
+    			append_dev(section2, div2);
+    			append_dev(div2, canvas);
+    			/*canvas_binding*/ ctx[28](canvas);
+    			append_dev(div2, t11);
+    			append_dev(div2, img);
+    			append_dev(section2, t12);
+    			append_dev(section2, div8);
+    			append_dev(div8, div5);
+    			append_dev(div5, div3);
+    			append_dev(div3, span1);
+    			append_dev(span1, span0);
+    			append_dev(div3, t13);
+    			append_dev(div5, t14);
+    			append_dev(div5, div4);
+    			append_dev(div4, span3);
+    			append_dev(span3, span2);
+    			append_dev(div4, t15);
+    			append_dev(div8, t16);
+    			append_dev(div8, aside);
+    			if (if_block1) if_block1.m(aside, null);
+    			append_dev(aside, t17);
 
     			for (let i = 0; i < each_blocks_3.length; i += 1) {
-    				each_blocks_3[i].m(select0, null);
+    				each_blocks_3[i].m(aside, null);
+    			}
+
+    			append_dev(div8, t18);
+    			append_dev(div8, div6);
+    			append_dev(div6, select0);
+
+    			for (let i = 0; i < each_blocks_2.length; i += 1) {
+    				each_blocks_2[i].m(select0, null);
     			}
 
     			select_option(select0, /*project*/ ctx[0].config.background);
-    			append_dev(div4, t15);
-    			append_dev(div4, div3);
-    			append_dev(div3, select1);
+    			append_dev(div8, t19);
+    			append_dev(div8, div7);
+    			append_dev(div7, select1);
 
-    			for (let i = 0; i < each_blocks_2.length; i += 1) {
-    				each_blocks_2[i].m(select1, null);
+    			for (let i = 0; i < each_blocks_1.length; i += 1) {
+    				each_blocks_1[i].m(select1, null);
     			}
 
     			select_option(select1, /*project*/ ctx[0].config.size);
-    			append_dev(div4, t16);
-    			append_dev(div4, input0);
+    			append_dev(div8, t20);
+    			append_dev(div8, input0);
     			set_input_value(input0, /*project*/ ctx[0].config.dpi);
-    			append_dev(div4, t17);
-    			append_dev(div4, input1);
+    			append_dev(div8, t21);
+    			append_dev(div8, input1);
     			set_input_value(input1, /*project*/ ctx[0].config.margin);
-    			append_dev(div4, t18);
-    			append_dev(div4, button3);
-    			append_dev(section2, t20);
-
-    			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				each_blocks_1[i].m(section2, null);
-    			}
-
-    			append_dev(div5, t21);
-    			append_dev(div5, footer);
-    			append_dev(main_1, t23);
-    			append_dev(main_1, section3);
+    			append_dev(section2, t22);
+    			mount_component(title2, section2, null);
+    			append_dev(section2, t23);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].m(section3, null);
+    				each_blocks[i].m(section2, null);
     			}
 
-    			append_dev(main_1, t24);
-    			append_dev(main_1, section4);
-    			append_dev(section4, div6);
-    			/*div6_binding*/ ctx[22](div6);
-    			/*main_1_binding*/ ctx[25](main_1);
+    			append_dev(section2, t24);
+    			append_dev(section2, div9);
+    			append_dev(div9, button3);
+    			append_dev(main_1, t26);
+    			append_dev(main_1, section3);
+    			append_dev(section3, div11);
+    			/*div11_binding*/ ctx[40](div11);
+    			append_dev(section3, t27);
+    			append_dev(section3, div13);
+    			append_dev(div13, div12);
+    			append_dev(section3, t28);
+    			append_dev(section3, div14);
+    			append_dev(div14, t29);
+    			append_dev(div14, t30);
+    			append_dev(div14, t31);
+    			append_dev(section3, t32);
+    			append_dev(section3, div16);
+    			append_dev(div16, div15);
+    			append_dev(div15, button4);
+    			append_dev(div15, t34);
+    			append_dev(div15, input2);
+    			set_input_value(input2, /*zoom*/ ctx[3]);
+    			append_dev(div15, t35);
+    			append_dev(div15, button5);
+    			/*main_1_binding*/ ctx[49](main_1);
     			current = true;
 
     			if (!mounted) {
     				dispose = [
+    					listen_dev(window_1, "resize", /*onResize*/ ctx[13], false, false, false),
+    					listen_dev(window_1, "keydown", /*onKeyDown*/ ctx[22], false, false, false),
+    					listen_dev(window_1, "keyup", /*onKeyUp*/ ctx[23], false, false, false),
     					listen_dev(
     						button0,
     						"click",
@@ -47789,14 +47895,26 @@ void main(void) {
     						false,
     						false
     					),
-    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[15]),
-    					listen_dev(select1, "change", /*select1_change_handler*/ ctx[16]),
-    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[17]),
-    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[18]),
-    					listen_dev(button3, "click", click_handler_3, false, false, false),
-    					listen_dev(button3, "click", /*addLayer*/ ctx[10], false, false, false),
-    					listen_dev(section4, "mousedown", /*mousedown_handler*/ ctx[23], false, false, false),
-    					listen_dev(section4, "mouseup", /*mouseup_handler*/ ctx[24], false, false, false)
+    					listen_dev(div3, "click", /*click_handler_3*/ ctx[29], false, false, false),
+    					listen_dev(div4, "click", /*click_handler_4*/ ctx[30], false, false, false),
+    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[33]),
+    					listen_dev(select1, "change", /*select1_change_handler*/ ctx[34]),
+    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[35]),
+    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[36]),
+    					listen_dev(button3, "click", click_handler_7, false, false, false),
+    					listen_dev(button3, "click", /*addLayer*/ ctx[15], false, false, false),
+    					listen_dev(div13, "mousedown", /*mousedown_handler*/ ctx[41], false, false, false),
+    					listen_dev(div13, "mouseup", /*mouseup_handler*/ ctx[42], false, false, false),
+    					listen_dev(div13, "mouseleave", /*mouseleave_handler*/ ctx[43], false, false, false),
+    					listen_dev(div13, "mousemove", /*onMove*/ ctx[20], false, false, false),
+    					listen_dev(div13, "scroll", onScroll, false, false, false),
+    					listen_dev(div13, "wheel", /*onWheel*/ ctx[21], false, false, false),
+    					listen_dev(button4, "click", /*click_handler_8*/ ctx[44], false, false, false),
+    					listen_dev(input2, "change", /*input2_change_input_handler*/ ctx[45]),
+    					listen_dev(input2, "input", /*input2_change_input_handler*/ ctx[45]),
+    					listen_dev(button5, "click", /*click_handler_9*/ ctx[46], false, false, false),
+    					listen_dev(section3, "mousedown", /*mousedown_handler_1*/ ctx[47], false, false, false),
+    					listen_dev(section3, "mouseup", /*mouseup_handler_1*/ ctx[48], false, false, false)
     				];
 
     				mounted = true;
@@ -47804,48 +47922,20 @@ void main(void) {
     		},
     		p: function update(new_ctx, dirty) {
     			ctx = new_ctx;
+    			const title0_changes = {};
 
-    			if (!current || dirty[0] & /*needsSync*/ 256) {
-    				prop_dev(button0, "disabled", /*needsSync*/ ctx[8]);
+    			if (dirty[1] & /*$$scope*/ 524288) {
+    				title0_changes.$$scope = { dirty, ctx };
     			}
 
-    			if (dirty[0] & /*handlers, files, classes*/ 2054) {
-    				each_value_5 = /*files*/ ctx[1].handles;
-    				validate_each_argument(each_value_5);
-    				let i;
+    			title0.$set(title0_changes);
 
-    				for (i = 0; i < each_value_5.length; i += 1) {
-    					const child_ctx = get_each_context_5(ctx, each_value_5, i);
-
-    					if (each_blocks_5[i]) {
-    						each_blocks_5[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks_5[i] = create_each_block_5(child_ctx);
-    						each_blocks_5[i].c();
-    						each_blocks_5[i].m(section0, t6);
-    					}
-    				}
-
-    				for (; i < each_blocks_5.length; i += 1) {
-    					each_blocks_5[i].d(1);
-    				}
-
-    				each_blocks_5.length = each_value_5.length;
+    			if (!current || dirty[0] & /*needsSync*/ 4096) {
+    				prop_dev(button0, "disabled", /*needsSync*/ ctx[12]);
     			}
 
-    			if (/*files*/ ctx[1].handles.length == 0) {
-    				if (if_block) ; else {
-    					if_block = create_if_block(ctx);
-    					if_block.c();
-    					if_block.m(section0, null);
-    				}
-    			} else if (if_block) {
-    				if_block.d(1);
-    				if_block = null;
-    			}
-
-    			if (dirty[0] & /*project*/ 1) {
-    				each_value_4 = /*project*/ ctx[0].files;
+    			if (dirty[0] & /*project, files, handlers, classes*/ 65543) {
+    				each_value_4 = /*files*/ ctx[1].handles;
     				validate_each_argument(each_value_4);
     				let i;
 
@@ -47857,7 +47947,7 @@ void main(void) {
     					} else {
     						each_blocks_4[i] = create_each_block_4(child_ctx);
     						each_blocks_4[i].c();
-    						each_blocks_4[i].m(aside, null);
+    						each_blocks_4[i].m(div1, null);
     					}
     				}
 
@@ -47868,11 +47958,56 @@ void main(void) {
     				each_blocks_4.length = each_value_4.length;
     			}
 
-    			if ((!current || dirty[0] & /*calculate*/ 128) && t11_value !== (t11_value = /*calculate*/ ctx[7].width + "")) set_data_dev(t11, t11_value);
-    			if ((!current || dirty[0] & /*calculate*/ 128) && t13_value !== (t13_value = /*calculate*/ ctx[7].height + "")) set_data_dev(t13, t13_value);
+    			if (/*files*/ ctx[1].handles.length == 0) {
+    				if (if_block0) ; else {
+    					if_block0 = create_if_block_1(ctx);
+    					if_block0.c();
+    					if_block0.m(section0, null);
+    				}
+    			} else if (if_block0) {
+    				if_block0.d(1);
+    				if_block0 = null;
+    			}
 
-    			if (dirty & /*options*/ 0) {
-    				each_value_3 = options.backgrounds;
+    			if (default_slot) {
+    				if (default_slot.p && (!current || dirty[1] & /*$$scope*/ 524288)) {
+    					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[50], !current ? [-1, -1, -1] : dirty, null, null);
+    				}
+    			}
+
+    			const title1_changes = {};
+
+    			if (dirty[1] & /*$$scope*/ 524288) {
+    				title1_changes.$$scope = { dirty, ctx };
+    			}
+
+    			title1.$set(title1_changes);
+
+    			if (!current || dirty[0] & /*project*/ 1 && img.src !== (img_src_value = /*project*/ ctx[0].thumbnail)) {
+    				attr_dev(img, "src", img_src_value);
+    			}
+
+    			if (dirty[0] & /*project*/ 1) {
+    				toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
+    			}
+
+    			if (dirty[0] & /*project*/ 1) {
+    				toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
+    			}
+
+    			if (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) {
+    				if (if_block1) ; else {
+    					if_block1 = create_if_block(ctx);
+    					if_block1.c();
+    					if_block1.m(aside, t17);
+    				}
+    			} else if (if_block1) {
+    				if_block1.d(1);
+    				if_block1 = null;
+    			}
+
+    			if (dirty[0] & /*arrowClass, onFileDown, onFileUp, project*/ 917505) {
+    				each_value_3 = /*project*/ ctx[0].files;
     				validate_each_argument(each_value_3);
     				let i;
 
@@ -47884,7 +48019,7 @@ void main(void) {
     					} else {
     						each_blocks_3[i] = create_each_block_3(child_ctx);
     						each_blocks_3[i].c();
-    						each_blocks_3[i].m(select0, null);
+    						each_blocks_3[i].m(aside, null);
     					}
     				}
 
@@ -47895,12 +48030,8 @@ void main(void) {
     				each_blocks_3.length = each_value_3.length;
     			}
 
-    			if (dirty[0] & /*project*/ 1) {
-    				select_option(select0, /*project*/ ctx[0].config.background);
-    			}
-
     			if (dirty & /*options*/ 0) {
-    				each_value_2 = options.sizes;
+    				each_value_2 = options.backgrounds;
     				validate_each_argument(each_value_2);
     				let i;
 
@@ -47912,7 +48043,7 @@ void main(void) {
     					} else {
     						each_blocks_2[i] = create_each_block_2(child_ctx);
     						each_blocks_2[i].c();
-    						each_blocks_2[i].m(select1, null);
+    						each_blocks_2[i].m(select0, null);
     					}
     				}
 
@@ -47924,23 +48055,11 @@ void main(void) {
     			}
 
     			if (dirty[0] & /*project*/ 1) {
-    				select_option(select1, /*project*/ ctx[0].config.size);
+    				select_option(select0, /*project*/ ctx[0].config.background);
     			}
 
-    			if (dirty[0] & /*project*/ 1 && to_number(input0.value) !== /*project*/ ctx[0].config.dpi) {
-    				set_input_value(input0, /*project*/ ctx[0].config.dpi);
-    			}
-
-    			if (!current || dirty[0] & /*_uniforms*/ 8 && input1_max_value !== (input1_max_value = Math.max(/*_uniforms*/ ctx[3].size[0], /*_uniforms*/ ctx[3].size[1]) * 0.4)) {
-    				attr_dev(input1, "max", input1_max_value);
-    			}
-
-    			if (dirty[0] & /*project*/ 1 && to_number(input1.value) !== /*project*/ ctx[0].config.margin) {
-    				set_input_value(input1, /*project*/ ctx[0].config.margin);
-    			}
-
-    			if (dirty[0] & /*layers, project*/ 65) {
-    				each_value_1 = /*project*/ ctx[0].layers;
+    			if (dirty & /*options*/ 0) {
+    				each_value_1 = options.sizes;
     				validate_each_argument(each_value_1);
     				let i;
 
@@ -47949,58 +48068,85 @@ void main(void) {
 
     					if (each_blocks_1[i]) {
     						each_blocks_1[i].p(child_ctx, dirty);
-    						transition_in(each_blocks_1[i], 1);
     					} else {
     						each_blocks_1[i] = create_each_block_1(child_ctx);
     						each_blocks_1[i].c();
-    						transition_in(each_blocks_1[i], 1);
-    						each_blocks_1[i].m(section2, null);
+    						each_blocks_1[i].m(select1, null);
     					}
     				}
 
-    				group_outros();
-
-    				for (i = each_value_1.length; i < each_blocks_1.length; i += 1) {
-    					out(i);
+    				for (; i < each_blocks_1.length; i += 1) {
+    					each_blocks_1[i].d(1);
     				}
 
-    				check_outros();
+    				each_blocks_1.length = each_value_1.length;
     			}
 
     			if (dirty[0] & /*project*/ 1) {
+    				select_option(select1, /*project*/ ctx[0].config.size);
+    			}
+
+    			if (dirty[0] & /*project*/ 1 && to_number(input0.value) !== /*project*/ ctx[0].config.dpi) {
+    				set_input_value(input0, /*project*/ ctx[0].config.dpi);
+    			}
+
+    			if (!current || dirty[0] & /*_uniforms*/ 16 && input1_max_value !== (input1_max_value = Math.max(/*_uniforms*/ ctx[4].size[0], /*_uniforms*/ ctx[4].size[1]) * 0.4)) {
+    				attr_dev(input1, "max", input1_max_value);
+    			}
+
+    			if (dirty[0] & /*project*/ 1 && to_number(input1.value) !== /*project*/ ctx[0].config.margin) {
+    				set_input_value(input1, /*project*/ ctx[0].config.margin);
+    			}
+
+    			const title2_changes = {};
+
+    			if (dirty[1] & /*$$scope*/ 524288) {
+    				title2_changes.$$scope = { dirty, ctx };
+    			}
+
+    			title2.$set(title2_changes);
+
+    			if (dirty[0] & /*layers, solo, project*/ 385) {
     				each_value = /*project*/ ctx[0].layers;
     				validate_each_argument(each_value);
     				let i;
 
     				for (i = 0; i < each_value.length; i += 1) {
-    					const child_ctx = get_each_context(ctx, each_value, i);
+    					const child_ctx = get_each_context$1(ctx, each_value, i);
 
     					if (each_blocks[i]) {
     						each_blocks[i].p(child_ctx, dirty);
     						transition_in(each_blocks[i], 1);
     					} else {
-    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i] = create_each_block$1(child_ctx);
     						each_blocks[i].c();
     						transition_in(each_blocks[i], 1);
-    						each_blocks[i].m(section3, null);
+    						each_blocks[i].m(section2, t24);
     					}
     				}
 
     				group_outros();
 
     				for (i = each_value.length; i < each_blocks.length; i += 1) {
-    					out_1(i);
+    					out(i);
     				}
 
     				check_outros();
     			}
+
+    			if ((!current || dirty[0] & /*calculate*/ 2048) && t29_value !== (t29_value = /*calculate*/ ctx[11].width + "")) set_data_dev(t29, t29_value);
+    			if ((!current || dirty[0] & /*calculate*/ 2048) && t31_value !== (t31_value = /*calculate*/ ctx[11].height + "")) set_data_dev(t31, t31_value);
+
+    			if (dirty[0] & /*zoom*/ 8) {
+    				set_input_value(input2, /*zoom*/ ctx[3]);
+    			}
     		},
     		i: function intro(local) {
     			if (current) return;
-
-    			for (let i = 0; i < each_value_1.length; i += 1) {
-    				transition_in(each_blocks_1[i]);
-    			}
+    			transition_in(title0.$$.fragment, local);
+    			transition_in(default_slot, local);
+    			transition_in(title1.$$.fragment, local);
+    			transition_in(title2.$$.fragment, local);
 
     			for (let i = 0; i < each_value.length; i += 1) {
     				transition_in(each_blocks[i]);
@@ -48009,12 +48155,10 @@ void main(void) {
     			current = true;
     		},
     		o: function outro(local) {
-    			each_blocks_1 = each_blocks_1.filter(Boolean);
-
-    			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				transition_out(each_blocks_1[i]);
-    			}
-
+    			transition_out(title0.$$.fragment, local);
+    			transition_out(default_slot, local);
+    			transition_out(title1.$$.fragment, local);
+    			transition_out(title2.$$.fragment, local);
     			each_blocks = each_blocks.filter(Boolean);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
@@ -48025,15 +48169,20 @@ void main(void) {
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(main_1);
-    			destroy_each(each_blocks_5, detaching);
-    			if (if_block) if_block.d();
+    			destroy_component(title0);
     			destroy_each(each_blocks_4, detaching);
+    			if (if_block0) if_block0.d();
+    			if (default_slot) default_slot.d(detaching);
+    			destroy_component(title1);
+    			/*canvas_binding*/ ctx[28](null);
+    			if (if_block1) if_block1.d();
     			destroy_each(each_blocks_3, detaching);
     			destroy_each(each_blocks_2, detaching);
     			destroy_each(each_blocks_1, detaching);
+    			destroy_component(title2);
     			destroy_each(each_blocks, detaching);
-    			/*div6_binding*/ ctx[22](null);
-    			/*main_1_binding*/ ctx[25](null);
+    			/*div11_binding*/ ctx[40](null);
+    			/*main_1_binding*/ ctx[49](null);
     			mounted = false;
     			run_all(dispose);
     		}
@@ -48050,15 +48199,21 @@ void main(void) {
     	return block;
     }
 
-    const click_handler_3 = e => e.target.blur();
+    function onScroll(e) {
+    	e.target.scrollLeft = 4500;
+    	e.target.scrollTop = 4500;
+    }
+
+    const click_handler_7 = e => e.target.blur();
 
     function instance$1($$self, $$props, $$invalidate) {
     	let _uniforms;
     	let calculate;
     	let needsSync;
     	let { $$slots: slots = {}, $$scope } = $$props;
-    	validate_slots("Project", slots, []);
+    	validate_slots("Project", slots, ['default']);
     	let main, editor, app, stage, loader, mode;
+    	let solo = null;
 
     	let layers = window.layers = {
     		background: new Graphics(),
@@ -48072,10 +48227,18 @@ void main(void) {
     				antialias: false,
     				transparent: true,
     				resolution: 1,
-    				forceCanvas: true
+    				forceCanvas: true,
+    				preserveDrawingBuffer: true
     			})
     	};
 
+    	// let thumb = new PIXI.Application({
+    	// 	antialias: false,
+    	// 	transparent: true,
+    	// 	resolution: 1,
+    	// 	forceCanvas: true,
+    	// 	preserveDrawingBuffer: true
+    	// })
     	onMount(async e => {
     		await init();
     	});
@@ -48093,13 +48256,17 @@ void main(void) {
     	const mm2px = mm => Math.round(project.config.dpi / 25.4 * mm);
     	let fit = {};
 
+    	async function onResize(e) {
+    		await pixi.app.renderer.resize(editor.offsetWidth, editor.offsetHeight);
+    	}
+
     	async function init() {
-    		console.log("[Project] initing background and containers", calculate);
+    		await onResize();
     		editor.appendChild(pixi.app.view);
     		layers.background.drawRect(0, 0, calculate.width, calculate.height);
 
     		$$invalidate(
-    			6,
+    			8,
     			layers.background.filters = [
     				new Filter(null,
     				`
@@ -48120,11 +48287,10 @@ void main(void) {
     			layers
     		);
 
-    		pixi.app.stage.addChild(layers.background);
     		pixi.app.stage.addChild(layers.container);
+    		layers.container.addChild(layers.background);
     		layers.container.addChild(layers.processed);
-
-    		// layers.container.addChild( layers.images )
+    		console.log(`[Project] 🎉  layers and background inited`);
     		await update(project.config);
     	}
 
@@ -48134,30 +48300,37 @@ void main(void) {
     	}
 
     	function addLayer() {
+    		console.log("[Project] 🍰  adding layer ------------------------");
     		let cp = project.layers;
     		$$invalidate(0, project.layers = [], project);
-    		cp.push({});
+    		cp.push({ flag: true });
     		$$invalidate(0, project.layers = cp, project);
     	}
 
-    	async function update(config) {
-    		if (pixi?.app?.renderer) {
-    			const { width, height } = calculate;
-
-    			if (width != pixi.app.renderer.width || height != pixi.app.renderer.height) {
-    				console.log("[Project] canvas size updated", { width, height });
-    				await pixi.app.renderer.resize(width, height);
-    				$$invalidate(6, layers.background.width = width, layers);
-    				$$invalidate(6, layers.background.height = height, layers);
-    			}
-    		}
+    	async function clearImages() {
+    		for (let i = layers.images.children.length - 1; i >= 0; i--) layers.images.removeChild(layers.images.children[i]);
     	}
+
+    	async function renderThumbnail() {
+    		let { width, height } = calculate;
+    		let ctx = thumbnail.getContext("2d");
+    		$$invalidate(10, thumbnail.width = width > height ? 140 : 100, thumbnail);
+    		$$invalidate(10, thumbnail.height = width > height ? 100 : 140, thumbnail);
+    		ctx.drawImage(new Extract(pixi.app.renderer).image(pixi.app.stage), 0, 0, thumbnail.width, thumbnail.height);
+    		let data = thumbnail.toDataURL();
+
+    		if (data != project.thumbnail) {
+    			console.log("[Project] ⏱🌁  rendered thumbnail");
+    			$$invalidate(0, project.thumbnail = data, project);
+    		}
+    	} // await setPositions()
 
     	async function setup(files) {
     		if (!files?.srcs) return;
     		if (!loader) loader = new Loader();
     		let list = project.files.filter(name => files.srcs[name]);
     		if (list.length != project.files.length) return;
+    		console.log("[Project] 💥  setup (reset)");
     		await loader.reset();
 
     		for (const name of project.files) {
@@ -48165,41 +48338,130 @@ void main(void) {
     			if (!loader.resources[o.url]) loader.add(o.url, { crossOrigin: "anonymous" });
     		}
 
-    		console.log("[Project] loading files...");
+    		await setPositions();
 
     		loader.load(async e => {
-    			console.log("[Project] all files loaded", list);
+    			console.log("[Project] ✅💥  files loaded");
+    			await drawImages();
+    			await renderThumbnail();
+    		});
 
-    			// await layers.images.destroy({children:false})
-    			const len = Object.keys(loader.resources).length;
+    		inited = true;
+    	}
 
+    	async function update(config) {
+    		if (pixi?.app?.renderer && inited) {
     			const { width, height } = calculate;
-    			const size = rectd.neu(0, 0, width, height);
-    			const inner = rectd.shrinkBy(size, mm2px(project.config.margin));
-    			let splits = rectd.splitUp(inner, len);
-    			let i = 0;
 
-    			for (const [name, resource] of Object.entries(loader.resources)) {
-    				let sprite = new Sprite$1(resource.texture);
-    				let image = rectd.neu(0, 0, resource.data.width, resource.data.height);
-    				let fit = rectd.fitInto(image, inner);
-    				rectd.auto(fit, sprite);
-
-    				if (splits.length > 1) {
-    					let mask = new Graphics();
-    					mask.drawRect(splits[i].x, splits[i].y, splits[i].width, splits[i].height);
-    					sprite.mask = mask;
-    				}
-
-    				await layers.images.addChild(sprite);
-    				i += 1;
+    			if (sizeTimeout) {
+    				clearTimeout(sizeTimeout);
+    				sizeTimeout = null;
     			}
 
-    			// rectd.auto( inner, layers.container )
-    			// console.log(layers.container.width, '????', inner.width) 
-    			// layers.container.scale.x = 0.5
-    			addLayer();
-    		});
+    			sizeTimeout = setTimeout(
+    				async e => {
+    					// console.log('[Project] 🪡  update')
+    					if (!project.multiple && project.files.length > 1) {
+    						if (!window.confirm(`Remove ${project.files.length - 1} images from project?`)) return;
+    						$$invalidate(0, project.files = project.files.splice(1, project.files.length), project);
+    					}
+
+    					const neuSize = width != layers.background.width || height != layers.background.height;
+    					const neuMargin = project.config.margin != prevMargin;
+    					const isCanvasChanged = neuSize || neuMargin;
+    					const isNewFiles = project.files.length != Object.keys(loader.resources).length;
+    					project.layers.length != layers.processed.children.length;
+    					let something = false;
+
+    					if (isCanvasChanged || isNewFiles) {
+    						console.log("[Project] 🪡🖼  clearing images");
+    						await clearImages();
+    						something = true;
+    					}
+
+    					if (isNewFiles) {
+    						console.log("[Project] 🪡✨  new files, run setup");
+    						await setup(files);
+    						something = true;
+    					}
+
+    					// if (isNewLayer) {
+    					// 	console.log('[Project] 🪡🍰  new layer')
+    					// 	await setPositions()
+    					// 	await drawImages()
+    					// 	something = true
+    					// } 
+    					if (isCanvasChanged) {
+    						console.log("[Project] 🪡📐  set positions, draw images");
+    						await setPositions();
+    						await drawImages();
+    						something = true;
+    					}
+
+    					// await drawImages()
+    					if (!something) console.log(`[Project] 🪡💤  nothing happened`);
+
+    					if (something) await renderThumbnail();
+    				},
+    				200
+    			);
+    		}
+    	}
+
+    	let sizeTimeout;
+    	let prevMargin;
+
+    	async function drawImages() {
+    		const { width, height } = calculate;
+
+    		// await layers.images.destroy({children:true})
+    		const len = Object.keys(loader.resources).length;
+
+    		const size = rectd.neu(0, 0, width, height);
+    		const inner = rectd.shrinkBy(size, mm2px(project.config.margin));
+    		prevMargin = project.config.margin;
+    		let splits = rectd.splitUp(inner, len);
+    		let i = 0;
+
+    		for (const [name, resource] of Object.entries(loader.resources)) {
+    			let sprite = new Sprite(resource.texture);
+    			let image = rectd.neu(0, 0, resource.data.width, resource.data.height);
+    			sprite.width = width;
+    			sprite.height = height;
+    			let fit = rectd.fitInto(image, inner);
+    			rectd.auto(fit, sprite);
+
+    			if (splits.length > 1) {
+    				let mask = new Graphics();
+    				mask.drawRect(splits[i].x, splits[i].y, splits[i].width, splits[i].height);
+    				sprite.mask = mask;
+    			}
+
+    			console.log("[Project] 🎉  adding sprite to images:", name, i);
+    			await layers.images.addChild(sprite);
+    			i += 1;
+    		}
+
+    		console.log(`[Project] ✅🖼  ${i} image(s) drawn`);
+    	}
+
+    	async function onZoom(zoom_) {
+    		console.log("[Project] 🔭  zoom changed");
+    		$$invalidate(8, layers.container.scale.x = zoom, layers);
+    		$$invalidate(8, layers.container.scale.y = zoom, layers);
+    	}
+
+    	let inited = false;
+
+    	async function setPositions() {
+    		const { width, height } = calculate;
+    		$$invalidate(8, layers.background.width = width, layers);
+    		$$invalidate(8, layers.background.height = height, layers);
+    		$$invalidate(8, layers.container.x = editor.offsetWidth / 2, layers);
+    		$$invalidate(8, layers.container.y = editor.offsetHeight / 2, layers);
+    		$$invalidate(8, layers.container.pivot.x = width / 2, layers);
+    		$$invalidate(8, layers.container.pivot.y = height / 2, layers);
+    		console.log("[Project] ✅📐  positions set", { width, height });
     	}
 
     	let classes = {
@@ -48208,6 +48470,96 @@ void main(void) {
     	};
 
     	let targets = {};
+    	let arrowClass = `p0 no-grow flex row-center-center w3em b0-solid`;
+    	let zoom = 0.1;
+
+    	function move(from, to) {
+    		let cp = project.files;
+    		$$invalidate(0, project.files = [], project);
+    		let i = cp.splice(from, 1)[0];
+    		cp.splice(to, 0, i);
+    		$$invalidate(0, project.files = cp, project);
+    	}
+
+    	function onFileDown(idx) {
+    		let to = idx + 1;
+    		if (to >= project.files.length) return;
+    		move(idx, to);
+    	}
+
+    	function onFileUp(idx) {
+    		let to = idx - 1;
+    		if (to < 0) return;
+    		move(idx, to);
+    	}
+
+    	function onFileDelete(idx) {
+    		$$invalidate(
+    			0,
+    			project.files = [
+    				...project.files.slice(0, idx),
+    				...project.files.slice(idx + 1, project.files.length)
+    			],
+    			project
+    		);
+    	}
+
+    	let lastXY;
+
+    	function onMove(e) {
+    		let { x, y } = pixi.app.renderer.plugins.interaction.mouse.global;
+    		if (!lastXY) lastXY = { x, y };
+    		let { offsetWidth, offsetHeight } = editor;
+
+    		// layers.container.x = editor.offsetWidth / 2
+    		// layers.container.y = editor.offsetHeight / 2
+    		$$invalidate(8, layers.container.pivot.x -= x - lastXY.x, layers);
+
+    		$$invalidate(8, layers.container.pivot.y -= y - lastXY.y, layers);
+    		$$invalidate(8, layers.container.x -= (x - lastXY.x) * zoom, layers);
+    		$$invalidate(8, layers.container.y -= (y - lastXY.y) * zoom, layers);
+    		lastXY = { x, y };
+
+    		// layers.container.pivot.x = width/2
+    		// layers.container.pivot.y = height/2
+    		// pixi.app.stage.pivot.x = offsetWidth/2
+    		// pixi.app.stage.pivot.y = offsetHeight/2
+    		x /= offsetWidth;
+
+    		y /= offsetHeight;
+    		let { width, height } = calculate;
+    		width *= zoom;
+    		height *= zoom;
+    		if (!dragging) return;
+    		$$invalidate(8, layers.container.x = (width - offsetWidth) * x * -1, layers);
+    		$$invalidate(8, layers.container.y = (height - offsetHeight) * y * -1, layers);
+    	} // pixi.app.stage.pivot.x = pixi.app.stage.x 
+    	// pixi.app.stage.pivot.y = pixi.app.stage.y 
+
+    	function onWheel(e) {
+    		if (keys["Alt"]) {
+    			$$invalidate(3, zoom += e.deltaY * 0.001);
+    			if (zoom < 0.01) $$invalidate(3, zoom = 0.01);
+    			if (zoom > 3) $$invalidate(3, zoom = 3);
+    		} else {
+    			let fract = 0.5;
+    			$$invalidate(8, layers.container.x += e.deltaX * fract * -1, layers);
+    			$$invalidate(8, layers.container.y += e.deltaY * fract * -1, layers);
+    		}
+    	}
+
+    	let dragging = false;
+    	let keys = {};
+
+    	function onKeyDown(e) {
+    		keys[e.key] = true;
+    	}
+
+    	function onKeyUp(e) {
+    		keys[e.key] = false;
+    	}
+
+    	let thumbnail;
     	const writable_props = ["project", "files", "handlers"];
 
     	Object_1.keys($$props).forEach(key => {
@@ -48217,6 +48569,18 @@ void main(void) {
     	const click_handler = (handle, e) => handlers.requestFile(handle);
     	const click_handler_1 = (handle, e) => handlers.removeHandle(handle);
     	const click_handler_2 = (handle, e) => handlers.selectImage(handle);
+
+    	function canvas_binding($$value) {
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			thumbnail = $$value;
+    			$$invalidate(10, thumbnail);
+    		});
+    	}
+
+    	const click_handler_3 = e => $$invalidate(0, project.multiple = false, project);
+    	const click_handler_4 = e => $$invalidate(0, project.multiple = true, project);
+    	const click_handler_5 = (idx, e) => onFileUp(idx);
+    	const click_handler_6 = (idx, e) => onFileDown(idx);
 
     	function select0_change_handler() {
     		project.config.background = select_value(this);
@@ -48238,39 +48602,48 @@ void main(void) {
     		$$invalidate(0, project);
     	}
 
+    	function layer_solo_binding(value) {
+    		solo = value;
+    		$$invalidate(7, solo);
+    	}
+
     	function layer_container_binding(value) {
     		if ($$self.$$.not_equal(layers.processed, value)) {
     			layers.processed = value;
-    			$$invalidate(6, layers);
+    			$$invalidate(8, layers);
     		}
     	}
 
-    	function layer_images_binding(value) {
-    		if ($$self.$$.not_equal(layers.images, value)) {
-    			layers.images = value;
-    			$$invalidate(6, layers);
-    		}
-    	}
-
-    	function layer_layer_binding(value, layer, each_value_1, index) {
-    		each_value_1[index] = value;
+    	function layer_layer_binding(value, layer, each_value, index) {
+    		each_value[index] = value;
     		$$invalidate(0, project);
     	}
 
-    	function div6_binding($$value) {
+    	function div11_binding($$value) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			editor = $$value;
-    			$$invalidate(5, editor);
+    			$$invalidate(6, editor);
     		});
     	}
 
-    	const mousedown_handler = e => togglePreview(true);
-    	const mouseup_handler = e => togglePreview(false);
+    	const mousedown_handler = e => $$invalidate(9, dragging = true);
+    	const mouseup_handler = e => $$invalidate(9, dragging = false);
+    	const mouseleave_handler = e => $$invalidate(9, dragging = false);
+    	const click_handler_8 = e => zoom > 0.05 ? $$invalidate(3, zoom -= 0.05) : null;
+
+    	function input2_change_input_handler() {
+    		zoom = to_number(this.value);
+    		$$invalidate(3, zoom);
+    	}
+
+    	const click_handler_9 = e => zoom < 2 ? $$invalidate(3, zoom += 0.05) : null;
+    	const mousedown_handler_1 = e => togglePreview(true);
+    	const mouseup_handler_1 = e => togglePreview(false);
 
     	function main_1_binding($$value) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			main = $$value;
-    			$$invalidate(4, main);
+    			$$invalidate(5, main);
     		});
     	}
 
@@ -48278,24 +48651,27 @@ void main(void) {
     		if ("project" in $$props) $$invalidate(0, project = $$props.project);
     		if ("files" in $$props) $$invalidate(1, files = $$props.files);
     		if ("handlers" in $$props) $$invalidate(2, handlers = $$props.handlers);
+    		if ("$$scope" in $$props) $$invalidate(50, $$scope = $$props.$$scope);
     	};
 
     	$$self.$capture_state = () => ({
     		lib,
     		PIXI,
     		onMount,
-    		Layer,
-    		Palette,
     		get,
     		set,
     		rectd,
     		options,
+    		Layer,
+    		Palette,
+    		Title,
     		main,
     		editor,
     		app,
     		stage,
     		loader,
     		mode,
+    		solo,
     		layers,
     		pixi,
     		project,
@@ -48305,37 +48681,71 @@ void main(void) {
     		setUniforms,
     		mm2px,
     		fit,
+    		onResize,
     		init,
     		togglePreview,
     		addLayer,
-    		update,
+    		clearImages,
+    		renderThumbnail,
     		setup,
+    		update,
+    		sizeTimeout,
+    		prevMargin,
+    		drawImages,
+    		onZoom,
+    		inited,
+    		setPositions,
     		classes,
     		targets,
+    		arrowClass,
+    		zoom,
+    		move,
+    		onFileDown,
+    		onFileUp,
+    		onFileDelete,
+    		lastXY,
+    		onMove,
+    		onScroll,
+    		onWheel,
+    		dragging,
+    		keys,
+    		onKeyDown,
+    		onKeyUp,
+    		thumbnail,
     		_uniforms,
     		calculate,
     		needsSync
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ("main" in $$props) $$invalidate(4, main = $$props.main);
-    		if ("editor" in $$props) $$invalidate(5, editor = $$props.editor);
+    		if ("main" in $$props) $$invalidate(5, main = $$props.main);
+    		if ("editor" in $$props) $$invalidate(6, editor = $$props.editor);
     		if ("app" in $$props) app = $$props.app;
     		if ("stage" in $$props) stage = $$props.stage;
     		if ("loader" in $$props) loader = $$props.loader;
     		if ("mode" in $$props) mode = $$props.mode;
-    		if ("layers" in $$props) $$invalidate(6, layers = $$props.layers);
+    		if ("solo" in $$props) $$invalidate(7, solo = $$props.solo);
+    		if ("layers" in $$props) $$invalidate(8, layers = $$props.layers);
     		if ("pixi" in $$props) pixi = $$props.pixi;
     		if ("project" in $$props) $$invalidate(0, project = $$props.project);
     		if ("files" in $$props) $$invalidate(1, files = $$props.files);
     		if ("handlers" in $$props) $$invalidate(2, handlers = $$props.handlers);
     		if ("uniforms" in $$props) uniforms = $$props.uniforms;
     		if ("fit" in $$props) fit = $$props.fit;
-    		if ("classes" in $$props) $$invalidate(11, classes = $$props.classes);
+    		if ("sizeTimeout" in $$props) sizeTimeout = $$props.sizeTimeout;
+    		if ("prevMargin" in $$props) prevMargin = $$props.prevMargin;
+    		if ("inited" in $$props) inited = $$props.inited;
+    		if ("classes" in $$props) $$invalidate(16, classes = $$props.classes);
     		if ("targets" in $$props) targets = $$props.targets;
-    		if ("_uniforms" in $$props) $$invalidate(3, _uniforms = $$props._uniforms);
-    		if ("calculate" in $$props) $$invalidate(7, calculate = $$props.calculate);
-    		if ("needsSync" in $$props) $$invalidate(8, needsSync = $$props.needsSync);
+    		if ("arrowClass" in $$props) $$invalidate(17, arrowClass = $$props.arrowClass);
+    		if ("zoom" in $$props) $$invalidate(3, zoom = $$props.zoom);
+    		if ("lastXY" in $$props) lastXY = $$props.lastXY;
+    		if ("dragging" in $$props) $$invalidate(9, dragging = $$props.dragging);
+    		if ("keys" in $$props) keys = $$props.keys;
+    		if ("thumbnail" in $$props) $$invalidate(10, thumbnail = $$props.thumbnail);
+    		if ("_uniforms" in $$props) $$invalidate(4, _uniforms = $$props._uniforms);
+    		if ("calculate" in $$props) $$invalidate(11, calculate = $$props.calculate);
+    		if ("needsSync" in $$props) $$invalidate(12, needsSync = $$props.needsSync);
     	};
 
     	if ($$props && "$$inject" in $$props) {
@@ -48344,20 +48754,20 @@ void main(void) {
 
     	$$self.$$.update = () => {
     		if ($$self.$$.dirty[0] & /*project*/ 1) {
-    			$$invalidate(3, _uniforms = {
+    			$$invalidate(4, _uniforms = {
     				hsla: options.backgrounds.find(b => b.name == project.config.background).colour,
     				size: options.sizes.find(b => b.name == project.config.size).xy
     			});
     		}
 
-    		if ($$self.$$.dirty[0] & /*_uniforms*/ 8) {
+    		if ($$self.$$.dirty[0] & /*_uniforms*/ 16) {
     			setUniforms(_uniforms);
     		}
 
-    		if ($$self.$$.dirty[0] & /*_uniforms*/ 8) {
-    			$$invalidate(7, calculate = {
-    				width: mm2px(_uniforms.size[0]) * 0.25,
-    				height: mm2px(_uniforms.size[1]) * 0.25
+    		if ($$self.$$.dirty[0] & /*_uniforms*/ 16) {
+    			$$invalidate(11, calculate = {
+    				width: mm2px(_uniforms.size[0]),
+    				height: mm2px(_uniforms.size[1])
     			});
     		}
 
@@ -48370,7 +48780,11 @@ void main(void) {
     		}
 
     		if ($$self.$$.dirty[0] & /*files*/ 2) {
-    			$$invalidate(8, needsSync = files.handles.filter(h => !files.srcs[h.name]));
+    			$$invalidate(12, needsSync = files.handles.filter(h => !files.srcs[h.name]));
+    		}
+
+    		if ($$self.$$.dirty[0] & /*zoom*/ 8) {
+    			onZoom();
     		}
     	};
 
@@ -48378,36 +48792,61 @@ void main(void) {
     		project,
     		files,
     		handlers,
+    		zoom,
     		_uniforms,
     		main,
     		editor,
+    		solo,
     		layers,
+    		dragging,
+    		thumbnail,
     		calculate,
     		needsSync,
+    		onResize,
     		togglePreview,
     		addLayer,
     		classes,
+    		arrowClass,
+    		onFileDown,
+    		onFileUp,
+    		onMove,
+    		onWheel,
+    		onKeyDown,
+    		onKeyUp,
+    		slots,
     		click_handler,
     		click_handler_1,
     		click_handler_2,
+    		canvas_binding,
+    		click_handler_3,
+    		click_handler_4,
+    		click_handler_5,
+    		click_handler_6,
     		select0_change_handler,
     		select1_change_handler,
     		input0_input_handler,
     		input1_input_handler,
+    		layer_solo_binding,
     		layer_container_binding,
-    		layer_images_binding,
     		layer_layer_binding,
-    		div6_binding,
+    		div11_binding,
     		mousedown_handler,
     		mouseup_handler,
-    		main_1_binding
+    		mouseleave_handler,
+    		click_handler_8,
+    		input2_change_input_handler,
+    		click_handler_9,
+    		mousedown_handler_1,
+    		mouseup_handler_1,
+    		main_1_binding,
+    		$$scope
     	];
     }
 
     class Project extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init$1(this, options, instance$1, create_fragment$1, safe_not_equal, { project: 0, files: 1, handlers: 2 }, [-1, -1]);
+    		init$1(this, options, instance$1, create_fragment$1, safe_not_equal, { project: 0, files: 1, handlers: 2 }, [-1, -1, -1]);
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
@@ -48460,6 +48899,220 @@ void main(void) {
     /* src/App.svelte generated by Svelte v3.38.3 */
 
     const { console: console_1 } = globals;
+    const file = "src/App.svelte";
+
+    function get_each_context(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[18] = list[i];
+    	child_ctx[20] = i;
+    	return child_ctx;
+    }
+
+    // (165:1) <Title>
+    function create_default_slot_1(ctx) {
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			t = text("Projects");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, t, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(t);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_default_slot_1.name,
+    		type: "slot",
+    		source: "(165:1) <Title>",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (174:2) {#each PROJECTS as project,idx}
+    function create_each_block(ctx) {
+    	let div;
+    	let img;
+    	let img_src_value;
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			img = element("img");
+    			t = space();
+    			attr_dev(img, "class", "b1-solid");
+    			if (img.src !== (img_src_value = /*project*/ ctx[18].thumbnail)) attr_dev(img, "src", img_src_value);
+    			add_location(img, file, 177, 4, 3556);
+    			attr_dev(div, "class", "p1 bb1-solid flex row-center-center ");
+    			toggle_class(div, "pop", /*idx*/ ctx[20] == /*IDX*/ ctx[2]);
+    			toggle_class(div, "bt1-solid", /*idx*/ ctx[20] == 0);
+    			add_location(div, file, 174, 3, 3444);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			append_dev(div, img);
+    			append_dev(div, t);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*PROJECTS*/ 1 && img.src !== (img_src_value = /*project*/ ctx[18].thumbnail)) {
+    				attr_dev(img, "src", img_src_value);
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block.name,
+    		type: "each",
+    		source: "(174:2) {#each PROJECTS as project,idx}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (163:0) <Project bind:project={PROJECTS[IDX]} bind:files={files} {handlers}>
+    function create_default_slot(ctx) {
+    	let title;
+    	let t0;
+    	let div0;
+    	let button;
+    	let t2;
+    	let div1;
+    	let current;
+    	let mounted;
+    	let dispose;
+
+    	title = new Title({
+    			props: {
+    				$$slots: { default: [create_default_slot_1] },
+    				$$scope: { ctx }
+    			},
+    			$$inline: true
+    		});
+
+    	let each_value = /*PROJECTS*/ ctx[0];
+    	validate_each_argument(each_value);
+    	let each_blocks = [];
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
+    	}
+
+    	const block = {
+    		c: function create() {
+    			create_component(title.$$.fragment);
+    			t0 = space();
+    			div0 = element("div");
+    			button = element("button");
+    			button.textContent = "New";
+    			t2 = space();
+    			div1 = element("div");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			attr_dev(button, "class", "w100pc");
+    			add_location(button, file, 166, 2, 3307);
+    			attr_dev(div0, "class", "p1");
+    			add_location(div0, file, 165, 1, 3288);
+    			attr_dev(div1, "class", "checker");
+    			add_location(div1, file, 172, 1, 3385);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(title, target, anchor);
+    			insert_dev(target, t0, anchor);
+    			insert_dev(target, div0, anchor);
+    			append_dev(div0, button);
+    			insert_dev(target, t2, anchor);
+    			insert_dev(target, div1, anchor);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div1, null);
+    			}
+
+    			current = true;
+
+    			if (!mounted) {
+    				dispose = listen_dev(button, "click", click_handler, false, false, false);
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, dirty) {
+    			const title_changes = {};
+
+    			if (dirty & /*$$scope*/ 2097152) {
+    				title_changes.$$scope = { dirty, ctx };
+    			}
+
+    			title.$set(title_changes);
+
+    			if (dirty & /*IDX, PROJECTS*/ 5) {
+    				each_value = /*PROJECTS*/ ctx[0];
+    				validate_each_argument(each_value);
+    				let i;
+
+    				for (i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(div1, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+
+    				each_blocks.length = each_value.length;
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(title.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(title.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(title, detaching);
+    			if (detaching) detach_dev(t0);
+    			if (detaching) detach_dev(div0);
+    			if (detaching) detach_dev(t2);
+    			if (detaching) detach_dev(div1);
+    			destroy_each(each_blocks, detaching);
+    			mounted = false;
+    			dispose();
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_default_slot.name,
+    		type: "slot",
+    		source: "(163:0) <Project bind:project={PROJECTS[IDX]} bind:files={files} {handlers}>",
+    		ctx
+    	});
+
+    	return block;
+    }
 
     function create_fragment(ctx) {
     	let project;
@@ -48468,17 +49121,21 @@ void main(void) {
     	let current;
 
     	function project_project_binding(value) {
-    		/*project_project_binding*/ ctx[3](value);
+    		/*project_project_binding*/ ctx[4](value);
     	}
 
     	function project_files_binding(value) {
-    		/*project_files_binding*/ ctx[4](value);
+    		/*project_files_binding*/ ctx[5](value);
     	}
 
-    	let project_props = { handlers: /*handlers*/ ctx[2] };
+    	let project_props = {
+    		handlers: /*handlers*/ ctx[3],
+    		$$slots: { default: [create_default_slot] },
+    		$$scope: { ctx }
+    	};
 
-    	if (/*current*/ ctx[0] !== void 0) {
-    		project_props.project = /*current*/ ctx[0];
+    	if (/*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]] !== void 0) {
+    		project_props.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
     	}
 
     	if (/*files*/ ctx[1] !== void 0) {
@@ -48503,9 +49160,13 @@ void main(void) {
     		p: function update(ctx, [dirty]) {
     			const project_changes = {};
 
-    			if (!updating_project && dirty & /*current*/ 1) {
+    			if (dirty & /*$$scope, PROJECTS*/ 2097153) {
+    				project_changes.$$scope = { dirty, ctx };
+    			}
+
+    			if (!updating_project && dirty & /*PROJECTS, IDX*/ 5) {
     				updating_project = true;
-    				project_changes.project = /*current*/ ctx[0];
+    				project_changes.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
     				add_flush_callback(() => updating_project = false);
     			}
 
@@ -48543,25 +49204,29 @@ void main(void) {
     }
 
     const KEY = "RISOGRAPHINATOR";
+    const click_handler = e => e;
 
     function instance($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots("App", slots, []);
     	onMount(setup);
 
-    	let current = {
-    		layers: [],
+    	let intro = {
+    		layers: [{}],
     		config: {
     			background: options.backgrounds[0].name,
-    			size: options.sizes[0].name,
+    			size: options.sizes[1].name,
     			dpi: 300,
     			margin: 0
     		},
-    		files: ["autr", "test", "alt"]
+    		multiple: false,
+    		files: ["test"], //[ 'autr', 'test', 'alt']
+    		
     	};
 
     	let FILES = {};
-    	let PROJECTS = [];
+    	let PROJECTS = [intro];
+    	let IDX = 0;
 
     	async function setup() {
     		await loadDb();
@@ -48593,16 +49258,23 @@ void main(void) {
     	const PROJECTS_KEY = `${KEY}_PROJECTS`;
 
     	function selectImage(handle) {
-    		console.log("IMAGE CLICKED!", handle);
+    		console.log("SELECTED IMAGE");
+    		let idx = PROJECTS[IDX].files.indexOf(handle.name);
 
-    		if (current.files.indexOf(handle.name) == -1) {
-    			let cp = current.files;
-    			$$invalidate(0, current.files = [], current);
-    			cp.push(handle.name);
-    			$$invalidate(0, current.files = cp, current);
+    		if (!PROJECTS[IDX].multiple) {
+    			$$invalidate(0, PROJECTS[IDX].files = [handle.name], PROJECTS);
+    		} else {
+    			if (idx == -1) {
+    				let cp = PROJECTS[IDX].files;
+    				$$invalidate(0, PROJECTS[IDX].files = [], PROJECTS);
+    				cp.push(handle.name);
+    				$$invalidate(0, PROJECTS[IDX].files = cp, PROJECTS);
+    			} else {
+    				let cp = PROJECTS[IDX].files;
+    				cp.splice(idx, 1);
+    				$$invalidate(0, PROJECTS[IDX].files = cp, PROJECTS);
+    			}
     		}
-
-    		console.log(current.files);
     	}
 
     	async function requestFile(handle) {
@@ -48691,8 +49363,10 @@ void main(void) {
     	});
 
     	function project_project_binding(value) {
-    		current = value;
-    		$$invalidate(0, current);
+    		if ($$self.$$.not_equal(PROJECTS[IDX], value)) {
+    			PROJECTS[IDX] = value;
+    			$$invalidate(0, PROJECTS);
+    		}
     	}
 
     	function project_files_binding(value) {
@@ -48703,12 +49377,14 @@ void main(void) {
     	$$self.$capture_state = () => ({
     		onMount,
     		Project,
+    		Title,
     		options,
     		get,
     		set,
-    		current,
+    		intro,
     		FILES,
     		PROJECTS,
+    		IDX,
     		setup,
     		files,
     		KEY,
@@ -48725,18 +49401,19 @@ void main(void) {
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ("current" in $$props) $$invalidate(0, current = $$props.current);
+    		if ("intro" in $$props) intro = $$props.intro;
     		if ("FILES" in $$props) FILES = $$props.FILES;
-    		if ("PROJECTS" in $$props) PROJECTS = $$props.PROJECTS;
+    		if ("PROJECTS" in $$props) $$invalidate(0, PROJECTS = $$props.PROJECTS);
+    		if ("IDX" in $$props) $$invalidate(2, IDX = $$props.IDX);
     		if ("files" in $$props) $$invalidate(1, files = $$props.files);
-    		if ("handlers" in $$props) $$invalidate(2, handlers = $$props.handlers);
+    		if ("handlers" in $$props) $$invalidate(3, handlers = $$props.handlers);
     	};
 
     	if ($$props && "$$inject" in $$props) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
-    	return [current, files, handlers, project_project_binding, project_files_binding];
+    	return [PROJECTS, files, IDX, handlers, project_project_binding, project_files_binding];
     }
 
     class App extends SvelteComponentDev {
