@@ -13,6 +13,10 @@
 	export let pixi 
 	export let group
 
+	let class_ = ""
+	export { class_ as class }
+	let style_ = ""
+
 	let filter
 
 	function setDefaults( layer_ ) {
@@ -219,7 +223,7 @@ void main(void) {
 <!-- <div bind:this={TEST} /> -->
 
 <div 
-	class="flex column bb1-solid" >
+	class="flex column bb1-solid {class_}" >
 	<div class="mb0-5 p1">
 
 		<div class="flex row-stretch-stretch grow w100pc">

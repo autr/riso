@@ -1,18 +1,25 @@
 <script>
     import panzoom from 'panzoom'
     import { onMount } from 'svelte'
+    import { antilag } from './_stores.js'
 
     export let project
 
     let lastXY
     export let editorEl
+    export let edge = 100
     let zoomer
+    let transform = {}
 
     onMount( async e => {
         window.zoomer = zoomer = panzoom( editorEl, {
             maxZoom: 2,
-            minZoom: 0.01
+            minZoom: 0.02
         } )
+
+        zoomer.on('transform', e => {
+            transform = zoomer.getTransform()
+        })
     })
 
     let lastWidthHeight
@@ -24,8 +31,7 @@
         fitToCanvas()
     })(project)
 
-    function fitToCanvas( edge ) {
-        if (!edge) edge = 100
+    function fitToCanvas() {
         let {width,height} = project.info
         let { offsetWidth, offsetHeight } = editorEl
         let zoomX = (offsetWidth - edge) / width
@@ -33,22 +39,24 @@
 
         let canvasRatio = width/height
         let offsetRatio = offsetWidth/offsetHeight
-        console.log(canvasRatio, offsetRatio)
         let zoom = 1
         if (canvasRatio > 1 && offsetRatio < 1) { zoom = zoomX } 
         else if (canvasRatio > 1 && offsetRatio > 1) { zoom = zoomY } 
         else if (canvasRatio < 1 && offsetRatio < 1) { zoom = zoomX } 
         else if (canvasRatio < 1 && offsetRatio > 1) { zoom = zoomY } 
-        else { console.log('ERROR') }
+        else { }
         let x = (offsetWidth - (width*zoom))/2
         let y = (offsetHeight - (height*zoom))/2
         zoomer.zoomAbs(0,0,zoom)
         zoomer.moveTo( x, y)
     }
 
+    let grabbing = false
 
     function togglePreview( b ) {
         console.log('[Canvas] 👁  toggle preview')
+        grabbing = b
+        antilag.set(b)
         // mode = b
         // if (mode) {
         //     // rectd.auto( fit, raw )
@@ -77,16 +85,25 @@
 <section 
     on:mousedown={ e => togglePreview( true ) }
     on:mouseup={ e => togglePreview( false ) }
+    class:grab={!grabbing}
+    class:grabbing={grabbing}
     class="rel basis70pc pointer grow flex row-center-flex-start maxh100vh overflow-hidden">
     <div
         id="zoom"
         class="flex fill" >
+        <span 
+            class="measure-height abs l0 bt1-solid bb1-solid w1em flex row-flex-start-center p0-5" 
+            style={`height:${project.info.height * transform.scale}px;transform: translate(0,${parseInt(transform.y)}px)`}>
+            {project.info.height}
+        </span>
+        <span 
+            class="measure-width abs t0 bl2-solid br2-solid bt1-solid flex row-center-center h0em p0-2" 
+            style={`width:${project.info.width * transform.scale}px;transform: translate(${parseInt(transform.x)}px,0)`}>
+            {project.info.width} {$antilag}
+        </span>
         <div class="w100pc h100pc" bind:this={editorEl}>
             <!-- <canvas id="lores" class="fill" /> -->
         </div>
-    </div>
-    <div class="t1 l1 abs">
-        {project.info.width} x {project.info.height}
     </div>
     <div class="abs t0 r2 p1 flex row w3em">
 

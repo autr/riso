@@ -140,11 +140,9 @@
 		{/each}
 	</div> -->
 
-{#if isSelectingFiles}
-	<div class="fixed l0 t0 w100vw h100vh bg z-index9 none">
-		<Files bind:files={files} bind:project={PROJECTS[IDX]} />
-	</div>
-{/if}
+<div class="fixed l0 t0 w100vw h100vh bg z-index9" class:none={!isSelectingFiles} >
+	<Files bind:files={files} bind:project={PROJECTS[IDX]} />
+</div>
 
 <div class="wrapper flex column h100vh">
 	<header class="bg plr1 pb1 pt1 bb1-solid flex row-space-between-center">
@@ -167,12 +165,14 @@
 		    </button>
 		    <button 
 		        class=""
+		        disabled={PROJECTS[IDX].layers.length >= 5}
 		        on:click={e => (e.target.blur())} 
 		        on:click={addLayer}>
 		        Add Layer
 		    </button>
 		</div>
-		<div class=" flex row-flex-end-center">
+		<div class=" flex row-flex-end-center cml1">
+			<button class="pop">Preview</button>
 			<button class="pop">Export</button>
 		</div>
 	</header>

@@ -57519,5 +57519,8 @@ html #zoom, body #zoom {
   html #zoom *, body #zoom * {
     image-rendering: pixelated; }
 
-html canvas, body canvas {
-  border: 10px solid var(--color); }
+html .palette-range, body .palette-range {
+  background-color: var(--bg);
+  background-image: linear-gradient(45deg, var(--bg-sink) 25%, transparent 25%, transparent 75%, var(--bg-sink) 75%, var(--bg-sink) 100%), linear-gradient(45deg, var(--bg-sink) 25%, transparent 25%, transparent 75%, var(--bg-sink) 75%, var(--bg-sink) 100%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px; }

@@ -20,11 +20,8 @@ export default {
 		gen.bg( 'Warm white', `hsl(50, 90%, 97%)`, 0.1)
 	],
 	sizes: [
-		gen.size( 'A4 (landscape)', 297, 210 ),
-		gen.size( 'A4 (portrait)', 210, 297 ),
-		gen.size( 'A3 (landscape)', 420, 297 ),
-		gen.size( 'A3 (portrait)', 297, 420 ),
-		gen.size( 'A2 (landscape)', 594, 420 ),
-		gen.size( 'A2 (portrait)', 420, 594 )
+		gen.size( 'DIN A4', 210, 297 ),
+		gen.size( 'DIN A3', 297, 420 ),
+		gen.size( 'DIN A2', 420, 594 )
 	]
 }

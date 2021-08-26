@@ -11,6 +11,8 @@
 	import Title from './Title.svelte'
 	import Canvas from './Canvas.svelte'
 
+	import { antilag } from './_stores.js'
+
 	let main, app, stage, loader, mode
 	let solo = null
 
@@ -81,8 +83,6 @@
 		await pixi.app.renderer.resize(project.info.width,project.info.height)
 
 	})( project )
-
-
 
 	let fit = {} 
 
@@ -158,6 +158,8 @@
 			// await renderThumbnail()
 		})
 		inited = true
+		console.log('[Project] 💿  running initial update...')
+		await update( project.config )
 	}
 
 	$: setup( files )
@@ -168,10 +170,12 @@
 	let updateTimeout
 	let lastLayerLength
 
-	$: (( config ) => {
+	$: update(project.config)
+
+	async function update( config ) {
+
 
 		if (pixi?.app?.renderer && inited ) {
-
 
 			const { width, height } = project.info
 
@@ -237,7 +241,7 @@
 			}, 100)
 
 		}
-	})( project.config )
+	}
 
 
 
@@ -498,10 +502,12 @@
 
 
 
-			<section id="layers" class={classes.lanes + ' basis20pc'}>
+			<section id="layers" class={classes.lanes + ' basis20pc '}>
 
 				<!-- LAYERS -->
-				<Layers bind:groups={layers.groups} bind:layers={project.layers} bind:solo={solo} />
+				<div class="column-reverse justify-content-flex-end">
+					<Layers bind:groups={layers.groups} bind:layers={project.layers} bind:solo={solo} />
+				</div>
 
 			</section>
 		</div>

@@ -81,10 +81,13 @@
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
                         on:click={ e => layers[idx].muted = !layers[idx].muted }
-                        class:filled={layers[idx].muted}>M</div>
+                        class:error={layers[idx].muted && solo != idx}
+                        class:filled={layers[idx].muted && solo != idx}>M</div>
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
                         class:filled={solo == idx}
+                        class:alert={solo == idx}
+                        class:b1-solid={solo == idx}
                         on:click={ e => onSolo( idx ) }>S</div>
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
@@ -106,21 +109,19 @@
             <!-- PALETTE -->
 
             <aside 
-                on:click={e => overlay = true}
                 class="">
                 <div class="bb1-solid bt1-solid h1em flex row-reverse w100pc">
                     <Palette bind:layer={layers[idx]} />
                 </div>
             </aside>
 
-            {#if !layers[idx].collapsed}
-                <Layer 
-                    index={idx}
-                    {pixi}
-                    bind:group={group}
-                    bind:solo={solo}
-                    bind:layer={layers[idx]} />
-            {/if}
+            <Layer 
+                index={idx}
+                {pixi}
+                class={layers[idx].collapsed ? 'none' : ''}
+                bind:group={group}
+                bind:solo={solo}
+                bind:layer={layers[idx]} />
         </div>
     {/if}
 {/each}
