@@ -57518,3 +57518,6 @@ html #zoom, body #zoom {
   background-position: 0 0, 4px 4px; }
   html #zoom *, body #zoom * {
     image-rendering: pixelated; }
+
+html canvas, body canvas {
+  border: 10px solid var(--color); }

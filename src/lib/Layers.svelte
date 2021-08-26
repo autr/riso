@@ -53,7 +53,7 @@
         })
     }
 
-    function onDelete( idx ) {
+    function onRemove( idx ) {
         groups[idx].parent.removeChild( groups[idx] )
         layers = layers.filter( (l,i) => (i != idx) )
     }
@@ -66,8 +66,7 @@
         <div 
             class:something={$selected.type == 'layer' && $selected.which == idx}
             on:click={ e => onSelect(idx) }
-            bind:this={elements[idx]}
-            class:bt1-solid={idx != 0}>
+            bind:this={elements[idx]}>
             <header class="pop flex row-space-between-center">
                 <div class="flex row-flex-start-center">
                     <div 
@@ -89,7 +88,7 @@
                         on:click={ e => onSolo( idx ) }>S</div>
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
-                        on:click={ e => onDelete( idx ) }>
+                        on:click={ e => onRemove( idx ) }>
                         <span class="cross w10px h10px flex block" />    
                     </div>
                     <div 
@@ -104,13 +103,12 @@
                 </div>
             </header>
 
-            {console.log(layers[idx])}
             <!-- PALETTE -->
 
             <aside 
                 on:click={e => overlay = true}
                 class="">
-                <div class="bb1-solid bt1-solid h1em flex row-reverse mb1 w100pc">
+                <div class="bb1-solid bt1-solid h1em flex row-reverse w100pc">
                     <Palette bind:layer={layers[idx]} />
                 </div>
             </aside>

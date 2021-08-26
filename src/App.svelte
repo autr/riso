@@ -116,6 +116,8 @@
         PROJECTS[IDX].layers = cp
     }
 
+    let isSelectingFiles = false
+
 
 </script>
 
@@ -138,9 +140,11 @@
 		{/each}
 	</div> -->
 
-<div class="fixed l0 t0 w100vw h100vh bg z-index9 none">
-	<Files bind:files={files} bind:project={PROJECTS[IDX]} />
-</div>
+{#if isSelectingFiles}
+	<div class="fixed l0 t0 w100vw h100vh bg z-index9 none">
+		<Files bind:files={files} bind:project={PROJECTS[IDX]} />
+	</div>
+{/if}
 
 <div class="wrapper flex column h100vh">
 	<header class="bg plr1 pb1 pt1 bb1-solid flex row-space-between-center">
@@ -158,8 +162,6 @@
 				</select>
 			</div>
 		    <button 
-		        class=""
-		        on:click={e => (e.target.blur())} 
 		        on:click={addLayer}>
 		        Select Images
 		    </button>

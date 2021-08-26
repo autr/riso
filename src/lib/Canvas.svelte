@@ -9,12 +9,42 @@
     let zoomer
 
     onMount( async e => {
-        window.zoomer = zoomer = panzoom( editorEl )
-        console.log(zoomer)
-
-        // zoomer.zoomTo( 800, 10, zoom )
+        window.zoomer = zoomer = panzoom( editorEl, {
+            maxZoom: 2,
+            minZoom: 0.01
+        } )
     })
 
+    let lastWidthHeight
+    $: ( p_ => {
+        let {width,height} = project.info
+        let widthHeight = width + '' + height + '' + JSON.stringify(project.config)
+        if (lastWidthHeight == widthHeight || !editorEl) return
+        lastWidthHeight = widthHeight
+        fitToCanvas()
+    })(project)
+
+    function fitToCanvas( edge ) {
+        if (!edge) edge = 100
+        let {width,height} = project.info
+        let { offsetWidth, offsetHeight } = editorEl
+        let zoomX = (offsetWidth - edge) / width
+        let zoomY = (offsetHeight - edge) / height
+
+        let canvasRatio = width/height
+        let offsetRatio = offsetWidth/offsetHeight
+        console.log(canvasRatio, offsetRatio)
+        let zoom = 1
+        if (canvasRatio > 1 && offsetRatio < 1) { zoom = zoomX } 
+        else if (canvasRatio > 1 && offsetRatio > 1) { zoom = zoomY } 
+        else if (canvasRatio < 1 && offsetRatio < 1) { zoom = zoomX } 
+        else if (canvasRatio < 1 && offsetRatio > 1) { zoom = zoomY } 
+        else { console.log('ERROR') }
+        let x = (offsetWidth - (width*zoom))/2
+        let y = (offsetHeight - (height*zoom))/2
+        zoomer.zoomAbs(0,0,zoom)
+        zoomer.moveTo( x, y)
+    }
 
 
     function togglePreview( b ) {
@@ -47,12 +77,12 @@
 <section 
     on:mousedown={ e => togglePreview( true ) }
     on:mouseup={ e => togglePreview( false ) }
-    class="rel basis70pc minw50em pointer grow flex row-center-flex-start maxh100vh overflow-hidden">
+    class="rel basis70pc pointer grow flex row-center-flex-start maxh100vh overflow-hidden">
     <div
         id="zoom"
         class="flex fill" >
         <div class="w100pc h100pc" bind:this={editorEl}>
-            <canvas id="lores" class="fill" />
+            <!-- <canvas id="lores" class="fill" /> -->
         </div>
     </div>
     <div class="t1 l1 abs">

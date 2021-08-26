@@ -140,7 +140,7 @@
 
 		let list = project.files.filter( name => files.srcs[name] )
 		if (list.length != project.files.length) {
-			console.log(`[Project] 💿 ❌  list doesn't match project.files`)
+			console.log(`[Project] 💿 ❌  list doesn't match project.files`, {list, srcs: project.files })
 			return
 		}
 

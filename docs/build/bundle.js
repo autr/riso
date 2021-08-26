@@ -45734,7 +45734,7 @@ void main(void) {
     			option.__value = /*i*/ ctx[32];
     			option.value = option.__value;
     			attr_dev(option, "name", /*t*/ ctx[35]);
-    			add_location(option, file$6, 228, 6, 5345);
+    			add_location(option, file$6, 228, 6, 5339);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -45784,13 +45784,13 @@ void main(void) {
     			t1 = space();
     			span1 = element("span");
     			t2 = text(t2_value);
-    			add_location(span0, file$6, 254, 8, 6179);
-    			add_location(span1, file$6, 255, 8, 6209);
+    			add_location(span0, file$6, 254, 8, 6173);
+    			add_location(span1, file$6, 255, 8, 6203);
     			attr_dev(span2, "class", "inverted flex column p1");
-    			add_location(span2, file$6, 252, 7, 6123);
+    			add_location(span2, file$6, 252, 7, 6117);
     			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[33].rgb});margin-top:-1px;margin-left:-1px`);
     			attr_dev(div, "class", "b1-solid flex column pointer no-basis grow minw16em minh0em");
-    			add_location(div, file$6, 248, 6, 5918);
+    			add_location(div, file$6, 248, 6, 5912);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -45837,7 +45837,7 @@ void main(void) {
     			attr_dev(span, "class", "flex column pointer no-basis grow minw16em clickable h0em");
     			set_style(span, "line-height", "0px");
     			set_style(span, "max-height", "0px");
-    			add_location(span, file$6, 260, 6, 6324);
+    			add_location(span, file$6, 260, 6, 6318);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, span, anchor);
@@ -45870,9 +45870,9 @@ void main(void) {
     			label = element("label");
     			span = element("span");
     			t = text(t_value);
-    			add_location(span, file$6, 276, 6, 6732);
+    			add_location(span, file$6, 276, 6, 6726);
     			attr_dev(label, "class", "no-basis capitalize grow flex row-flex-start-flex-start");
-    			add_location(label, file$6, 275, 5, 6654);
+    			add_location(label, file$6, 275, 5, 6648);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, label, anchor);
@@ -45914,7 +45914,7 @@ void main(void) {
     			attr_dev(input, "min", "-0.000001");
     			attr_dev(input, "max", "1");
     			attr_dev(input, "step", "0.001");
-    			add_location(input, file$6, 294, 5, 7221);
+    			add_location(input, file$6, 294, 5, 7215);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, input, anchor);
@@ -45955,7 +45955,7 @@ void main(void) {
     }
 
     // (283:4) {#if ui.type == 'bool'}
-    function create_if_block$3(ctx) {
+    function create_if_block$4(ctx) {
     	let div;
     	let span1;
     	let span0;
@@ -45973,11 +45973,11 @@ void main(void) {
     			span0 = element("span");
     			attr_dev(span0, "class", "fill");
     			toggle_class(span0, "cross", /*layer*/ ctx[0][/*ui*/ ctx[27].name]);
-    			add_location(span0, file$6, 290, 7, 7105);
+    			add_location(span0, file$6, 290, 7, 7099);
     			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block");
-    			add_location(span1, file$6, 288, 6, 7038);
+    			add_location(span1, file$6, 288, 6, 7032);
     			attr_dev(div, "class", "br0-solid flex row-flex-end-center");
-    			add_location(div, file$6, 285, 5, 6921);
+    			add_location(div, file$6, 285, 5, 6915);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -46005,7 +46005,7 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$3.name,
+    		id: create_if_block$4.name,
     		type: "if",
     		source: "(283:4) {#if ui.type == 'bool'}",
     		ctx
@@ -46022,7 +46022,7 @@ void main(void) {
     	let if_block0 = /*ui*/ ctx[27].label && create_if_block_2(ctx);
 
     	function select_block_type(ctx, dirty) {
-    		if (/*ui*/ ctx[27].type == "bool") return create_if_block$3;
+    		if (/*ui*/ ctx[27].type == "bool") return create_if_block$4;
     		if (/*ui*/ ctx[27].type == "float") return create_if_block_1$2;
     	}
 
@@ -46038,7 +46038,7 @@ void main(void) {
     			t1 = space();
     			attr_dev(div, "class", "flex row-flex-end-center mt1 w100pc");
     			toggle_class(div, "none", !isNaN(/*ui*/ ctx[27].link) && /*ui*/ ctx[27].link != /*layer*/ ctx[0].type);
-    			add_location(div, file$6, 269, 3, 6514);
+    			add_location(div, file$6, 269, 3, 6508);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -46165,21 +46165,21 @@ void main(void) {
     			attr_dev(select_1, "class", "br0-solid");
     			set_style(select_1, "letter-spacing", "4em");
     			if (/*layer*/ ctx[0].type === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[9].call(select_1));
-    			add_location(select_1, file$6, 226, 4, 5234);
+    			add_location(select_1, file$6, 226, 4, 5228);
     			attr_dev(div0, "class", "basis5em h100pc select");
-    			add_location(div0, file$6, 225, 3, 5193);
+    			add_location(div0, file$6, 225, 3, 5187);
     			attr_dev(span0, "class", "flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable");
-    			add_location(span0, file$6, 237, 5, 5567);
+    			add_location(span0, file$6, 237, 5, 5561);
     			attr_dev(span1, "class", "select grow");
-    			add_location(span1, file$6, 234, 4, 5493);
+    			add_location(span1, file$6, 234, 4, 5487);
     			attr_dev(div1, "class", "flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99");
     			toggle_class(div1, "none", !/*overlay*/ ctx[1]);
-    			add_location(div1, file$6, 244, 4, 5755);
+    			add_location(div1, file$6, 244, 4, 5749);
     			attr_dev(div2, "class", "flex no-basis h100pc grow ");
-    			add_location(div2, file$6, 233, 3, 5448);
+    			add_location(div2, file$6, 233, 3, 5442);
     			attr_dev(div3, "class", "flex row-stretch-stretch grow w100pc");
-    			add_location(div3, file$6, 224, 2, 5139);
-    			attr_dev(div4, "class", "mb0-5 plr1 pb1");
+    			add_location(div3, file$6, 224, 2, 5133);
+    			attr_dev(div4, "class", "mb0-5 p1");
     			add_location(div4, file$6, 222, 1, 5107);
     			attr_dev(div5, "class", "flex column bb1-solid");
     			add_location(div5, file$6, 220, 0, 5067);
@@ -46746,7 +46746,7 @@ void main(void) {
     }
 
     // (65:4) {#if layers[idx]}
-    function create_if_block$2(ctx) {
+    function create_if_block$3(ctx) {
     	let div8;
     	let header;
     	let div1;
@@ -46764,15 +46764,12 @@ void main(void) {
     	let div5;
     	let span1;
     	let t7;
-    	let t8_value = console.log(/*layers*/ ctx[0][/*idx*/ ctx[25]]) + "";
-    	let t8;
-    	let t9;
     	let aside;
     	let div7;
     	let palette;
     	let updating_layer;
-    	let t10;
-    	let t11;
+    	let t8;
+    	let t9;
     	let current;
     	let mounted;
     	let dispose;
@@ -46837,45 +46834,42 @@ void main(void) {
     			div5 = element("div");
     			span1 = element("span");
     			t7 = space();
-    			t8 = text(t8_value);
-    			t9 = space();
     			aside = element("aside");
     			div7 = element("div");
     			create_component(palette.$$.fragment);
-    			t10 = space();
+    			t8 = space();
     			if (if_block) if_block.c();
-    			t11 = space();
+    			t9 = space();
     			attr_dev(div0, "class", "p1-5 move grab");
     			set_style(div0, "line-height", "2px");
     			set_style(div0, "max-width", "10px");
-    			add_location(div0, file$5, 72, 20, 1887);
+    			add_location(div0, file$5, 71, 20, 1848);
     			attr_dev(div1, "class", "flex row-flex-start-center");
-    			add_location(div1, file$5, 71, 16, 1826);
+    			add_location(div1, file$5, 70, 16, 1787);
     			attr_dev(div2, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
     			toggle_class(div2, "filled", /*layers*/ ctx[0][/*idx*/ ctx[25]].muted);
-    			add_location(div2, file$5, 81, 20, 2209);
+    			add_location(div2, file$5, 80, 20, 2170);
     			attr_dev(div3, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
     			toggle_class(div3, "filled", /*solo*/ ctx[1] == /*idx*/ ctx[25]);
-    			add_location(div3, file$5, 85, 20, 2470);
+    			add_location(div3, file$5, 84, 20, 2431);
     			attr_dev(span0, "class", "cross w10px h10px flex block");
-    			add_location(span0, file$5, 92, 24, 2878);
+    			add_location(span0, file$5, 91, 24, 2839);
     			attr_dev(div4, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
-    			add_location(div4, file$5, 89, 20, 2700);
+    			add_location(div4, file$5, 88, 20, 2661);
     			attr_dev(span1, "class", "arrow");
     			toggle_class(span1, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[25]].collapsed);
-    			add_location(span1, file$5, 97, 24, 3137);
+    			add_location(span1, file$5, 96, 24, 3098);
     			attr_dev(div5, "class", "grow flex row-flex-end-center pointer p1-5");
-    			add_location(div5, file$5, 94, 20, 2975);
+    			add_location(div5, file$5, 93, 20, 2936);
     			attr_dev(div6, "class", "flex row-flex-start-center");
-    			add_location(div6, file$5, 79, 16, 2147);
+    			add_location(div6, file$5, 78, 16, 2108);
     			attr_dev(header, "class", "pop flex row-space-between-center");
-    			add_location(header, file$5, 70, 12, 1759);
-    			attr_dev(div7, "class", "bb1-solid bt1-solid h1em flex row-reverse mb1 w100pc");
-    			add_location(div7, file$5, 112, 16, 3509);
+    			add_location(header, file$5, 69, 12, 1720);
+    			attr_dev(div7, "class", "bb1-solid bt1-solid h1em flex row-reverse w100pc");
+    			add_location(div7, file$5, 110, 16, 3431);
     			attr_dev(aside, "class", "");
-    			add_location(aside, file$5, 109, 12, 3412);
+    			add_location(aside, file$5, 107, 12, 3334);
     			toggle_class(div8, "something", /*$selected*/ ctx[5].type == "layer" && /*$selected*/ ctx[5].which == /*idx*/ ctx[25]);
-    			toggle_class(div8, "bt1-solid", /*idx*/ ctx[25] != 0);
     			add_location(div8, file$5, 65, 8, 1537);
     		},
     		m: function mount(target, anchor) {
@@ -46896,14 +46890,12 @@ void main(void) {
     			append_dev(div6, div5);
     			append_dev(div5, span1);
     			append_dev(div8, t7);
-    			append_dev(div8, t8);
-    			append_dev(div8, t9);
     			append_dev(div8, aside);
     			append_dev(aside, div7);
     			mount_component(palette, div7, null);
-    			append_dev(div8, t10);
+    			append_dev(div8, t8);
     			if (if_block) if_block.m(div8, null);
-    			append_dev(div8, t11);
+    			append_dev(div8, t9);
     			assign_div8();
     			current = true;
 
@@ -46941,7 +46933,6 @@ void main(void) {
     				toggle_class(span1, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[25]].collapsed);
     			}
 
-    			if ((!current || dirty & /*layers*/ 1) && t8_value !== (t8_value = console.log(/*layers*/ ctx[0][/*idx*/ ctx[25]]) + "")) set_data_dev(t8, t8_value);
     			const palette_changes = {};
 
     			if (!updating_layer && dirty & /*layers*/ 1) {
@@ -46963,7 +46954,7 @@ void main(void) {
     					if_block = create_if_block_1$1(ctx);
     					if_block.c();
     					transition_in(if_block, 1);
-    					if_block.m(div8, t11);
+    					if_block.m(div8, t9);
     				}
     			} else if (if_block) {
     				group_outros();
@@ -47009,7 +47000,7 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$2.name,
+    		id: create_if_block$3.name,
     		type: "if",
     		source: "(65:4) {#if layers[idx]}",
     		ctx
@@ -47018,7 +47009,7 @@ void main(void) {
     	return block;
     }
 
-    // (118:12) {#if !layers[idx].collapsed}
+    // (116:12) {#if !layers[idx].collapsed}
     function create_if_block_1$1(ctx) {
     	let layer;
     	let updating_group;
@@ -47107,7 +47098,7 @@ void main(void) {
     		block,
     		id: create_if_block_1$1.name,
     		type: "if",
-    		source: "(118:12) {#if !layers[idx].collapsed}",
+    		source: "(116:12) {#if !layers[idx].collapsed}",
     		ctx
     	});
 
@@ -47118,7 +47109,7 @@ void main(void) {
     function create_each_block$3(ctx) {
     	let if_block_anchor;
     	let current;
-    	let if_block = /*layers*/ ctx[0][/*idx*/ ctx[25]] && create_if_block$2(ctx);
+    	let if_block = /*layers*/ ctx[0][/*idx*/ ctx[25]] && create_if_block$3(ctx);
 
     	const block = {
     		c: function create() {
@@ -47139,7 +47130,7 @@ void main(void) {
     						transition_in(if_block, 1);
     					}
     				} else {
-    					if_block = create_if_block$2(ctx);
+    					if_block = create_if_block$3(ctx);
     					if_block.c();
     					transition_in(if_block, 1);
     					if_block.m(if_block_anchor.parentNode, if_block_anchor);
@@ -47215,7 +47206,7 @@ void main(void) {
     			current = true;
     		},
     		p: function update(ctx, [dirty]) {
-    			if (dirty & /*elements, $selected, onSelect, pixi, groups, solo, layers, overlay, console, onCollapse, onDelete, onSolo, handles*/ 1023) {
+    			if (dirty & /*elements, $selected, onSelect, pixi, groups, solo, layers, overlay, onCollapse, onRemove, onSolo, handles*/ 1023) {
     				each_value = /*groups*/ ctx[2];
     				validate_each_argument(each_value);
     				let i;
@@ -47304,7 +47295,7 @@ void main(void) {
     		selected.set({ type: "layer", which: idx });
     	}
 
-    	function onDelete(idx) {
+    	function onRemove(idx) {
     		groups[idx].parent.removeChild(groups[idx]);
     		$$invalidate(0, layers = layers.filter((l, i) => i != idx));
     	}
@@ -47324,7 +47315,7 @@ void main(void) {
 
     	const click_handler = (idx, e) => $$invalidate(0, layers[idx].muted = !layers[idx].muted, layers);
     	const click_handler_1 = (idx, e) => onSolo(idx);
-    	const click_handler_2 = (idx, e) => onDelete(idx);
+    	const click_handler_2 = (idx, e) => onRemove(idx);
     	const click_handler_3 = (idx, e) => onCollapse(idx);
 
     	function palette_layer_binding(value, idx) {
@@ -47384,7 +47375,7 @@ void main(void) {
     		onCollapse,
     		onSolo,
     		onSelect,
-    		onDelete,
+    		onRemove,
     		$selected
     	});
 
@@ -47430,7 +47421,7 @@ void main(void) {
     		onCollapse,
     		onSolo,
     		onSelect,
-    		onDelete,
+    		onRemove,
     		lastLength,
     		div0_binding,
     		click_handler,
@@ -49362,7 +49353,6 @@ void main(void) {
     	let section;
     	let div1;
     	let div0;
-    	let canvas;
     	let t0;
     	let div2;
     	let t1_value = /*project*/ ctx[1].info.width + "";
@@ -49381,7 +49371,6 @@ void main(void) {
     			section = element("section");
     			div1 = element("div");
     			div0 = element("div");
-    			canvas = element("canvas");
     			t0 = space();
     			div2 = element("div");
     			t1 = text(t1_value);
@@ -49390,22 +49379,19 @@ void main(void) {
     			t4 = space();
     			div4 = element("div");
     			div3 = element("div");
-    			attr_dev(canvas, "id", "lores");
-    			attr_dev(canvas, "class", "fill");
-    			add_location(canvas, file$3, 54, 12, 1179);
     			attr_dev(div0, "class", "w100pc h100pc");
-    			add_location(div0, file$3, 53, 8, 1118);
+    			add_location(div0, file$3, 83, 8, 2308);
     			attr_dev(div1, "id", "zoom");
     			attr_dev(div1, "class", "flex fill");
-    			add_location(div1, file$3, 50, 4, 1059);
+    			add_location(div1, file$3, 80, 4, 2249);
     			attr_dev(div2, "class", "t1 l1 abs");
-    			add_location(div2, file$3, 57, 4, 1244);
+    			add_location(div2, file$3, 87, 4, 2443);
     			attr_dev(div3, "class", "flex column");
-    			add_location(div3, file$3, 62, 8, 1386);
+    			add_location(div3, file$3, 92, 8, 2585);
     			attr_dev(div4, "class", "abs t0 r2 p1 flex row w3em");
-    			add_location(div4, file$3, 60, 4, 1336);
-    			attr_dev(section, "class", "rel basis70pc minw50em pointer grow flex row-center-flex-start maxh100vh overflow-hidden");
-    			add_location(section, file$3, 46, 0, 848);
+    			add_location(div4, file$3, 90, 4, 2535);
+    			attr_dev(section, "class", "rel basis70pc pointer grow flex row-center-flex-start maxh100vh overflow-hidden");
+    			add_location(section, file$3, 76, 0, 2047);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -49414,8 +49400,7 @@ void main(void) {
     			insert_dev(target, section, anchor);
     			append_dev(section, div1);
     			append_dev(div1, div0);
-    			append_dev(div0, canvas);
-    			/*div0_binding*/ ctx[4](div0);
+    			/*div0_binding*/ ctx[5](div0);
     			append_dev(section, t0);
     			append_dev(section, div2);
     			append_dev(div2, t1);
@@ -49429,8 +49414,8 @@ void main(void) {
     				dispose = [
     					listen_dev(window_1, "keydown", /*onKeyDown*/ ctx[2], false, false, false),
     					listen_dev(window_1, "keyup", /*onKeyUp*/ ctx[3], false, false, false),
-    					listen_dev(section, "mousedown", /*mousedown_handler*/ ctx[5], false, false, false),
-    					listen_dev(section, "mouseup", /*mouseup_handler*/ ctx[6], false, false, false)
+    					listen_dev(section, "mousedown", /*mousedown_handler*/ ctx[6], false, false, false),
+    					listen_dev(section, "mouseup", /*mouseup_handler*/ ctx[7], false, false, false)
     				];
 
     				mounted = true;
@@ -49444,7 +49429,7 @@ void main(void) {
     		o: noop$4,
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(section);
-    			/*div0_binding*/ ctx[4](null);
+    			/*div0_binding*/ ctx[5](null);
     			mounted = false;
     			run_all(dispose);
     		}
@@ -49475,9 +49460,39 @@ void main(void) {
     	let zoomer;
 
     	onMount(async e => {
-    		window.zoomer = zoomer = panzoom(editorEl);
-    		console.log(zoomer);
-    	}); // zoomer.zoomTo( 800, 10, zoom )
+    		window.zoomer = zoomer = panzoom(editorEl, { maxZoom: 2, minZoom: 0.01 });
+    	});
+
+    	let lastWidthHeight;
+
+    	function fitToCanvas(edge) {
+    		if (!edge) edge = 100;
+    		let { width, height } = project.info;
+    		let { offsetWidth, offsetHeight } = editorEl;
+    		let zoomX = (offsetWidth - edge) / width;
+    		let zoomY = (offsetHeight - edge) / height;
+    		let canvasRatio = width / height;
+    		let offsetRatio = offsetWidth / offsetHeight;
+    		console.log(canvasRatio, offsetRatio);
+    		let zoom = 1;
+
+    		if (canvasRatio > 1 && offsetRatio < 1) {
+    			zoom = zoomX;
+    		} else if (canvasRatio > 1 && offsetRatio > 1) {
+    			zoom = zoomY;
+    		} else if (canvasRatio < 1 && offsetRatio < 1) {
+    			zoom = zoomX;
+    		} else if (canvasRatio < 1 && offsetRatio > 1) {
+    			zoom = zoomY;
+    		} else {
+    			console.log("ERROR");
+    		}
+
+    		let x = (offsetWidth - width * zoom) / 2;
+    		let y = (offsetHeight - height * zoom) / 2;
+    		zoomer.zoomAbs(0, 0, zoom);
+    		zoomer.moveTo(x, y);
+    	}
 
     	//     // rectd.auto( fit, raw )
     	//     // stage.addChild( raw )
@@ -49522,6 +49537,8 @@ void main(void) {
     		lastXY,
     		editorEl,
     		zoomer,
+    		lastWidthHeight,
+    		fitToCanvas,
     		togglePreview,
     		keys,
     		onKeyDown,
@@ -49533,6 +49550,7 @@ void main(void) {
     		if ("lastXY" in $$props) lastXY = $$props.lastXY;
     		if ("editorEl" in $$props) $$invalidate(0, editorEl = $$props.editorEl);
     		if ("zoomer" in $$props) zoomer = $$props.zoomer;
+    		if ("lastWidthHeight" in $$props) $$invalidate(4, lastWidthHeight = $$props.lastWidthHeight);
     		if ("keys" in $$props) keys = $$props.keys;
     	};
 
@@ -49540,11 +49558,24 @@ void main(void) {
     		$$self.$inject_state($$props.$$inject);
     	}
 
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*project, lastWidthHeight, editorEl*/ 19) {
+    			(p_ => {
+    				let { width, height } = project.info;
+    				let widthHeight = width + "" + height + "" + JSON.stringify(project.config);
+    				if (lastWidthHeight == widthHeight || !editorEl) return;
+    				$$invalidate(4, lastWidthHeight = widthHeight);
+    				fitToCanvas();
+    			})();
+    		}
+    	};
+
     	return [
     		editorEl,
     		project,
     		onKeyDown,
     		onKeyUp,
+    		lastWidthHeight,
     		div0_binding,
     		mousedown_handler,
     		mouseup_handler
@@ -49644,7 +49675,7 @@ void main(void) {
     }
 
     // (414:6) {#if !project.files || project.files.length == 0}
-    function create_if_block$1(ctx) {
+    function create_if_block$2(ctx) {
     	let div;
 
     	const block = {
@@ -49652,7 +49683,7 @@ void main(void) {
     			div = element("div");
     			div.textContent = "No image(s) selected";
     			attr_dev(div, "class", "button b1-solid error");
-    			add_location(div, file$2, 414, 7, 9688);
+    			add_location(div, file$2, 414, 7, 9718);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -49664,7 +49695,7 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$1.name,
+    		id: create_if_block$2.name,
     		type: "if",
     		source: "(414:6) {#if !project.files || project.files.length == 0}",
     		ctx
@@ -49706,14 +49737,14 @@ void main(void) {
     			button1 = element("button");
     			t3 = space();
     			attr_dev(span, "class", "h3em flex column-flex-start-center plr1 grow");
-    			add_location(span, file$2, 418, 8, 9890);
+    			add_location(span, file$2, 418, 8, 9920);
     			attr_dev(button0, "class", "" + (/*arrowClass*/ ctx[6] + " arrow rotate180 br1-solid"));
-    			add_location(button0, file$2, 419, 8, 9971);
+    			add_location(button0, file$2, 419, 8, 10001);
     			attr_dev(button1, "class", "" + (/*arrowClass*/ ctx[6] + " arrow bl1-solid "));
-    			add_location(button1, file$2, 422, 8, 10088);
+    			add_location(button1, file$2, 422, 8, 10118);
     			attr_dev(div, "class", "flex row-stretch-stretch b1-solid");
     			set_style(div, "margin-top", "-1px");
-    			add_location(div, file$2, 417, 7, 9810);
+    			add_location(div, file$2, 417, 7, 9840);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -49769,7 +49800,7 @@ void main(void) {
     			option.__value = /*bg*/ ctx[51].name;
     			option.value = option.__value;
     			attr_dev(option, "name", /*bg*/ ctx[51].name);
-    			add_location(option, file$2, 441, 9, 10710);
+    			add_location(option, file$2, 441, 9, 10740);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -49805,7 +49836,7 @@ void main(void) {
     			option.__value = /*sz*/ ctx[48].name;
     			option.value = option.__value;
     			attr_dev(option, "name", /*sz*/ ctx[48].name);
-    			add_location(option, file$2, 453, 9, 11105);
+    			add_location(option, file$2, 453, 9, 11135);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
@@ -49893,7 +49924,7 @@ void main(void) {
     			$$inline: true
     		});
 
-    	let if_block = (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) && create_if_block$1(ctx);
+    	let if_block = (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) && create_if_block$2(ctx);
     	let each_value_2 = /*project*/ ctx[0].files;
     	validate_each_argument(each_value_2);
     	let each_blocks_2 = [];
@@ -50042,41 +50073,41 @@ void main(void) {
     			create_component(canvas.$$.fragment);
     			attr_dev(span0, "class", "fill");
     			toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
-    			add_location(span0, file$2, 397, 8, 9208);
+    			add_location(span0, file$2, 397, 8, 9238);
     			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block mr1");
-    			add_location(span1, file$2, 395, 7, 9135);
+    			add_location(span1, file$2, 395, 7, 9165);
     			attr_dev(div0, "class", "br0-solid flex row-flex-start-center mr1 ");
-    			add_location(div0, file$2, 392, 6, 9016);
+    			add_location(div0, file$2, 392, 6, 9046);
     			attr_dev(span2, "class", "fill");
     			toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
-    			add_location(span2, file$2, 406, 8, 9501);
+    			add_location(span2, file$2, 406, 8, 9531);
     			attr_dev(span3, "class", "b1-solid rel checker w2em h2em block mr1");
-    			add_location(span3, file$2, 404, 7, 9428);
+    			add_location(span3, file$2, 404, 7, 9458);
     			attr_dev(div1, "class", "br0-solid flex row-flex-start-center mr1 ");
-    			add_location(div1, file$2, 401, 6, 9310);
+    			add_location(div1, file$2, 401, 6, 9340);
     			attr_dev(div2, "class", "flex row");
-    			add_location(div2, file$2, 391, 5, 8987);
-    			add_location(aside, file$2, 412, 5, 9616);
+    			add_location(div2, file$2, 391, 5, 9017);
+    			add_location(aside, file$2, 412, 5, 9646);
     			attr_dev(span4, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span4, file$2, 435, 6, 10440);
+    			add_location(span4, file$2, 435, 6, 10470);
     			attr_dev(select0, "class", "pl5 w100pc align-right");
     			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[22].call(select0));
-    			add_location(select0, file$2, 439, 7, 10580);
+    			add_location(select0, file$2, 439, 7, 10610);
     			attr_dev(div3, "class", "select w100pc grow");
-    			add_location(div3, file$2, 438, 6, 10540);
+    			add_location(div3, file$2, 438, 6, 10570);
     			attr_dev(div4, "class", "flex rel");
-    			add_location(div4, file$2, 434, 5, 10411);
+    			add_location(div4, file$2, 434, 5, 10441);
     			attr_dev(span5, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span5, file$2, 447, 6, 10860);
+    			add_location(span5, file$2, 447, 6, 10890);
     			attr_dev(select1, "class", "pl5 w100pc");
     			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[23].call(select1));
-    			add_location(select1, file$2, 451, 7, 10999);
+    			add_location(select1, file$2, 451, 7, 11029);
     			attr_dev(div5, "class", "select w100pc grow");
-    			add_location(div5, file$2, 450, 6, 10959);
+    			add_location(div5, file$2, 450, 6, 10989);
     			attr_dev(div6, "class", "flex rel");
-    			add_location(div6, file$2, 446, 5, 10831);
+    			add_location(div6, file$2, 446, 5, 10861);
     			attr_dev(span6, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span6, file$2, 459, 6, 11255);
+    			add_location(span6, file$2, 459, 6, 11285);
     			attr_dev(input0, "min", 150);
     			attr_dev(input0, "max", 600);
     			attr_dev(input0, "step", 50);
@@ -50084,11 +50115,11 @@ void main(void) {
     			attr_dev(input0, "class", "w100pc grow");
     			set_style(input0, "padding-left", "5em");
     			attr_dev(input0, "placeholder", "DPI");
-    			add_location(input0, file$2, 462, 6, 11353);
+    			add_location(input0, file$2, 462, 6, 11383);
     			attr_dev(div7, "class", "flex rel");
-    			add_location(div7, file$2, 458, 5, 11226);
+    			add_location(div7, file$2, 458, 5, 11256);
     			attr_dev(span7, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span7, file$2, 473, 6, 11607);
+    			add_location(span7, file$2, 473, 6, 11637);
     			attr_dev(input1, "min", 0);
     			attr_dev(input1, "max", 1);
     			attr_dev(input1, "step", 1);
@@ -50096,22 +50127,22 @@ void main(void) {
     			set_style(input1, "padding-left", "5em");
     			attr_dev(input1, "type", "number");
     			attr_dev(input1, "placeholder", "Margin");
-    			add_location(input1, file$2, 476, 6, 11708);
+    			add_location(input1, file$2, 476, 6, 11738);
     			attr_dev(div8, "class", "flex rel");
-    			add_location(div8, file$2, 472, 5, 11578);
+    			add_location(div8, file$2, 472, 5, 11608);
     			attr_dev(div9, "class", "p1 flex column cmb1 bb1-solid");
-    			add_location(div9, file$2, 390, 4, 8938);
+    			add_location(div9, file$2, 390, 4, 8968);
     			attr_dev(section0, "class", /*classes*/ ctx[5].lanes + " basis0pc");
-    			add_location(section0, file$2, 384, 3, 8839);
+    			add_location(section0, file$2, 384, 3, 8869);
     			attr_dev(section1, "id", "layers");
     			attr_dev(section1, "class", /*classes*/ ctx[5].lanes + " basis20pc");
-    			add_location(section1, file$2, 500, 3, 12002);
+    			add_location(section1, file$2, 500, 3, 12032);
     			attr_dev(div10, "class", "flex row grow overflow-hidden");
-    			add_location(div10, file$2, 371, 2, 8750);
+    			add_location(div10, file$2, 371, 2, 8780);
     			attr_dev(nav, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow");
-    			add_location(nav, file$2, 369, 1, 8672);
+    			add_location(nav, file$2, 369, 1, 8702);
     			attr_dev(div11, "class", "flex row-stretch-stretch bg overflow-hidden grow");
-    			add_location(div11, file$2, 364, 0, 8580);
+    			add_location(div11, file$2, 364, 0, 8610);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -50219,7 +50250,7 @@ void main(void) {
 
     			if (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) {
     				if (if_block) ; else {
-    					if_block = create_if_block$1(ctx);
+    					if_block = create_if_block$2(ctx);
     					if_block.c();
     					if_block.m(aside, t5);
     				}
@@ -50500,7 +50531,7 @@ void main(void) {
     		let list = project.files.filter(name => files.srcs[name]);
 
     		if (list.length != project.files.length) {
-    			console.log(`[Project] 💿 ❌  list doesn't match project.files`);
+    			console.log(`[Project] 💿 ❌  list doesn't match project.files`, { list, srcs: project.files });
     			return;
     		}
 
@@ -51191,7 +51222,7 @@ void main(void) {
     }
 
     // (169:4) {#if files.handles.length == 0 }
-    function create_if_block(ctx) {
+    function create_if_block$1(ctx) {
     	let div;
 
     	const block = {
@@ -51211,7 +51242,7 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block.name,
+    		id: create_if_block$1.name,
     		type: "if",
     		source: "(169:4) {#if files.handles.length == 0 }",
     		ctx
@@ -51242,7 +51273,7 @@ void main(void) {
     		each_blocks[i] = create_each_block$1(get_each_context$1(ctx, each_value, i));
     	}
 
-    	let if_block = /*files*/ ctx[0].handles.length == 0 && create_if_block(ctx);
+    	let if_block = /*files*/ ctx[0].handles.length == 0 && create_if_block$1(ctx);
 
     	const block = {
     		c: function create() {
@@ -51342,7 +51373,7 @@ void main(void) {
 
     			if (/*files*/ ctx[0].handles.length == 0) {
     				if (if_block) ; else {
-    					if_block = create_if_block(ctx);
+    					if_block = create_if_block$1(ctx);
     					if_block.c();
     					if_block.m(section, null);
     				}
@@ -51591,96 +51622,25 @@ void main(void) {
 
     function get_each_context(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[20] = list[i];
-    	child_ctx[22] = i;
+    	child_ctx[21] = list[i];
+    	child_ctx[23] = i;
     	return child_ctx;
     }
 
-    // (151:5) {#each PROJECTS as p,i}
-    function create_each_block(ctx) {
-    	let option;
-    	let t0;
-    	let t1;
-    	let t2_value = (/*p*/ ctx[20].title || "") + "";
-    	let t2;
-    	let option_name_value;
-
-    	const block = {
-    		c: function create() {
-    			option = element("option");
-    			t0 = text(/*i*/ ctx[22]);
-    			t1 = space();
-    			t2 = text(t2_value);
-    			option.__value = /*i*/ ctx[22];
-    			option.value = option.__value;
-    			attr_dev(option, "name", option_name_value = /*p*/ ctx[20].title || "");
-    			add_location(option, file, 151, 6, 3183);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, option, anchor);
-    			append_dev(option, t0);
-    			append_dev(option, t1);
-    			append_dev(option, t2);
-    		},
-    		p: function update(ctx, dirty) {
-    			if (dirty & /*PROJECTS*/ 1 && t2_value !== (t2_value = (/*p*/ ctx[20].title || "") + "")) set_data_dev(t2, t2_value);
-
-    			if (dirty & /*PROJECTS*/ 1 && option_name_value !== (option_name_value = /*p*/ ctx[20].title || "")) {
-    				attr_dev(option, "name", option_name_value);
-    			}
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(option);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block.name,
-    		type: "each",
-    		source: "(151:5) {#each PROJECTS as p,i}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    function create_fragment(ctx) {
-    	let div0;
+    // (143:0) {#if isSelectingFiles}
+    function create_if_block(ctx) {
+    	let div;
     	let files_1;
     	let updating_files;
     	let updating_project;
-    	let t0;
-    	let div5;
-    	let header;
-    	let div3;
-    	let div1;
-    	let select0;
-    	let t1;
-    	let div2;
-    	let select1;
-    	let t2;
-    	let button0;
-    	let t4;
-    	let button1;
-    	let t6;
-    	let div4;
-    	let button2;
-    	let t8;
-    	let project;
-    	let updating_IDX;
-    	let updating_THUMBS;
-    	let updating_project_1;
     	let current;
-    	let mounted;
-    	let dispose;
 
     	function files_1_files_binding(value) {
-    		/*files_1_files_binding*/ ctx[5](value);
+    		/*files_1_files_binding*/ ctx[6](value);
     	}
 
     	function files_1_project_binding(value) {
-    		/*files_1_project_binding*/ ctx[6](value);
+    		/*files_1_project_binding*/ ctx[7](value);
     	}
 
     	let files_1_props = {};
@@ -51696,6 +51656,137 @@ void main(void) {
     	files_1 = new Files({ props: files_1_props, $$inline: true });
     	binding_callbacks.push(() => bind$1(files_1, "files", files_1_files_binding));
     	binding_callbacks.push(() => bind$1(files_1, "project", files_1_project_binding));
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			create_component(files_1.$$.fragment);
+    			attr_dev(div, "class", "fixed l0 t0 w100vw h100vh bg z-index9 none");
+    			add_location(div, file, 143, 1, 2819);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			mount_component(files_1, div, null);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			const files_1_changes = {};
+
+    			if (!updating_files && dirty & /*files*/ 8) {
+    				updating_files = true;
+    				files_1_changes.files = /*files*/ ctx[3];
+    				add_flush_callback(() => updating_files = false);
+    			}
+
+    			if (!updating_project && dirty & /*PROJECTS, IDX*/ 5) {
+    				updating_project = true;
+    				files_1_changes.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
+    				add_flush_callback(() => updating_project = false);
+    			}
+
+    			files_1.$set(files_1_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(files_1.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(files_1.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			destroy_component(files_1);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block.name,
+    		type: "if",
+    		source: "(143:0) {#if isSelectingFiles}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (155:5) {#each PROJECTS as p,i}
+    function create_each_block(ctx) {
+    	let option;
+    	let t0;
+    	let t1;
+    	let t2_value = (/*p*/ ctx[21].title || "") + "";
+    	let t2;
+    	let option_name_value;
+
+    	const block = {
+    		c: function create() {
+    			option = element("option");
+    			t0 = text(/*i*/ ctx[23]);
+    			t1 = space();
+    			t2 = text(t2_value);
+    			option.__value = /*i*/ ctx[23];
+    			option.value = option.__value;
+    			attr_dev(option, "name", option_name_value = /*p*/ ctx[21].title || "");
+    			add_location(option, file, 155, 6, 3249);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t0);
+    			append_dev(option, t1);
+    			append_dev(option, t2);
+    		},
+    		p: function update(ctx, dirty) {
+    			if (dirty & /*PROJECTS*/ 1 && t2_value !== (t2_value = (/*p*/ ctx[21].title || "") + "")) set_data_dev(t2, t2_value);
+
+    			if (dirty & /*PROJECTS*/ 1 && option_name_value !== (option_name_value = /*p*/ ctx[21].title || "")) {
+    				attr_dev(option, "name", option_name_value);
+    			}
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(option);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block.name,
+    		type: "each",
+    		source: "(155:5) {#each PROJECTS as p,i}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment(ctx) {
+    	let t0;
+    	let div4;
+    	let header;
+    	let div2;
+    	let div0;
+    	let select0;
+    	let t1;
+    	let div1;
+    	let select1;
+    	let t2;
+    	let button0;
+    	let t4;
+    	let button1;
+    	let t6;
+    	let div3;
+    	let button2;
+    	let t8;
+    	let project;
+    	let updating_IDX;
+    	let updating_THUMBS;
+    	let updating_project;
+    	let current;
+    	let mounted;
+    	let dispose;
+    	let if_block = /*isSelectingFiles*/ ctx[5] && create_if_block(ctx);
     	let each_value = /*PROJECTS*/ ctx[0];
     	validate_each_argument(each_value);
     	let each_blocks = [];
@@ -51705,15 +51796,15 @@ void main(void) {
     	}
 
     	function project_IDX_binding(value) {
-    		/*project_IDX_binding*/ ctx[8](value);
+    		/*project_IDX_binding*/ ctx[9](value);
     	}
 
     	function project_THUMBS_binding(value) {
-    		/*project_THUMBS_binding*/ ctx[9](value);
+    		/*project_THUMBS_binding*/ ctx[10](value);
     	}
 
     	function project_project_binding(value) {
-    		/*project_project_binding*/ ctx[10](value);
+    		/*project_project_binding*/ ctx[11](value);
     	}
 
     	let project_props = { files: /*files*/ ctx[3] };
@@ -51737,13 +51828,12 @@ void main(void) {
 
     	const block = {
     		c: function create() {
-    			div0 = element("div");
-    			create_component(files_1.$$.fragment);
+    			if (if_block) if_block.c();
     			t0 = space();
-    			div5 = element("div");
+    			div4 = element("div");
     			header = element("header");
-    			div3 = element("div");
-    			div1 = element("div");
+    			div2 = element("div");
+    			div0 = element("div");
     			select0 = element("select");
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
@@ -51751,7 +51841,7 @@ void main(void) {
     			}
 
     			t1 = space();
-    			div2 = element("div");
+    			div1 = element("div");
     			select1 = element("select");
     			t2 = space();
     			button0 = element("button");
@@ -51760,76 +51850,71 @@ void main(void) {
     			button1 = element("button");
     			button1.textContent = "Add Layer";
     			t6 = space();
-    			div4 = element("div");
+    			div3 = element("div");
     			button2 = element("button");
     			button2.textContent = "Export";
     			t8 = space();
     			create_component(project.$$.fragment);
-    			attr_dev(div0, "class", "fixed l0 t0 w100vw h100vh bg z-index9 none");
-    			add_location(div0, file, 140, 0, 2761);
     			set_style(select0, "letter-spacing", "4em");
-    			if (/*IDX*/ ctx[2] === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[7].call(select0));
-    			add_location(select0, file, 149, 4, 3094);
-    			attr_dev(div1, "class", "basis5em h100pc select");
-    			add_location(div1, file, 148, 3, 3053);
+    			if (/*IDX*/ ctx[2] === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[8].call(select0));
+    			add_location(select0, file, 153, 4, 3160);
+    			attr_dev(div0, "class", "basis5em h100pc select");
+    			add_location(div0, file, 152, 3, 3119);
     			set_style(select1, "letter-spacing", "4em");
-    			add_location(select1, file, 156, 4, 3332);
-    			attr_dev(div2, "class", "basis5em h100pc select");
-    			add_location(div2, file, 155, 3, 3291);
-    			attr_dev(button0, "class", "");
-    			add_location(button0, file, 159, 6, 3417);
+    			add_location(select1, file, 160, 4, 3398);
+    			attr_dev(div1, "class", "basis5em h100pc select");
+    			add_location(div1, file, 159, 3, 3357);
+    			add_location(button0, file, 163, 6, 3483);
     			attr_dev(button1, "class", "");
-    			add_location(button1, file, 165, 6, 3567);
-    			attr_dev(div3, "class", " flex row-flex-start-center cmr1");
-    			add_location(div3, file, 146, 2, 3002);
+    			add_location(button1, file, 167, 6, 3569);
+    			attr_dev(div2, "class", " flex row-flex-start-center cmr1");
+    			add_location(div2, file, 150, 2, 3068);
     			attr_dev(button2, "class", "pop");
-    			add_location(button2, file, 173, 3, 3761);
-    			attr_dev(div4, "class", " flex row-flex-end-center");
-    			add_location(div4, file, 172, 2, 3718);
+    			add_location(button2, file, 175, 3, 3763);
+    			attr_dev(div3, "class", " flex row-flex-end-center");
+    			add_location(div3, file, 174, 2, 3720);
     			attr_dev(header, "class", "bg plr1 pb1 pt1 bb1-solid flex row-space-between-center");
-    			add_location(header, file, 145, 1, 2927);
-    			attr_dev(div5, "class", "wrapper flex column h100vh");
-    			add_location(div5, file, 144, 0, 2885);
+    			add_location(header, file, 149, 1, 2993);
+    			attr_dev(div4, "class", "wrapper flex column h100vh");
+    			add_location(div4, file, 148, 0, 2951);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div0, anchor);
-    			mount_component(files_1, div0, null);
+    			if (if_block) if_block.m(target, anchor);
     			insert_dev(target, t0, anchor);
-    			insert_dev(target, div5, anchor);
-    			append_dev(div5, header);
-    			append_dev(header, div3);
-    			append_dev(div3, div1);
-    			append_dev(div1, select0);
+    			insert_dev(target, div4, anchor);
+    			append_dev(div4, header);
+    			append_dev(header, div2);
+    			append_dev(div2, div0);
+    			append_dev(div0, select0);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].m(select0, null);
     			}
 
     			select_option(select0, /*IDX*/ ctx[2]);
-    			append_dev(div3, t1);
-    			append_dev(div3, div2);
-    			append_dev(div2, select1);
+    			append_dev(div2, t1);
+    			append_dev(div2, div1);
+    			append_dev(div1, select1);
     			select_option(select1, "Presets");
-    			append_dev(div3, t2);
-    			append_dev(div3, button0);
-    			append_dev(div3, t4);
-    			append_dev(div3, button1);
+    			append_dev(div2, t2);
+    			append_dev(div2, button0);
+    			append_dev(div2, t4);
+    			append_dev(div2, button1);
     			append_dev(header, t6);
-    			append_dev(header, div4);
-    			append_dev(div4, button2);
-    			append_dev(div5, t8);
-    			mount_component(project, div5, null);
+    			append_dev(header, div3);
+    			append_dev(div3, button2);
+    			append_dev(div4, t8);
+    			mount_component(project, div4, null);
     			current = true;
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[7]),
-    					listen_dev(button0, "click", click_handler, false, false, false),
+    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[8]),
     					listen_dev(button0, "click", /*addLayer*/ ctx[4], false, false, false),
-    					listen_dev(button1, "click", click_handler_1, false, false, false),
+    					listen_dev(button1, "click", click_handler, false, false, false),
     					listen_dev(button1, "click", /*addLayer*/ ctx[4], false, false, false)
     				];
 
@@ -51837,21 +51922,7 @@ void main(void) {
     			}
     		},
     		p: function update(ctx, [dirty]) {
-    			const files_1_changes = {};
-
-    			if (!updating_files && dirty & /*files*/ 8) {
-    				updating_files = true;
-    				files_1_changes.files = /*files*/ ctx[3];
-    				add_flush_callback(() => updating_files = false);
-    			}
-
-    			if (!updating_project && dirty & /*PROJECTS, IDX*/ 5) {
-    				updating_project = true;
-    				files_1_changes.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
-    				add_flush_callback(() => updating_project = false);
-    			}
-
-    			files_1.$set(files_1_changes);
+    			if (/*isSelectingFiles*/ ctx[5]) if_block.p(ctx, dirty);
 
     			if (dirty & /*PROJECTS*/ 1) {
     				each_value = /*PROJECTS*/ ctx[0];
@@ -51896,30 +51967,29 @@ void main(void) {
     				add_flush_callback(() => updating_THUMBS = false);
     			}
 
-    			if (!updating_project_1 && dirty & /*PROJECTS, IDX*/ 5) {
-    				updating_project_1 = true;
+    			if (!updating_project && dirty & /*PROJECTS, IDX*/ 5) {
+    				updating_project = true;
     				project_changes.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
-    				add_flush_callback(() => updating_project_1 = false);
+    				add_flush_callback(() => updating_project = false);
     			}
 
     			project.$set(project_changes);
     		},
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(files_1.$$.fragment, local);
+    			transition_in(if_block);
     			transition_in(project.$$.fragment, local);
     			current = true;
     		},
     		o: function outro(local) {
-    			transition_out(files_1.$$.fragment, local);
+    			transition_out(if_block);
     			transition_out(project.$$.fragment, local);
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div0);
-    			destroy_component(files_1);
+    			if (if_block) if_block.d(detaching);
     			if (detaching) detach_dev(t0);
-    			if (detaching) detach_dev(div5);
+    			if (detaching) detach_dev(div4);
     			destroy_each(each_blocks, detaching);
     			destroy_component(project);
     			mounted = false;
@@ -51940,7 +52010,6 @@ void main(void) {
 
     const KEY = "RISOGRAPHINATOR";
     const click_handler = e => e.target.blur();
-    const click_handler_1 = e => e.target.blur();
 
     function instance($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
@@ -52055,6 +52124,7 @@ void main(void) {
     		$$invalidate(0, PROJECTS[IDX].layers = cp, PROJECTS);
     	}
 
+    	let isSelectingFiles = false;
     	const writable_props = [];
 
     	Object.keys($$props).forEach(key => {
@@ -52117,7 +52187,8 @@ void main(void) {
     		projectsUpdated,
     		saveTimeout,
     		saveDb,
-    		addLayer
+    		addLayer,
+    		isSelectingFiles
     	});
 
     	$$self.$inject_state = $$props => {
@@ -52128,6 +52199,7 @@ void main(void) {
     		if ("IDX" in $$props) $$invalidate(2, IDX = $$props.IDX);
     		if ("files" in $$props) $$invalidate(3, files = $$props.files);
     		if ("saveTimeout" in $$props) saveTimeout = $$props.saveTimeout;
+    		if ("isSelectingFiles" in $$props) $$invalidate(5, isSelectingFiles = $$props.isSelectingFiles);
     	};
 
     	if ($$props && "$$inject" in $$props) {
@@ -52146,6 +52218,7 @@ void main(void) {
     		IDX,
     		files,
     		addLayer,
+    		isSelectingFiles,
     		files_1_files_binding,
     		files_1_project_binding,
     		select0_change_handler,

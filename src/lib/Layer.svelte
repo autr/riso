@@ -220,7 +220,7 @@ void main(void) {
 
 <div 
 	class="flex column bb1-solid" >
-	<div class="mb0-5 plr1 pb1">
+	<div class="mb0-5 p1">
 
 		<div class="flex row-stretch-stretch grow w100pc">
 			<div class="basis5em h100pc select">
