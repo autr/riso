@@ -2,9 +2,9 @@
 
 	import * as PIXI from 'pixi.js'
 	import { onMount } from 'svelte'
-	import gui from './gui.js'
-	import lib from './lib.js'
-	import colours from './colours.js'
+	import gui from './_gui.js'
+	import glLib from './_gl.js'
+	import colours from './_colours.js'
 
 	export let layer
 	export let target
@@ -32,7 +32,7 @@
 		graphic.drawRect(0, 0, config.width, config.height)
 
 		const fragment = window.palette = `
-${lib}
+${glLib}
 ${gui.header}
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
@@ -89,5 +89,5 @@ void main(void) {
 
 	}
 </script>
-<div class="rel basis70pc bb1-solid flex grow palette" style={`background-color: rgb(${colours?.[layer.colour]?.rgb})`} />
-<div class="rel basis30pc flex grow palette" bind:this={el} />
+<div class="rel basis0pc flex grow palette" style={`background-color: rgb(${colours?.[layer.colour]?.rgb})`} />
+<div class="rel basis0pc flex grow palette" bind:this={el} />

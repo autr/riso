@@ -1,9 +1,9 @@
 <script>
-	import lib from './lib.js'
-	import colours from './colours.js'
+	import glLib from './_gl.js'
+	import colours from './_colours.js'
 	import * as PIXI from 'pixi.js'
 	import { onMount } from 'svelte'
-	import gui from './gui.js'
+	import gui from './_gui.js'
 	import Palette from './Palette.svelte'
 
 	export let layer = {}
@@ -152,7 +152,7 @@ void main(void) {
 
 }`
 
-		let fragment = window.fragment = `${lib}\n${header}\n${program}`
+		let fragment = window.fragment = `${glLib}\n${header}\n${program}`
 
 
 		filter = new PIXI.Filter(null, fragment, layer)
@@ -189,11 +189,6 @@ void main(void) {
 		}
 	}
 
-	function onSolo() {
-		solo = solo == null ? index : null
-		layer.solo = solo == index && solo != null
-
-	}
 
 	$: onMute( layer.muted, solo )
 
@@ -223,52 +218,10 @@ void main(void) {
 
 <!-- <div bind:this={TEST} /> -->
 
-<div class="flex column">
-	<div class="mb0-5">
+<div 
+	class="flex column bb1-solid" >
+	<div class="mb0-5 plr1 pb1">
 
-
-		<!-- PALETTE -->
-
-		<div 
-			on:click={e => overlay = true}
-			class="h2em flex column mb1 w100pc b1-solid">
-			<Palette bind:layer={layer} />
-		</div>
-
-
-
-
-		<div class="mb1 flex row-space-between-center br1-solid">
-
-			<!-- TITLE -->
-			<span class=" sink h3em flex row-flex-start-center pl1 grow mr1">
-				L{(index + 1).toString()}
-			</span>
-
-			<!-- BUTTONS -->
-
-			<div class="flex row ">
-				<!-- <button 
-					on:click={ e => layer.invert = !layer.invert }
-					class:filled={layer.invert} 
-					class="{topRight}">I</button> -->
-				<button 
-					on:click={ e => layer.muted = !layer.muted }
-					class:filled={layer.muted} 
-					class="{topRight}">M</button>
-				<button 
-					class:filled={solo == index}
-					on:click={ onSolo }
-					class="{topRight} br1-solid">S</button>
-				<button 
-					on:click={ e => onLayerUp(idx) }
-					class="{topRight} arrow rotate180 br1-solid bl0-solid ml1" />
-				<button 
-					on:click={ e => onLayerDown(idx) }
-					class="{topRight} arrow bl1-solid " />
-				<button class="{topRight}"><span class="cross block w1em h1em" /></button>
-			</div>
-		</div>
 		<div class="flex row-stretch-stretch grow w100pc">
 			<div class="basis5em h100pc select">
 				<select class="br0-solid" bind:value={layer.type} style="letter-spacing: 4em">

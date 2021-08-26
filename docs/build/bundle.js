@@ -3,7 +3,7 @@
 var app = (function () {
     'use strict';
 
-    function noop$1() { }
+    function noop$4() { }
     function assign(tar, src) {
         // @ts-ignore
         for (const k in src)
@@ -32,6 +32,21 @@ var app = (function () {
     }
     function is_empty(obj) {
         return Object.keys(obj).length === 0;
+    }
+    function validate_store(store, name) {
+        if (store != null && typeof store.subscribe !== 'function') {
+            throw new Error(`'${name}' is not a store with a 'subscribe' method`);
+        }
+    }
+    function subscribe(store, ...callbacks) {
+        if (store == null) {
+            return noop$4;
+        }
+        const unsub = store.subscribe(...callbacks);
+        return unsub.unsubscribe ? () => unsub.unsubscribe() : unsub;
+    }
+    function component_subscribe(component, store, callback) {
+        component.$$.on_destroy.push(subscribe(store, callback));
     }
     function create_slot(definition, ctx, $$scope, fn) {
         if (definition) {
@@ -202,6 +217,9 @@ var app = (function () {
     function space() {
         return text(' ');
     }
+    function empty() {
+        return text('');
+    }
     function listen(node, event, handler, options) {
         node.addEventListener(event, handler, options);
         return () => node.removeEventListener(event, handler, options);
@@ -257,6 +275,9 @@ var app = (function () {
     }
     function onMount(fn) {
         get_current_component().$$.on_mount.push(fn);
+    }
+    function onDestroy(fn) {
+        get_current_component().$$.on_destroy.push(fn);
     }
 
     const dirty_components = [];
@@ -426,7 +447,7 @@ var app = (function () {
             ctx: null,
             // state
             props,
-            update: noop$1,
+            update: noop$4,
             not_equal,
             bound: blank_object(),
             // lifecycle
@@ -485,7 +506,7 @@ var app = (function () {
     class SvelteComponent {
         $destroy() {
             destroy_component(this, 1);
-            this.$destroy = noop$1;
+            this.$destroy = noop$4;
         }
         $on(type, callback) {
             const callbacks = (this.$$.callbacks[type] || (this.$$.callbacks[type] = []));
@@ -587,7 +608,7 @@ var app = (function () {
         $inject_state() { }
     }
 
-    var lib = `
+    var glLib = `
 
 #define PI 3.14159265358979323846264338327
 
@@ -989,7 +1010,7 @@ vec3 rgb2hsv(vec3 rgb) {
       return Boolean(x && typeof x.length !== 'undefined');
     }
 
-    function noop() {}
+    function noop$3() {}
 
     // Polyfill for Function.prototype.bind
     function bind(fn, thisArg) {
@@ -1136,7 +1157,7 @@ vec3 rgb2hsv(vec3 rgb) {
 
     Promise$1.prototype.then = function(onFulfilled, onRejected) {
       // @ts-ignore
-      var prom = new this.constructor(noop);
+      var prom = new this.constructor(noop$3);
 
       handle(this, new Handler(onFulfilled, onRejected, prom));
       return prom;
@@ -8013,7 +8034,7 @@ vec3 rgb2hsv(vec3 rgb) {
      * @class
      * @memberof PIXI
      */
-    var Transform = /** @class */ (function () {
+    var Transform$1 = /** @class */ (function () {
         function Transform() {
             /**
              * The world transformation matrix.
@@ -8882,7 +8903,7 @@ vec3 rgb2hsv(vec3 rgb) {
              *
              * @member {PIXI.Transform}
              */
-            _this.transform = new Transform();
+            _this.transform = new Transform$1();
             /**
              * The opacity of the object.
              *
@@ -37629,7 +37650,7 @@ vec3 rgb2hsv(vec3 rgb) {
              *
              * @member {PIXI.Transform}
              */
-            _this.tileTransform = new Transform();
+            _this.tileTransform = new Transform$1();
             /**
              * The with of the tiling sprite
              *
@@ -44068,7 +44089,7 @@ vec3 rgb2hsv(vec3 rgb) {
         Rectangle: Rectangle,
         RoundedRectangle: RoundedRectangle,
         get SHAPES () { return SHAPES; },
-        Transform: Transform,
+        Transform: Transform$1,
         groupD8: groupD8,
         Mesh: Mesh,
         MeshBatchUvs: MeshBatchUvs,
@@ -44128,7 +44149,7 @@ vec3 rgb2hsv(vec3 rgb) {
      * @param value
      * @param customStore Method to get a custom store. Use with caution (see the docs).
      */
-    function set(key, value, customStore = defaultGetStore()) {
+    function set$1(key, value, customStore = defaultGetStore()) {
         return customStore('readwrite', (store) => {
             store.put(value, key);
             return promisifyRequest(store.transaction);
@@ -44635,6 +44656,227 @@ vec3 rgb2hsv(vec3 rgb) {
     		gen.size( 'A2 (portrait)', 420, 594 )
     	]
     };
+
+    const subscriber_queue = [];
+    /**
+     * Create a `Writable` store that allows both updating and reading by subscription.
+     * @param {*=}value initial value
+     * @param {StartStopNotifier=}start start and stop notifications for subscriptions
+     */
+    function writable(value, start = noop$4) {
+        let stop;
+        const subscribers = [];
+        function set(new_value) {
+            if (safe_not_equal(value, new_value)) {
+                value = new_value;
+                if (stop) { // store is ready
+                    const run_queue = !subscriber_queue.length;
+                    for (let i = 0; i < subscribers.length; i += 1) {
+                        const s = subscribers[i];
+                        s[1]();
+                        subscriber_queue.push(s, value);
+                    }
+                    if (run_queue) {
+                        for (let i = 0; i < subscriber_queue.length; i += 2) {
+                            subscriber_queue[i][0](subscriber_queue[i + 1]);
+                        }
+                        subscriber_queue.length = 0;
+                    }
+                }
+            }
+        }
+        function update(fn) {
+            set(fn(value));
+        }
+        function subscribe(run, invalidate = noop$4) {
+            const subscriber = [run, invalidate];
+            subscribers.push(subscriber);
+            if (subscribers.length === 1) {
+                stop = start(set) || noop$4;
+            }
+            run(value);
+            return () => {
+                const index = subscribers.indexOf(subscriber);
+                if (index !== -1) {
+                    subscribers.splice(index, 1);
+                }
+                if (subscribers.length === 0) {
+                    stop();
+                    stop = null;
+                }
+            };
+        }
+        return { set, update, subscribe };
+    }
+
+    function dragdrop() {
+
+    	const { subscribe, set, update } = writable({});
+
+    	function findAncestor (el, attr) {
+    	    while ((el = el.parentElement) && !el.getAttribute( attr ));
+    	    return el
+    	}
+    	function check( group ) {
+    		update( d => {
+    			if (!d[group]) d[group] = { handles: new Map(), drops: [], source: null, destination: null, callbacks: new Map(), dragging: false };
+    			return d
+    		});
+    	}
+    	const reject = e => {
+    		// console.warn('[draggable] no group id provided')
+    	};
+
+    	const dropHandlers = {
+    		dragover: (e) => {
+    			const el = findAncestor(e.target, 'data-group');
+    			if (!el) return reject()
+    			const group = el.getAttribute('data-group');
+    			if (!group) return reject()
+    			e.preventDefault();
+    			let cb;
+    			update( d => {
+    				cb = d[group].callbacks.get( el );
+    				d[group].destination = el; 
+    				return d 
+    			});
+    			if (cb?.dragover) cb.dragover(e);
+    		},
+    		dragleave: (e) => {
+    			const el = findAncestor(e.target, 'data-group');
+    			if (!el) return reject()
+    			const group = el.getAttribute('data-group');
+    			if (!group) return reject()
+    			e.preventDefault();
+    			let cb;
+    			update( d => { 
+    				cb = d[group].callbacks.get( el );
+    				d[group].destination = null; 
+    				return d 
+    			});
+    			if (cb?.dragleave) cb.dragleave(e);
+    		},
+    		drop: (e, t) => {
+    			const el = findAncestor(e.target, 'data-group');
+    			if (!el) return reject()
+    			const group = el.getAttribute('data-group');
+    			if (!group) return reject()
+    			e.preventDefault();
+    			let cb;
+    			update( d => { 
+    				cb = d[group].callbacks.get( el );
+    				if (cb?.drop) cb.drop( { 
+    					...e, 
+    					source: d[group].source, 
+    					destination: d[group].destination 
+    				});
+    				d[group].destination = null; 
+    				return d;
+    			});
+    		}
+    	};
+    	
+    	function addDropArea( group, drop, callbacks ) {
+    		if (!group) return reject()
+    		check( group );
+    		drop.setAttribute('data-group', group);
+    		update( d => {
+    			d[group].callbacks.set( drop, callbacks );
+    			d[group].drops.push( drop );
+    			return d 
+    		});
+    		for (const [type, method] of Object.entries(dropHandlers)) drop.addEventListener( type, method );
+    	}
+    	
+    	const disable = (e) => {
+    		const group = e.target.getAttribute('data-group');
+    		if (!group) return reject()
+    		update( d => {
+    			d[group].dragging = false;
+    			d[group].source = e.target;
+    			return d 
+    		});
+    		e.target.setAttribute('draggable', false);
+    	};
+
+    	const enable = (e) => {
+    		const group = e.target.getAttribute('data-group');
+    		if (!group) return reject()
+    		let element;
+    		update( d => { 
+    			d[group].dragging = true;
+    			element = d[group].handles.get( e.target );
+    			d[group].source = element;
+    			return d
+    		});
+    		element.setAttribute('draggable', true);
+    	};
+    	
+    	function addDragArea( group, handle, element ) {
+    		
+    		if (!group) return reject()
+    		check(group);
+    		element.addEventListener('dragend', disable);
+    		element.addEventListener('mouseup', disable);
+    		handle.addEventListener('mousedown', enable);
+    		element.setAttribute('data-group', group);
+    		handle.setAttribute( 'data-group', group);
+    		
+    		update( d => { d[group].handles.set( handle, element ); return d });
+    	}
+
+    	function isDragging( group ) {
+    		if (!group) return reject()
+    		check(group);
+    		let b;
+    		update( d => { 
+    			b = d[group].dragging;
+    			return d
+    		});
+    		return b
+    	}
+    	
+    	function clear( group ) {
+
+    		if (!group) return reject()
+
+    		try {
+    			update( d => { 
+
+    				if (!d[group]) return d
+
+    				for (const [handle, element] of Object.entries( d[group].handles)) {
+    					handle.removeEventListener( 'mousedown', enable );
+    					element.removeEventListener( 'dragend', disable );
+    					element.removeEventListener( 'mouseup', disable );
+    				}
+    				for (let i = 0; i < d[group].drops.length; i++) {
+    					const drop = d[group].drops[i];
+    					for (const [type, method] of Object.entries(dropHandlers)) {
+    						drop.removeEventListener( type, method );
+    					}
+    				}
+    				
+    				delete d[group];
+    				return d 
+    			});
+    		} catch(err) {
+    			console.error(`[dragdrop] could not clear "${group}":`, err.message);
+    		}
+    	}
+    	
+    	return {
+    		subscribe,
+    		set,
+    		update,
+    		addDragArea,
+    		addDropArea,
+    		isDragging,
+    		clear
+    	}
+    }
+
+    var dragdrop$1 = dragdrop();
 
     var colours = [
         {
@@ -45205,10 +45447,10 @@ uniform int type;
 
     var gui = { config, header };
 
-    /* src/Palette.svelte generated by Svelte v3.38.3 */
-    const file$4 = "src/Palette.svelte";
+    /* src/lib/Palette.svelte generated by Svelte v3.38.3 */
+    const file$7 = "src/lib/Palette.svelte";
 
-    function create_fragment$4(ctx) {
+    function create_fragment$7(ctx) {
     	let div0;
     	let div0_style_value;
     	let t;
@@ -45219,11 +45461,11 @@ uniform int type;
     			div0 = element("div");
     			t = space();
     			div1 = element("div");
-    			attr_dev(div0, "class", "rel basis70pc bb1-solid flex grow palette");
+    			attr_dev(div0, "class", "rel basis0pc flex grow palette");
     			attr_dev(div0, "style", div0_style_value = `background-color: rgb(${colours?.[/*layer*/ ctx[0].colour]?.rgb})`);
-    			add_location(div0, file$4, 91, 0, 2154);
-    			attr_dev(div1, "class", "rel basis30pc flex grow palette");
-    			add_location(div1, file$4, 92, 0, 2277);
+    			add_location(div0, file$7, 91, 0, 2160);
+    			attr_dev(div1, "class", "rel basis0pc flex grow palette");
+    			add_location(div1, file$7, 92, 0, 2272);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -45239,8 +45481,8 @@ uniform int type;
     				attr_dev(div0, "style", div0_style_value);
     			}
     		},
-    		i: noop$1,
-    		o: noop$1,
+    		i: noop$4,
+    		o: noop$4,
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div0);
     			if (detaching) detach_dev(t);
@@ -45251,7 +45493,7 @@ uniform int type;
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$4.name,
+    		id: create_fragment$7.name,
     		type: "component",
     		source: "",
     		ctx
@@ -45260,7 +45502,7 @@ uniform int type;
     	return block;
     }
 
-    function instance$4($$self, $$props, $$invalidate) {
+    function instance$7($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots("Palette", slots, []);
     	let { layer } = $$props;
@@ -45287,7 +45529,7 @@ uniform int type;
     		graphic.drawRect(0, 0, config.width, config.height);
 
     		const fragment = window.palette = `
-${lib}
+${glLib}
 ${gui.header}
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;
@@ -45367,7 +45609,7 @@ void main(void) {
     		PIXI,
     		onMount,
     		gui,
-    		lib,
+    		glLib,
     		colours,
     		layer,
     		target,
@@ -45399,13 +45641,13 @@ void main(void) {
     class Palette extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init$1(this, options, instance$4, create_fragment$4, safe_not_equal, { layer: 0, target: 2, vertical: 3 });
+    		init$1(this, options, instance$7, create_fragment$7, safe_not_equal, { layer: 0, target: 2, vertical: 3 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Palette",
     			options,
-    			id: create_fragment$4.name
+    			id: create_fragment$7.name
     		});
 
     		const { ctx } = this.$$;
@@ -45445,60 +45687,60 @@ void main(void) {
     	}
     }
 
-    /* src/Layer.svelte generated by Svelte v3.38.3 */
+    /* src/lib/Layer.svelte generated by Svelte v3.38.3 */
 
-    const { console: console_1$2 } = globals;
-    const file$3 = "src/Layer.svelte";
+    const { console: console_1$5 } = globals;
+    const file$6 = "src/lib/Layer.svelte";
 
-    function get_each_context$2(ctx, list, i) {
+    function get_each_context$4(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[33] = list[i];
-    	child_ctx[34] = list;
-    	child_ctx[35] = i;
+    	child_ctx[27] = list[i];
+    	child_ctx[28] = list;
+    	child_ctx[29] = i;
     	return child_ctx;
     }
 
     function get_each_context_1$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[36] = list[i];
-    	child_ctx[38] = i;
+    	child_ctx[30] = list[i];
+    	child_ctx[32] = i;
     	return child_ctx;
     }
 
     function get_each_context_2$1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[39] = list[i];
-    	child_ctx[38] = i;
+    	child_ctx[33] = list[i];
+    	child_ctx[32] = i;
     	return child_ctx;
     }
 
-    function get_each_context_3$1(ctx, list, i) {
+    function get_each_context_3(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[41] = list[i];
-    	child_ctx[38] = i;
+    	child_ctx[35] = list[i];
+    	child_ctx[32] = i;
     	return child_ctx;
     }
 
-    // (275:5) {#each types as t,i}
-    function create_each_block_3$1(ctx) {
+    // (228:5) {#each types as t,i}
+    function create_each_block_3(ctx) {
     	let option;
-    	let t_value = /*t*/ ctx[41] + "";
+    	let t_value = /*t*/ ctx[35] + "";
     	let t;
 
     	const block = {
     		c: function create() {
     			option = element("option");
     			t = text(t_value);
-    			option.__value = /*i*/ ctx[38];
+    			option.__value = /*i*/ ctx[32];
     			option.value = option.__value;
-    			attr_dev(option, "name", /*t*/ ctx[41]);
-    			add_location(option, file$3, 275, 6, 6525);
+    			attr_dev(option, "name", /*t*/ ctx[35]);
+    			add_location(option, file$6, 228, 6, 5345);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, option, anchor);
     			append_dev(option, t);
     		},
-    		p: noop$1,
+    		p: noop$4,
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(option);
     		}
@@ -45506,31 +45748,31 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block_3$1.name,
+    		id: create_each_block_3.name,
     		type: "each",
-    		source: "(275:5) {#each types as t,i}",
+    		source: "(228:5) {#each types as t,i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (295:5) {#each colours as c, i}
+    // (248:5) {#each colours as c, i}
     function create_each_block_2$1(ctx) {
     	let div;
     	let span2;
     	let span0;
-    	let t0_value = /*c*/ ctx[39].name + "";
+    	let t0_value = /*c*/ ctx[33].name + "";
     	let t0;
     	let t1;
     	let span1;
-    	let t2_value = (/*c*/ ctx[39].japanese || "-") + "";
+    	let t2_value = (/*c*/ ctx[33].japanese || "-") + "";
     	let t2;
     	let mounted;
     	let dispose;
 
-    	function click_handler_5(...args) {
-    		return /*click_handler_5*/ ctx[20](/*i*/ ctx[38], ...args);
+    	function click_handler_1(...args) {
+    		return /*click_handler_1*/ ctx[11](/*i*/ ctx[32], ...args);
     	}
 
     	const block = {
@@ -45542,13 +45784,13 @@ void main(void) {
     			t1 = space();
     			span1 = element("span");
     			t2 = text(t2_value);
-    			add_location(span0, file$3, 301, 8, 7359);
-    			add_location(span1, file$3, 302, 8, 7389);
+    			add_location(span0, file$6, 254, 8, 6179);
+    			add_location(span1, file$6, 255, 8, 6209);
     			attr_dev(span2, "class", "inverted flex column p1");
-    			add_location(span2, file$3, 299, 7, 7303);
-    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[39].rgb});margin-top:-1px;margin-left:-1px`);
+    			add_location(span2, file$6, 252, 7, 6123);
+    			attr_dev(div, "style", `background-color:rgb(${/*c*/ ctx[33].rgb});margin-top:-1px;margin-left:-1px`);
     			attr_dev(div, "class", "b1-solid flex column pointer no-basis grow minw16em minh0em");
-    			add_location(div, file$3, 295, 6, 7098);
+    			add_location(div, file$6, 248, 6, 5918);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -45560,7 +45802,7 @@ void main(void) {
     			append_dev(span1, t2);
 
     			if (!mounted) {
-    				dispose = listen_dev(div, "click", click_handler_5, false, false, false);
+    				dispose = listen_dev(div, "click", click_handler_1, false, false, false);
     				mounted = true;
     			}
     		},
@@ -45578,14 +45820,14 @@ void main(void) {
     		block,
     		id: create_each_block_2$1.name,
     		type: "each",
-    		source: "(295:5) {#each colours as c, i}",
+    		source: "(248:5) {#each colours as c, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (307:5) {#each new Array(10) as ii,i}
+    // (260:5) {#each new Array(10) as ii,i}
     function create_each_block_1$1(ctx) {
     	let span;
 
@@ -45595,7 +45837,7 @@ void main(void) {
     			attr_dev(span, "class", "flex column pointer no-basis grow minw16em clickable h0em");
     			set_style(span, "line-height", "0px");
     			set_style(span, "max-height", "0px");
-    			add_location(span, file$3, 307, 6, 7504);
+    			add_location(span, file$6, 260, 6, 6324);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, span, anchor);
@@ -45609,18 +45851,18 @@ void main(void) {
     		block,
     		id: create_each_block_1$1.name,
     		type: "each",
-    		source: "(307:5) {#each new Array(10) as ii,i}",
+    		source: "(260:5) {#each new Array(10) as ii,i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (321:4) {#if ui.label}
-    function create_if_block_2$1(ctx) {
+    // (274:4) {#if ui.label}
+    function create_if_block_2(ctx) {
     	let label;
     	let span;
-    	let t_value = /*ui*/ ctx[33].label + "";
+    	let t_value = /*ui*/ ctx[27].label + "";
     	let t;
 
     	const block = {
@@ -45628,16 +45870,16 @@ void main(void) {
     			label = element("label");
     			span = element("span");
     			t = text(t_value);
-    			add_location(span, file$3, 323, 6, 7912);
+    			add_location(span, file$6, 276, 6, 6732);
     			attr_dev(label, "class", "no-basis capitalize grow flex row-flex-start-flex-start");
-    			add_location(label, file$3, 322, 5, 7834);
+    			add_location(label, file$6, 275, 5, 6654);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, label, anchor);
     			append_dev(label, span);
     			append_dev(span, t);
     		},
-    		p: noop$1,
+    		p: noop$4,
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(label);
     		}
@@ -45645,23 +45887,23 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_2$1.name,
+    		id: create_if_block_2.name,
     		type: "if",
-    		source: "(321:4) {#if ui.label}",
+    		source: "(274:4) {#if ui.label}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (341:33) 
-    function create_if_block_1$1(ctx) {
+    // (294:33) 
+    function create_if_block_1$2(ctx) {
     	let input;
     	let mounted;
     	let dispose;
 
     	function input_change_input_handler() {
-    		/*input_change_input_handler*/ ctx[22].call(input, /*ui*/ ctx[33]);
+    		/*input_change_input_handler*/ ctx[13].call(input, /*ui*/ ctx[27]);
     	}
 
     	const block = {
@@ -45672,11 +45914,11 @@ void main(void) {
     			attr_dev(input, "min", "-0.000001");
     			attr_dev(input, "max", "1");
     			attr_dev(input, "step", "0.001");
-    			add_location(input, file$3, 341, 5, 8401);
+    			add_location(input, file$6, 294, 5, 7221);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, input, anchor);
-    			set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
+    			set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[27].name]);
 
     			if (!mounted) {
     				dispose = [
@@ -45691,7 +45933,7 @@ void main(void) {
     			ctx = new_ctx;
 
     			if (dirty[0] & /*layer*/ 1) {
-    				set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
+    				set_input_value(input, /*layer*/ ctx[0][/*ui*/ ctx[27].name]);
     			}
     		},
     		d: function destroy(detaching) {
@@ -45703,25 +45945,25 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_1$1.name,
+    		id: create_if_block_1$2.name,
     		type: "if",
-    		source: "(341:33) ",
+    		source: "(294:33) ",
     		ctx
     	});
 
     	return block;
     }
 
-    // (330:4) {#if ui.type == 'bool'}
-    function create_if_block$1(ctx) {
+    // (283:4) {#if ui.type == 'bool'}
+    function create_if_block$3(ctx) {
     	let div;
     	let span1;
     	let span0;
     	let mounted;
     	let dispose;
 
-    	function click_handler_6(...args) {
-    		return /*click_handler_6*/ ctx[21](/*ui*/ ctx[33], ...args);
+    	function click_handler_2(...args) {
+    		return /*click_handler_2*/ ctx[12](/*ui*/ ctx[27], ...args);
     	}
 
     	const block = {
@@ -45730,12 +45972,12 @@ void main(void) {
     			span1 = element("span");
     			span0 = element("span");
     			attr_dev(span0, "class", "fill");
-    			toggle_class(span0, "cross", /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
-    			add_location(span0, file$3, 337, 7, 8285);
+    			toggle_class(span0, "cross", /*layer*/ ctx[0][/*ui*/ ctx[27].name]);
+    			add_location(span0, file$6, 290, 7, 7105);
     			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block");
-    			add_location(span1, file$3, 335, 6, 8218);
+    			add_location(span1, file$6, 288, 6, 7038);
     			attr_dev(div, "class", "br0-solid flex row-flex-end-center");
-    			add_location(div, file$3, 332, 5, 8101);
+    			add_location(div, file$6, 285, 5, 6921);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -45743,7 +45985,7 @@ void main(void) {
     			append_dev(span1, span0);
 
     			if (!mounted) {
-    				dispose = listen_dev(div, "click", click_handler_6, false, false, false);
+    				dispose = listen_dev(div, "click", click_handler_2, false, false, false);
     				mounted = true;
     			}
     		},
@@ -45751,7 +45993,7 @@ void main(void) {
     			ctx = new_ctx;
 
     			if (dirty[0] & /*layer*/ 1) {
-    				toggle_class(span0, "cross", /*layer*/ ctx[0][/*ui*/ ctx[33].name]);
+    				toggle_class(span0, "cross", /*layer*/ ctx[0][/*ui*/ ctx[27].name]);
     			}
     		},
     		d: function destroy(detaching) {
@@ -45763,25 +46005,25 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block$1.name,
+    		id: create_if_block$3.name,
     		type: "if",
-    		source: "(330:4) {#if ui.type == 'bool'}",
+    		source: "(283:4) {#if ui.type == 'bool'}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (316:2) {#each gui.config as ui}
-    function create_each_block$2(ctx) {
+    // (269:2) {#each gui.config as ui}
+    function create_each_block$4(ctx) {
     	let div;
     	let t0;
     	let t1;
-    	let if_block0 = /*ui*/ ctx[33].label && create_if_block_2$1(ctx);
+    	let if_block0 = /*ui*/ ctx[27].label && create_if_block_2(ctx);
 
     	function select_block_type(ctx, dirty) {
-    		if (/*ui*/ ctx[33].type == "bool") return create_if_block$1;
-    		if (/*ui*/ ctx[33].type == "float") return create_if_block_1$1;
+    		if (/*ui*/ ctx[27].type == "bool") return create_if_block$3;
+    		if (/*ui*/ ctx[27].type == "float") return create_if_block_1$2;
     	}
 
     	let current_block_type = select_block_type(ctx);
@@ -45795,8 +46037,8 @@ void main(void) {
     			if (if_block1) if_block1.c();
     			t1 = space();
     			attr_dev(div, "class", "flex row-flex-end-center mt1 w100pc");
-    			toggle_class(div, "none", !isNaN(/*ui*/ ctx[33].link) && /*ui*/ ctx[33].link != /*layer*/ ctx[0].type);
-    			add_location(div, file$3, 316, 3, 7694);
+    			toggle_class(div, "none", !isNaN(/*ui*/ ctx[27].link) && /*ui*/ ctx[27].link != /*layer*/ ctx[0].type);
+    			add_location(div, file$6, 269, 3, 6514);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -45806,11 +46048,11 @@ void main(void) {
     			append_dev(div, t1);
     		},
     		p: function update(ctx, dirty) {
-    			if (/*ui*/ ctx[33].label) if_block0.p(ctx, dirty);
+    			if (/*ui*/ ctx[27].label) if_block0.p(ctx, dirty);
     			if (if_block1) if_block1.p(ctx, dirty);
 
     			if (dirty[0] & /*layer*/ 1) {
-    				toggle_class(div, "none", !isNaN(/*ui*/ ctx[33].link) && /*ui*/ ctx[33].link != /*layer*/ ctx[0].type);
+    				toggle_class(div, "none", !isNaN(/*ui*/ ctx[27].link) && /*ui*/ ctx[27].link != /*layer*/ ctx[0].type);
     			}
     		},
     		d: function destroy(detaching) {
@@ -45825,77 +46067,39 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block$2.name,
+    		id: create_each_block$4.name,
     		type: "each",
-    		source: "(316:2) {#each gui.config as ui}",
+    		source: "(269:2) {#each gui.config as ui}",
     		ctx
     	});
 
     	return block;
     }
 
-    function create_fragment$3(ctx) {
-    	let div8;
-    	let div7;
+    function create_fragment$6(ctx) {
+    	let div5;
+    	let div4;
+    	let div3;
     	let div0;
-    	let palette;
-    	let updating_layer;
+    	let select_1;
     	let t0;
     	let div2;
-    	let span0;
-    	let t1;
-    	let t2_value = (/*index*/ ctx[2] + 1).toString() + "";
-    	let t2;
-    	let t3;
-    	let div1;
-    	let button0;
-    	let t4;
-    	let t5;
-    	let button1;
-    	let t6;
-    	let t7;
-    	let button2;
-    	let t8;
-    	let button3;
-    	let t9;
-    	let button4;
     	let span1;
-    	let t10;
-    	let div6;
-    	let div3;
-    	let select_1;
-    	let t11;
-    	let div5;
-    	let span3;
-    	let span2;
-    	let t12_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "";
-    	let t12;
-    	let t13;
-    	let div4;
-    	let t14;
-    	let t15;
-    	let current;
+    	let span0;
+    	let t1_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "";
+    	let t1;
+    	let t2;
+    	let div1;
+    	let t3;
+    	let t4;
     	let mounted;
     	let dispose;
-
-    	function palette_layer_binding(value) {
-    		/*palette_layer_binding*/ ctx[13](value);
-    	}
-
-    	let palette_props = {};
-
-    	if (/*layer*/ ctx[0] !== void 0) {
-    		palette_props.layer = /*layer*/ ctx[0];
-    	}
-
-    	palette = new Palette({ props: palette_props, $$inline: true });
-    	binding_callbacks.push(() => bind$1(palette, "layer", palette_layer_binding));
-    	let each_value_3 = /*types*/ ctx[5];
+    	let each_value_3 = /*types*/ ctx[3];
     	validate_each_argument(each_value_3);
     	let each_blocks_3 = [];
 
     	for (let i = 0; i < each_value_3.length; i += 1) {
-    		each_blocks_3[i] = create_each_block_3$1(get_each_context_3$1(ctx, each_value_3, i));
+    		each_blocks_3[i] = create_each_block_3(get_each_context_3(ctx, each_value_3, i));
     	}
 
     	let each_value_2 = colours;
@@ -45919,220 +46123,128 @@ void main(void) {
     	let each_blocks = [];
 
     	for (let i = 0; i < each_value.length; i += 1) {
-    		each_blocks[i] = create_each_block$2(get_each_context$2(ctx, each_value, i));
+    		each_blocks[i] = create_each_block$4(get_each_context$4(ctx, each_value, i));
     	}
 
     	const block = {
     		c: function create() {
-    			div8 = element("div");
-    			div7 = element("div");
-    			div0 = element("div");
-    			create_component(palette.$$.fragment);
-    			t0 = space();
-    			div2 = element("div");
-    			span0 = element("span");
-    			t1 = text("L");
-    			t2 = text(t2_value);
-    			t3 = space();
-    			div1 = element("div");
-    			button0 = element("button");
-    			t4 = text("M");
-    			t5 = space();
-    			button1 = element("button");
-    			t6 = text("S");
-    			t7 = space();
-    			button2 = element("button");
-    			t8 = space();
-    			button3 = element("button");
-    			t9 = space();
-    			button4 = element("button");
-    			span1 = element("span");
-    			t10 = space();
-    			div6 = element("div");
+    			div5 = element("div");
+    			div4 = element("div");
     			div3 = element("div");
+    			div0 = element("div");
     			select_1 = element("select");
 
     			for (let i = 0; i < each_blocks_3.length; i += 1) {
     				each_blocks_3[i].c();
     			}
 
-    			t11 = space();
-    			div5 = element("div");
-    			span3 = element("span");
-    			span2 = element("span");
-    			t12 = text(t12_value);
-    			t13 = space();
-    			div4 = element("div");
+    			t0 = space();
+    			div2 = element("div");
+    			span1 = element("span");
+    			span0 = element("span");
+    			t1 = text(t1_value);
+    			t2 = space();
+    			div1 = element("div");
 
     			for (let i = 0; i < each_blocks_2.length; i += 1) {
     				each_blocks_2[i].c();
     			}
 
-    			t14 = space();
+    			t3 = space();
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
     				each_blocks_1[i].c();
     			}
 
-    			t15 = space();
+    			t4 = space();
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
-    			attr_dev(div0, "class", "h2em flex column mb1 w100pc b1-solid");
-    			add_location(div0, file$3, 231, 2, 5239);
-    			attr_dev(span0, "class", " sink h3em flex row-flex-start-center pl1 grow mr1");
-    			add_location(span0, file$3, 243, 3, 5457);
-    			attr_dev(button0, "class", /*topRight*/ ctx[9]);
-    			toggle_class(button0, "filled", /*layer*/ ctx[0].muted);
-    			add_location(button0, file$3, 254, 4, 5760);
-    			attr_dev(button1, "class", "" + (/*topRight*/ ctx[9] + " br1-solid"));
-    			toggle_class(button1, "filled", /*solo*/ ctx[1] == /*index*/ ctx[2]);
-    			add_location(button1, file$3, 258, 4, 5891);
-    			attr_dev(button2, "class", "" + (/*topRight*/ ctx[9] + " arrow rotate180 br1-solid bl0-solid ml1"));
-    			add_location(button2, file$3, 262, 4, 6008);
-    			attr_dev(button3, "class", "" + (/*topRight*/ ctx[9] + " arrow bl1-solid "));
-    			add_location(button3, file$3, 265, 4, 6126);
-    			attr_dev(span1, "class", "cross block w1em h1em");
-    			add_location(span1, file$3, 268, 31, 6250);
-    			attr_dev(button4, "class", /*topRight*/ ctx[9]);
-    			add_location(button4, file$3, 268, 4, 6223);
-    			attr_dev(div1, "class", "flex row ");
-    			add_location(div1, file$3, 249, 3, 5589);
-    			attr_dev(div2, "class", "mb1 flex row-space-between-center br1-solid");
-    			add_location(div2, file$3, 240, 2, 5377);
     			attr_dev(select_1, "class", "br0-solid");
     			set_style(select_1, "letter-spacing", "4em");
-    			if (/*layer*/ ctx[0].type === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[18].call(select_1));
-    			add_location(select_1, file$3, 273, 4, 6414);
-    			attr_dev(div3, "class", "basis5em h100pc select");
-    			add_location(div3, file$3, 272, 3, 6373);
-    			attr_dev(span2, "class", "flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable");
-    			add_location(span2, file$3, 284, 5, 6747);
-    			attr_dev(span3, "class", "select grow");
-    			add_location(span3, file$3, 281, 4, 6673);
-    			attr_dev(div4, "class", "flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99");
-    			toggle_class(div4, "none", !/*overlay*/ ctx[3]);
-    			add_location(div4, file$3, 291, 4, 6935);
-    			attr_dev(div5, "class", "flex no-basis h100pc grow ");
-    			add_location(div5, file$3, 280, 3, 6628);
-    			attr_dev(div6, "class", "flex row-stretch-stretch grow w100pc");
-    			add_location(div6, file$3, 271, 2, 6319);
-    			attr_dev(div7, "class", "mb0-5");
-    			add_location(div7, file$3, 226, 1, 5195);
-    			attr_dev(div8, "class", "flex column");
-    			add_location(div8, file$3, 225, 0, 5168);
+    			if (/*layer*/ ctx[0].type === void 0) add_render_callback(() => /*select_1_change_handler*/ ctx[9].call(select_1));
+    			add_location(select_1, file$6, 226, 4, 5234);
+    			attr_dev(div0, "class", "basis5em h100pc select");
+    			add_location(div0, file$6, 225, 3, 5193);
+    			attr_dev(span0, "class", "flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable");
+    			add_location(span0, file$6, 237, 5, 5567);
+    			attr_dev(span1, "class", "select grow");
+    			add_location(span1, file$6, 234, 4, 5493);
+    			attr_dev(div1, "class", "flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99");
+    			toggle_class(div1, "none", !/*overlay*/ ctx[1]);
+    			add_location(div1, file$6, 244, 4, 5755);
+    			attr_dev(div2, "class", "flex no-basis h100pc grow ");
+    			add_location(div2, file$6, 233, 3, 5448);
+    			attr_dev(div3, "class", "flex row-stretch-stretch grow w100pc");
+    			add_location(div3, file$6, 224, 2, 5139);
+    			attr_dev(div4, "class", "mb0-5 plr1 pb1");
+    			add_location(div4, file$6, 222, 1, 5107);
+    			attr_dev(div5, "class", "flex column bb1-solid");
+    			add_location(div5, file$6, 220, 0, 5067);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div8, anchor);
-    			append_dev(div8, div7);
-    			append_dev(div7, div0);
-    			mount_component(palette, div0, null);
-    			append_dev(div7, t0);
-    			append_dev(div7, div2);
-    			append_dev(div2, span0);
-    			append_dev(span0, t1);
-    			append_dev(span0, t2);
-    			append_dev(div2, t3);
-    			append_dev(div2, div1);
-    			append_dev(div1, button0);
-    			append_dev(button0, t4);
-    			append_dev(div1, t5);
-    			append_dev(div1, button1);
-    			append_dev(button1, t6);
-    			append_dev(div1, t7);
-    			append_dev(div1, button2);
-    			append_dev(div1, t8);
-    			append_dev(div1, button3);
-    			append_dev(div1, t9);
-    			append_dev(div1, button4);
-    			append_dev(button4, span1);
-    			append_dev(div7, t10);
-    			append_dev(div7, div6);
-    			append_dev(div6, div3);
-    			append_dev(div3, select_1);
+    			insert_dev(target, div5, anchor);
+    			append_dev(div5, div4);
+    			append_dev(div4, div3);
+    			append_dev(div3, div0);
+    			append_dev(div0, select_1);
 
     			for (let i = 0; i < each_blocks_3.length; i += 1) {
     				each_blocks_3[i].m(select_1, null);
     			}
 
     			select_option(select_1, /*layer*/ ctx[0].type);
-    			append_dev(div6, t11);
-    			append_dev(div6, div5);
-    			append_dev(div5, span3);
-    			append_dev(span3, span2);
-    			append_dev(span2, t12);
-    			append_dev(div5, t13);
-    			append_dev(div5, div4);
+    			append_dev(div3, t0);
+    			append_dev(div3, div2);
+    			append_dev(div2, span1);
+    			append_dev(span1, span0);
+    			append_dev(span0, t1);
+    			append_dev(div2, t2);
+    			append_dev(div2, div1);
 
     			for (let i = 0; i < each_blocks_2.length; i += 1) {
-    				each_blocks_2[i].m(div4, null);
+    				each_blocks_2[i].m(div1, null);
     			}
 
-    			append_dev(div4, t14);
+    			append_dev(div1, t3);
 
     			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				each_blocks_1[i].m(div4, null);
+    				each_blocks_1[i].m(div1, null);
     			}
 
-    			append_dev(div7, t15);
+    			append_dev(div4, t4);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].m(div7, null);
+    				each_blocks[i].m(div4, null);
     			}
-
-    			current = true;
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(div0, "click", /*click_handler*/ ctx[14], false, false, false),
-    					listen_dev(button0, "click", /*click_handler_1*/ ctx[15], false, false, false),
-    					listen_dev(button1, "click", /*onSolo*/ ctx[6], false, false, false),
-    					listen_dev(button2, "click", /*click_handler_2*/ ctx[16], false, false, false),
-    					listen_dev(button3, "click", /*click_handler_3*/ ctx[17], false, false, false),
-    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[18]),
-    					listen_dev(span3, "click", /*click_handler_4*/ ctx[19], false, false, false)
+    					listen_dev(select_1, "change", /*select_1_change_handler*/ ctx[9]),
+    					listen_dev(span1, "click", /*click_handler*/ ctx[10], false, false, false)
     				];
 
     				mounted = true;
     			}
     		},
     		p: function update(ctx, dirty) {
-    			const palette_changes = {};
-
-    			if (!updating_layer && dirty[0] & /*layer*/ 1) {
-    				updating_layer = true;
-    				palette_changes.layer = /*layer*/ ctx[0];
-    				add_flush_callback(() => updating_layer = false);
-    			}
-
-    			palette.$set(palette_changes);
-    			if ((!current || dirty[0] & /*index*/ 4) && t2_value !== (t2_value = (/*index*/ ctx[2] + 1).toString() + "")) set_data_dev(t2, t2_value);
-
-    			if (dirty[0] & /*layer*/ 1) {
-    				toggle_class(button0, "filled", /*layer*/ ctx[0].muted);
-    			}
-
-    			if (dirty[0] & /*solo, index*/ 6) {
-    				toggle_class(button1, "filled", /*solo*/ ctx[1] == /*index*/ ctx[2]);
-    			}
-
-    			if (dirty[0] & /*types*/ 32) {
-    				each_value_3 = /*types*/ ctx[5];
+    			if (dirty[0] & /*types*/ 8) {
+    				each_value_3 = /*types*/ ctx[3];
     				validate_each_argument(each_value_3);
     				let i;
 
     				for (i = 0; i < each_value_3.length; i += 1) {
-    					const child_ctx = get_each_context_3$1(ctx, each_value_3, i);
+    					const child_ctx = get_each_context_3(ctx, each_value_3, i);
 
     					if (each_blocks_3[i]) {
     						each_blocks_3[i].p(child_ctx, dirty);
     					} else {
-    						each_blocks_3[i] = create_each_block_3$1(child_ctx);
+    						each_blocks_3[i] = create_each_block_3(child_ctx);
     						each_blocks_3[i].c();
     						each_blocks_3[i].m(select_1, null);
     					}
@@ -46149,9 +46261,9 @@ void main(void) {
     				select_option(select_1, /*layer*/ ctx[0].type);
     			}
 
-    			if ((!current || dirty[0] & /*layer*/ 1) && t12_value !== (t12_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "")) set_data_dev(t12, t12_value);
+    			if (dirty[0] & /*layer*/ 1 && t1_value !== (t1_value = (colours[/*layer*/ ctx[0].colour]?.name || "").toLowerCase() + "")) set_data_dev(t1, t1_value);
 
-    			if (dirty[0] & /*select*/ 16) {
+    			if (dirty[0] & /*select*/ 4) {
     				each_value_2 = colours;
     				validate_each_argument(each_value_2);
     				let i;
@@ -46164,7 +46276,7 @@ void main(void) {
     					} else {
     						each_blocks_2[i] = create_each_block_2$1(child_ctx);
     						each_blocks_2[i].c();
-    						each_blocks_2[i].m(div4, t14);
+    						each_blocks_2[i].m(div1, t3);
     					}
     				}
 
@@ -46175,8 +46287,8 @@ void main(void) {
     				each_blocks_2.length = each_value_2.length;
     			}
 
-    			if (dirty[0] & /*overlay*/ 8) {
-    				toggle_class(div4, "none", !/*overlay*/ ctx[3]);
+    			if (dirty[0] & /*overlay*/ 2) {
+    				toggle_class(div1, "none", !/*overlay*/ ctx[1]);
     			}
 
     			if (dirty[0] & /*layer*/ 1) {
@@ -46185,14 +46297,14 @@ void main(void) {
     				let i;
 
     				for (i = 0; i < each_value.length; i += 1) {
-    					const child_ctx = get_each_context$2(ctx, each_value, i);
+    					const child_ctx = get_each_context$4(ctx, each_value, i);
 
     					if (each_blocks[i]) {
     						each_blocks[i].p(child_ctx, dirty);
     					} else {
-    						each_blocks[i] = create_each_block$2(child_ctx);
+    						each_blocks[i] = create_each_block$4(child_ctx);
     						each_blocks[i].c();
-    						each_blocks[i].m(div7, null);
+    						each_blocks[i].m(div4, null);
     					}
     				}
 
@@ -46203,18 +46315,10 @@ void main(void) {
     				each_blocks.length = each_value.length;
     			}
     		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(palette.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(palette.$$.fragment, local);
-    			current = false;
-    		},
+    		i: noop$4,
+    		o: noop$4,
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div8);
-    			destroy_component(palette);
+    			if (detaching) detach_dev(div5);
     			destroy_each(each_blocks_3, detaching);
     			destroy_each(each_blocks_2, detaching);
     			destroy_each(each_blocks_1, detaching);
@@ -46226,7 +46330,7 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$3.name,
+    		id: create_fragment$6.name,
     		type: "component",
     		source: "",
     		ctx
@@ -46235,7 +46339,7 @@ void main(void) {
     	return block;
     }
 
-    function instance$3($$self, $$props, $$invalidate) {
+    function instance$6($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots("Layer", slots, []);
     	let { layer = {} } = $$props;
@@ -46375,15 +46479,15 @@ void main(void) {
 
 }`;
 
-    		let fragment = window.fragment = `${lib}\n${header}\n${program}`;
+    		let fragment = window.fragment = `${glLib}\n${header}\n${program}`;
     		filter = new Filter(null, fragment, layer);
     		new filters.NoiseFilter(1);
-    		$$invalidate(11, group.filters = [filter], group);
+    		$$invalidate(5, group.filters = [filter], group);
     	}
 
     	function select(i) {
     		$$invalidate(0, layer.colour = i, layer);
-    		$$invalidate(3, overlay = false);
+    		$$invalidate(1, overlay = false);
     	}
 
     	let overlay = false;
@@ -46394,25 +46498,20 @@ void main(void) {
     		if (group) {
     			if (solo_ != null) {
     				console.log(`[Layer:${index}] 👁  solo set`);
-    				$$invalidate(11, group.visible = solo_ == index, group);
+    				$$invalidate(5, group.visible = solo_ == index, group);
     			} else if (group.visible != !muted_) {
-    				$$invalidate(11, group.visible = !muted_, group);
+    				$$invalidate(5, group.visible = !muted_, group);
     				console.log(`[Layer:${index}] 🔊  muted is set ${group.visible}`);
     			}
     		}
     	}
 
-    	function onSolo() {
-    		$$invalidate(1, solo = solo == null ? index : null);
-    		$$invalidate(0, layer.solo = solo == index && solo != null, layer);
-    	}
-
     	function move(from, to) {
     		let cp = project.files;
-    		$$invalidate(10, project.layers = [], project);
+    		$$invalidate(4, project.layers = [], project);
     		let i = cp.splice(from, 1)[0];
     		cp.splice(to, 0, i);
-    		$$invalidate(10, project.layers = cp, project);
+    		$$invalidate(4, project.layers = cp, project);
     	}
 
     	function onLayerDown(idx) {
@@ -46432,27 +46531,17 @@ void main(void) {
     	const writable_props = ["layer", "index", "solo", "project", "pixi", "group"];
 
     	Object.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$2.warn(`<Layer> was created with unknown prop '${key}'`);
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$5.warn(`<Layer> was created with unknown prop '${key}'`);
     	});
-
-    	function palette_layer_binding(value) {
-    		layer = value;
-    		$$invalidate(0, layer);
-    	}
-
-    	const click_handler = e => $$invalidate(3, overlay = true);
-    	const click_handler_1 = e => $$invalidate(0, layer.muted = !layer.muted, layer);
-    	const click_handler_2 = e => onLayerUp(idx);
-    	const click_handler_3 = e => onLayerDown(idx);
 
     	function select_1_change_handler() {
     		layer.type = select_value(this);
     		$$invalidate(0, layer);
     	}
 
-    	const click_handler_4 = e => $$invalidate(3, overlay = true);
-    	const click_handler_5 = (i, e) => select(i);
-    	const click_handler_6 = (ui, e) => $$invalidate(0, layer[ui.name] = !layer[ui.name], layer);
+    	const click_handler = e => $$invalidate(1, overlay = true);
+    	const click_handler_1 = (i, e) => select(i);
+    	const click_handler_2 = (ui, e) => $$invalidate(0, layer[ui.name] = !layer[ui.name], layer);
 
     	function input_change_input_handler(ui) {
     		layer[ui.name] = to_number(this.value);
@@ -46461,15 +46550,15 @@ void main(void) {
 
     	$$self.$$set = $$props => {
     		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
-    		if ("index" in $$props) $$invalidate(2, index = $$props.index);
-    		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
-    		if ("project" in $$props) $$invalidate(10, project = $$props.project);
-    		if ("pixi" in $$props) $$invalidate(12, pixi = $$props.pixi);
-    		if ("group" in $$props) $$invalidate(11, group = $$props.group);
+    		if ("index" in $$props) $$invalidate(6, index = $$props.index);
+    		if ("solo" in $$props) $$invalidate(7, solo = $$props.solo);
+    		if ("project" in $$props) $$invalidate(4, project = $$props.project);
+    		if ("pixi" in $$props) $$invalidate(8, pixi = $$props.pixi);
+    		if ("group" in $$props) $$invalidate(5, group = $$props.group);
     	};
 
     	$$self.$capture_state = () => ({
-    		lib,
+    		glLib,
     		colours,
     		PIXI,
     		onMount,
@@ -46492,7 +46581,6 @@ void main(void) {
     		types,
     		TEST,
     		onMute,
-    		onSolo,
     		move,
     		onLayerDown,
     		onLayerUp,
@@ -46502,18 +46590,18 @@ void main(void) {
 
     	$$self.$inject_state = $$props => {
     		if ("layer" in $$props) $$invalidate(0, layer = $$props.layer);
-    		if ("index" in $$props) $$invalidate(2, index = $$props.index);
-    		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
-    		if ("project" in $$props) $$invalidate(10, project = $$props.project);
-    		if ("pixi" in $$props) $$invalidate(12, pixi = $$props.pixi);
-    		if ("group" in $$props) $$invalidate(11, group = $$props.group);
+    		if ("index" in $$props) $$invalidate(6, index = $$props.index);
+    		if ("solo" in $$props) $$invalidate(7, solo = $$props.solo);
+    		if ("project" in $$props) $$invalidate(4, project = $$props.project);
+    		if ("pixi" in $$props) $$invalidate(8, pixi = $$props.pixi);
+    		if ("group" in $$props) $$invalidate(5, group = $$props.group);
     		if ("filter" in $$props) filter = $$props.filter;
     		if ("id" in $$props) id = $$props.id;
     		if ("type" in $$props) type = $$props.type;
-    		if ("overlay" in $$props) $$invalidate(3, overlay = $$props.overlay);
-    		if ("types" in $$props) $$invalidate(5, types = $$props.types);
+    		if ("overlay" in $$props) $$invalidate(1, overlay = $$props.overlay);
+    		if ("types" in $$props) $$invalidate(3, types = $$props.types);
     		if ("TEST" in $$props) TEST = $$props.TEST;
-    		if ("topRight" in $$props) $$invalidate(9, topRight = $$props.topRight);
+    		if ("topRight" in $$props) topRight = $$props.topRight;
     		if ("arrowClass" in $$props) arrowClass = $$props.arrowClass;
     	};
 
@@ -46530,34 +46618,25 @@ void main(void) {
     			setStringId();
     		}
 
-    		if ($$self.$$.dirty[0] & /*layer, solo*/ 3) {
+    		if ($$self.$$.dirty[0] & /*layer, solo*/ 129) {
     			onMute(layer.muted, solo);
     		}
     	};
 
     	return [
     		layer,
-    		solo,
-    		index,
     		overlay,
     		select,
     		types,
-    		onSolo,
-    		onLayerDown,
-    		onLayerUp,
-    		topRight,
     		project,
     		group,
+    		index,
+    		solo,
     		pixi,
-    		palette_layer_binding,
+    		select_1_change_handler,
     		click_handler,
     		click_handler_1,
     		click_handler_2,
-    		click_handler_3,
-    		select_1_change_handler,
-    		click_handler_4,
-    		click_handler_5,
-    		click_handler_6,
     		input_change_input_handler
     	];
     }
@@ -46569,16 +46648,16 @@ void main(void) {
     		init$1(
     			this,
     			options,
-    			instance$3,
-    			create_fragment$3,
+    			instance$6,
+    			create_fragment$6,
     			safe_not_equal,
     			{
     				layer: 0,
-    				index: 2,
-    				solo: 1,
-    				project: 10,
-    				pixi: 12,
-    				group: 11
+    				index: 6,
+    				solo: 7,
+    				project: 4,
+    				pixi: 8,
+    				group: 5
     			},
     			[-1, -1]
     		);
@@ -46587,18 +46666,18 @@ void main(void) {
     			component: this,
     			tagName: "Layer",
     			options,
-    			id: create_fragment$3.name
+    			id: create_fragment$6.name
     		});
 
     		const { ctx } = this.$$;
     		const props = options.props || {};
 
-    		if (/*pixi*/ ctx[12] === undefined && !("pixi" in props)) {
-    			console_1$2.warn("<Layer> was created without expected prop 'pixi'");
+    		if (/*pixi*/ ctx[8] === undefined && !("pixi" in props)) {
+    			console_1$5.warn("<Layer> was created without expected prop 'pixi'");
     		}
 
-    		if (/*group*/ ctx[11] === undefined && !("group" in props)) {
-    			console_1$2.warn("<Layer> was created without expected prop 'group'");
+    		if (/*group*/ ctx[5] === undefined && !("group" in props)) {
+    			console_1$5.warn("<Layer> was created without expected prop 'group'");
     		}
     	}
 
@@ -46651,11 +46730,781 @@ void main(void) {
     	}
     }
 
-    /* src/Title.svelte generated by Svelte v3.38.3 */
+    const selected = writable(0);
 
-    const file$2 = "src/Title.svelte";
+    /* src/lib/Layers.svelte generated by Svelte v3.38.3 */
 
-    function create_fragment$2(ctx) {
+    const { console: console_1$4 } = globals;
+    const file$5 = "src/lib/Layers.svelte";
+
+    function get_each_context$3(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[23] = list[i];
+    	child_ctx[24] = list;
+    	child_ctx[25] = i;
+    	return child_ctx;
+    }
+
+    // (65:4) {#if layers[idx]}
+    function create_if_block$2(ctx) {
+    	let div8;
+    	let header;
+    	let div1;
+    	let div0;
+    	let idx = /*idx*/ ctx[25];
+    	let t1;
+    	let div6;
+    	let div2;
+    	let t3;
+    	let div3;
+    	let t5;
+    	let div4;
+    	let span0;
+    	let t6;
+    	let div5;
+    	let span1;
+    	let t7;
+    	let t8_value = console.log(/*layers*/ ctx[0][/*idx*/ ctx[25]]) + "";
+    	let t8;
+    	let t9;
+    	let aside;
+    	let div7;
+    	let palette;
+    	let updating_layer;
+    	let t10;
+    	let t11;
+    	let current;
+    	let mounted;
+    	let dispose;
+    	const assign_div0 = () => /*div0_binding*/ ctx[11](div0, idx);
+    	const unassign_div0 = () => /*div0_binding*/ ctx[11](null, idx);
+
+    	function click_handler(...args) {
+    		return /*click_handler*/ ctx[12](/*idx*/ ctx[25], ...args);
+    	}
+
+    	function click_handler_1(...args) {
+    		return /*click_handler_1*/ ctx[13](/*idx*/ ctx[25], ...args);
+    	}
+
+    	function click_handler_2(...args) {
+    		return /*click_handler_2*/ ctx[14](/*idx*/ ctx[25], ...args);
+    	}
+
+    	function click_handler_3(...args) {
+    		return /*click_handler_3*/ ctx[15](/*idx*/ ctx[25], ...args);
+    	}
+
+    	function palette_layer_binding(value) {
+    		/*palette_layer_binding*/ ctx[16](value, /*idx*/ ctx[25]);
+    	}
+
+    	let palette_props = {};
+
+    	if (/*layers*/ ctx[0][/*idx*/ ctx[25]] !== void 0) {
+    		palette_props.layer = /*layers*/ ctx[0][/*idx*/ ctx[25]];
+    	}
+
+    	palette = new Palette({ props: palette_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(palette, "layer", palette_layer_binding));
+    	let if_block = !/*layers*/ ctx[0][/*idx*/ ctx[25]].collapsed && create_if_block_1$1(ctx);
+
+    	function click_handler_5(...args) {
+    		return /*click_handler_5*/ ctx[21](/*idx*/ ctx[25], ...args);
+    	}
+
+    	const assign_div8 = () => /*div8_binding*/ ctx[22](div8, idx);
+    	const unassign_div8 = () => /*div8_binding*/ ctx[22](null, idx);
+
+    	const block = {
+    		c: function create() {
+    			div8 = element("div");
+    			header = element("header");
+    			div1 = element("div");
+    			div0 = element("div");
+    			div0.textContent = "⁞⁞⁞";
+    			t1 = space();
+    			div6 = element("div");
+    			div2 = element("div");
+    			div2.textContent = "M";
+    			t3 = space();
+    			div3 = element("div");
+    			div3.textContent = "S";
+    			t5 = space();
+    			div4 = element("div");
+    			span0 = element("span");
+    			t6 = space();
+    			div5 = element("div");
+    			span1 = element("span");
+    			t7 = space();
+    			t8 = text(t8_value);
+    			t9 = space();
+    			aside = element("aside");
+    			div7 = element("div");
+    			create_component(palette.$$.fragment);
+    			t10 = space();
+    			if (if_block) if_block.c();
+    			t11 = space();
+    			attr_dev(div0, "class", "p1-5 move grab");
+    			set_style(div0, "line-height", "2px");
+    			set_style(div0, "max-width", "10px");
+    			add_location(div0, file$5, 72, 20, 1887);
+    			attr_dev(div1, "class", "flex row-flex-start-center");
+    			add_location(div1, file$5, 71, 16, 1826);
+    			attr_dev(div2, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
+    			toggle_class(div2, "filled", /*layers*/ ctx[0][/*idx*/ ctx[25]].muted);
+    			add_location(div2, file$5, 81, 20, 2209);
+    			attr_dev(div3, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
+    			toggle_class(div3, "filled", /*solo*/ ctx[1] == /*idx*/ ctx[25]);
+    			add_location(div3, file$5, 85, 20, 2470);
+    			attr_dev(span0, "class", "cross w10px h10px flex block");
+    			add_location(span0, file$5, 92, 24, 2878);
+    			attr_dev(div4, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
+    			add_location(div4, file$5, 89, 20, 2700);
+    			attr_dev(span1, "class", "arrow");
+    			toggle_class(span1, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[25]].collapsed);
+    			add_location(span1, file$5, 97, 24, 3137);
+    			attr_dev(div5, "class", "grow flex row-flex-end-center pointer p1-5");
+    			add_location(div5, file$5, 94, 20, 2975);
+    			attr_dev(div6, "class", "flex row-flex-start-center");
+    			add_location(div6, file$5, 79, 16, 2147);
+    			attr_dev(header, "class", "pop flex row-space-between-center");
+    			add_location(header, file$5, 70, 12, 1759);
+    			attr_dev(div7, "class", "bb1-solid bt1-solid h1em flex row-reverse mb1 w100pc");
+    			add_location(div7, file$5, 112, 16, 3509);
+    			attr_dev(aside, "class", "");
+    			add_location(aside, file$5, 109, 12, 3412);
+    			toggle_class(div8, "something", /*$selected*/ ctx[5].type == "layer" && /*$selected*/ ctx[5].which == /*idx*/ ctx[25]);
+    			toggle_class(div8, "bt1-solid", /*idx*/ ctx[25] != 0);
+    			add_location(div8, file$5, 65, 8, 1537);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div8, anchor);
+    			append_dev(div8, header);
+    			append_dev(header, div1);
+    			append_dev(div1, div0);
+    			assign_div0();
+    			append_dev(header, t1);
+    			append_dev(header, div6);
+    			append_dev(div6, div2);
+    			append_dev(div6, t3);
+    			append_dev(div6, div3);
+    			append_dev(div6, t5);
+    			append_dev(div6, div4);
+    			append_dev(div4, span0);
+    			append_dev(div6, t6);
+    			append_dev(div6, div5);
+    			append_dev(div5, span1);
+    			append_dev(div8, t7);
+    			append_dev(div8, t8);
+    			append_dev(div8, t9);
+    			append_dev(div8, aside);
+    			append_dev(aside, div7);
+    			mount_component(palette, div7, null);
+    			append_dev(div8, t10);
+    			if (if_block) if_block.m(div8, null);
+    			append_dev(div8, t11);
+    			assign_div8();
+    			current = true;
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(div2, "click", click_handler, false, false, false),
+    					listen_dev(div3, "click", click_handler_1, false, false, false),
+    					listen_dev(div4, "click", click_handler_2, false, false, false),
+    					listen_dev(div5, "click", click_handler_3, false, false, false),
+    					listen_dev(aside, "click", /*click_handler_4*/ ctx[17], false, false, false),
+    					listen_dev(div8, "click", click_handler_5, false, false, false)
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+
+    			if (idx !== /*idx*/ ctx[25]) {
+    				unassign_div0();
+    				idx = /*idx*/ ctx[25];
+    				assign_div0();
+    			}
+
+    			if (dirty & /*layers*/ 1) {
+    				toggle_class(div2, "filled", /*layers*/ ctx[0][/*idx*/ ctx[25]].muted);
+    			}
+
+    			if (dirty & /*solo*/ 2) {
+    				toggle_class(div3, "filled", /*solo*/ ctx[1] == /*idx*/ ctx[25]);
+    			}
+
+    			if (dirty & /*layers*/ 1) {
+    				toggle_class(span1, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[25]].collapsed);
+    			}
+
+    			if ((!current || dirty & /*layers*/ 1) && t8_value !== (t8_value = console.log(/*layers*/ ctx[0][/*idx*/ ctx[25]]) + "")) set_data_dev(t8, t8_value);
+    			const palette_changes = {};
+
+    			if (!updating_layer && dirty & /*layers*/ 1) {
+    				updating_layer = true;
+    				palette_changes.layer = /*layers*/ ctx[0][/*idx*/ ctx[25]];
+    				add_flush_callback(() => updating_layer = false);
+    			}
+
+    			palette.$set(palette_changes);
+
+    			if (!/*layers*/ ctx[0][/*idx*/ ctx[25]].collapsed) {
+    				if (if_block) {
+    					if_block.p(ctx, dirty);
+
+    					if (dirty & /*layers*/ 1) {
+    						transition_in(if_block, 1);
+    					}
+    				} else {
+    					if_block = create_if_block_1$1(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(div8, t11);
+    				}
+    			} else if (if_block) {
+    				group_outros();
+
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
+
+    				check_outros();
+    			}
+
+    			if (idx !== /*idx*/ ctx[25]) {
+    				unassign_div8();
+    				idx = /*idx*/ ctx[25];
+    				assign_div8();
+    			}
+
+    			if (dirty & /*$selected*/ 32) {
+    				toggle_class(div8, "something", /*$selected*/ ctx[5].type == "layer" && /*$selected*/ ctx[5].which == /*idx*/ ctx[25]);
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(palette.$$.fragment, local);
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(palette.$$.fragment, local);
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div8);
+    			unassign_div0();
+    			destroy_component(palette);
+    			if (if_block) if_block.d();
+    			unassign_div8();
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block$2.name,
+    		type: "if",
+    		source: "(65:4) {#if layers[idx]}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (118:12) {#if !layers[idx].collapsed}
+    function create_if_block_1$1(ctx) {
+    	let layer;
+    	let updating_group;
+    	let updating_solo;
+    	let updating_layer;
+    	let current;
+
+    	function layer_group_binding(value) {
+    		/*layer_group_binding*/ ctx[18](value, /*group*/ ctx[23], /*each_value*/ ctx[24], /*idx*/ ctx[25]);
+    	}
+
+    	function layer_solo_binding(value) {
+    		/*layer_solo_binding*/ ctx[19](value);
+    	}
+
+    	function layer_layer_binding(value) {
+    		/*layer_layer_binding*/ ctx[20](value, /*idx*/ ctx[25]);
+    	}
+
+    	let layer_props = { index: /*idx*/ ctx[25], pixi };
+
+    	if (/*group*/ ctx[23] !== void 0) {
+    		layer_props.group = /*group*/ ctx[23];
+    	}
+
+    	if (/*solo*/ ctx[1] !== void 0) {
+    		layer_props.solo = /*solo*/ ctx[1];
+    	}
+
+    	if (/*layers*/ ctx[0][/*idx*/ ctx[25]] !== void 0) {
+    		layer_props.layer = /*layers*/ ctx[0][/*idx*/ ctx[25]];
+    	}
+
+    	layer = new Layer({ props: layer_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(layer, "group", layer_group_binding));
+    	binding_callbacks.push(() => bind$1(layer, "solo", layer_solo_binding));
+    	binding_callbacks.push(() => bind$1(layer, "layer", layer_layer_binding));
+
+    	const block = {
+    		c: function create() {
+    			create_component(layer.$$.fragment);
+    		},
+    		m: function mount(target, anchor) {
+    			mount_component(layer, target, anchor);
+    			current = true;
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+    			const layer_changes = {};
+
+    			if (!updating_group && dirty & /*groups*/ 4) {
+    				updating_group = true;
+    				layer_changes.group = /*group*/ ctx[23];
+    				add_flush_callback(() => updating_group = false);
+    			}
+
+    			if (!updating_solo && dirty & /*solo*/ 2) {
+    				updating_solo = true;
+    				layer_changes.solo = /*solo*/ ctx[1];
+    				add_flush_callback(() => updating_solo = false);
+    			}
+
+    			if (!updating_layer && dirty & /*layers*/ 1) {
+    				updating_layer = true;
+    				layer_changes.layer = /*layers*/ ctx[0][/*idx*/ ctx[25]];
+    				add_flush_callback(() => updating_layer = false);
+    			}
+
+    			layer.$set(layer_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(layer.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(layer.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_component(layer, detaching);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block_1$1.name,
+    		type: "if",
+    		source: "(118:12) {#if !layers[idx].collapsed}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (64:0) {#each groups as group, idx}
+    function create_each_block$3(ctx) {
+    	let if_block_anchor;
+    	let current;
+    	let if_block = /*layers*/ ctx[0][/*idx*/ ctx[25]] && create_if_block$2(ctx);
+
+    	const block = {
+    		c: function create() {
+    			if (if_block) if_block.c();
+    			if_block_anchor = empty();
+    		},
+    		m: function mount(target, anchor) {
+    			if (if_block) if_block.m(target, anchor);
+    			insert_dev(target, if_block_anchor, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, dirty) {
+    			if (/*layers*/ ctx[0][/*idx*/ ctx[25]]) {
+    				if (if_block) {
+    					if_block.p(ctx, dirty);
+
+    					if (dirty & /*layers*/ 1) {
+    						transition_in(if_block, 1);
+    					}
+    				} else {
+    					if_block = create_if_block$2(ctx);
+    					if_block.c();
+    					transition_in(if_block, 1);
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			} else if (if_block) {
+    				group_outros();
+
+    				transition_out(if_block, 1, 1, () => {
+    					if_block = null;
+    				});
+
+    				check_outros();
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (if_block) if_block.d(detaching);
+    			if (detaching) detach_dev(if_block_anchor);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block$3.name,
+    		type: "each",
+    		source: "(64:0) {#each groups as group, idx}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$5(ctx) {
+    	let each_1_anchor;
+    	let current;
+    	let each_value = /*groups*/ ctx[2];
+    	validate_each_argument(each_value);
+    	let each_blocks = [];
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block$3(get_each_context$3(ctx, each_value, i));
+    	}
+
+    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
+    		each_blocks[i] = null;
+    	});
+
+    	const block = {
+    		c: function create() {
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			each_1_anchor = empty();
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(target, anchor);
+    			}
+
+    			insert_dev(target, each_1_anchor, anchor);
+    			current = true;
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*elements, $selected, onSelect, pixi, groups, solo, layers, overlay, console, onCollapse, onDelete, onSolo, handles*/ 1023) {
+    				each_value = /*groups*/ ctx[2];
+    				validate_each_argument(each_value);
+    				let i;
+
+    				for (i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context$3(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    						transition_in(each_blocks[i], 1);
+    					} else {
+    						each_blocks[i] = create_each_block$3(child_ctx);
+    						each_blocks[i].c();
+    						transition_in(each_blocks[i], 1);
+    						each_blocks[i].m(each_1_anchor.parentNode, each_1_anchor);
+    					}
+    				}
+
+    				group_outros();
+
+    				for (i = each_value.length; i < each_blocks.length; i += 1) {
+    					out(i);
+    				}
+
+    				check_outros();
+    			}
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+
+    			for (let i = 0; i < each_value.length; i += 1) {
+    				transition_in(each_blocks[i]);
+    			}
+
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			each_blocks = each_blocks.filter(Boolean);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				transition_out(each_blocks[i]);
+    			}
+
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			destroy_each(each_blocks, detaching);
+    			if (detaching) detach_dev(each_1_anchor);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$5.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function instance$5($$self, $$props, $$invalidate) {
+    	let $selected;
+    	validate_store(selected, "selected");
+    	component_subscribe($$self, selected, $$value => $$invalidate(5, $selected = $$value));
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots("Layers", slots, []);
+    	let lastLength = -1;
+    	let { solo } = $$props;
+    	let { layers } = $$props;
+    	let { groups } = $$props;
+    	let handles = [];
+    	let elements = [];
+
+    	function onCollapse(idx) {
+    		$$invalidate(0, layers[idx].collapsed = !layers[idx].collapsed, layers);
+    	}
+
+    	function onSolo(idx) {
+    		$$invalidate(1, solo = solo == null ? idx : null);
+    		$$invalidate(0, layers[idx].solo = solo == idx && solo != null, layers);
+    	}
+
+    	function onSelect(idx) {
+    		selected.set({ type: "layer", which: idx });
+    	}
+
+    	function onDelete(idx) {
+    		groups[idx].parent.removeChild(groups[idx]);
+    		$$invalidate(0, layers = layers.filter((l, i) => i != idx));
+    	}
+
+    	const writable_props = ["solo", "layers", "groups"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$4.warn(`<Layers> was created with unknown prop '${key}'`);
+    	});
+
+    	function div0_binding($$value, idx) {
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			handles[idx] = $$value;
+    			$$invalidate(3, handles);
+    		});
+    	}
+
+    	const click_handler = (idx, e) => $$invalidate(0, layers[idx].muted = !layers[idx].muted, layers);
+    	const click_handler_1 = (idx, e) => onSolo(idx);
+    	const click_handler_2 = (idx, e) => onDelete(idx);
+    	const click_handler_3 = (idx, e) => onCollapse(idx);
+
+    	function palette_layer_binding(value, idx) {
+    		if ($$self.$$.not_equal(layers[idx], value)) {
+    			layers[idx] = value;
+    			$$invalidate(0, layers);
+    		}
+    	}
+
+    	const click_handler_4 = e => overlay = true;
+
+    	function layer_group_binding(value, group, each_value, idx) {
+    		each_value[idx] = value;
+    		$$invalidate(2, groups);
+    	}
+
+    	function layer_solo_binding(value) {
+    		solo = value;
+    		$$invalidate(1, solo);
+    	}
+
+    	function layer_layer_binding(value, idx) {
+    		if ($$self.$$.not_equal(layers[idx], value)) {
+    			layers[idx] = value;
+    			$$invalidate(0, layers);
+    		}
+    	}
+
+    	const click_handler_5 = (idx, e) => onSelect(idx);
+
+    	function div8_binding($$value, idx) {
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			elements[idx] = $$value;
+    			$$invalidate(4, elements);
+    		});
+    	}
+
+    	$$self.$$set = $$props => {
+    		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
+    		if ("layers" in $$props) $$invalidate(0, layers = $$props.layers);
+    		if ("groups" in $$props) $$invalidate(2, groups = $$props.groups);
+    	};
+
+    	$$self.$capture_state = () => ({
+    		onMount,
+    		onDestroy,
+    		dragdrop: dragdrop$1,
+    		Layer,
+    		Palette,
+    		selected,
+    		lastLength,
+    		solo,
+    		layers,
+    		groups,
+    		handles,
+    		elements,
+    		onCollapse,
+    		onSolo,
+    		onSelect,
+    		onDelete,
+    		$selected
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("lastLength" in $$props) $$invalidate(10, lastLength = $$props.lastLength);
+    		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
+    		if ("layers" in $$props) $$invalidate(0, layers = $$props.layers);
+    		if ("groups" in $$props) $$invalidate(2, groups = $$props.groups);
+    		if ("handles" in $$props) $$invalidate(3, handles = $$props.handles);
+    		if ("elements" in $$props) $$invalidate(4, elements = $$props.elements);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty & /*lastLength, elements, handles, layers*/ 1049) {
+    			((layers_, els_) => {
+    				if (lastLength != elements.length) {
+    					console.log(`[Layers] 🍰  resetting drag-drop handles`);
+    					$$invalidate(10, lastLength = elements.length);
+    					dragdrop$1.clear("layers");
+
+    					for (let i = 0; i < elements.length; i++) {
+    						let el = elements[i];
+    						let handle = handles[i];
+    						dragdrop$1.addDragArea("layers", handle, el);
+    						dragdrop$1.addDropArea("layers", el);
+    					}
+    				}
+    			})();
+    		}
+    	};
+
+    	return [
+    		layers,
+    		solo,
+    		groups,
+    		handles,
+    		elements,
+    		$selected,
+    		onCollapse,
+    		onSolo,
+    		onSelect,
+    		onDelete,
+    		lastLength,
+    		div0_binding,
+    		click_handler,
+    		click_handler_1,
+    		click_handler_2,
+    		click_handler_3,
+    		palette_layer_binding,
+    		click_handler_4,
+    		layer_group_binding,
+    		layer_solo_binding,
+    		layer_layer_binding,
+    		click_handler_5,
+    		div8_binding
+    	];
+    }
+
+    class Layers extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init$1(this, options, instance$5, create_fragment$5, safe_not_equal, { solo: 1, layers: 0, groups: 2 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Layers",
+    			options,
+    			id: create_fragment$5.name
+    		});
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+
+    		if (/*solo*/ ctx[1] === undefined && !("solo" in props)) {
+    			console_1$4.warn("<Layers> was created without expected prop 'solo'");
+    		}
+
+    		if (/*layers*/ ctx[0] === undefined && !("layers" in props)) {
+    			console_1$4.warn("<Layers> was created without expected prop 'layers'");
+    		}
+
+    		if (/*groups*/ ctx[2] === undefined && !("groups" in props)) {
+    			console_1$4.warn("<Layers> was created without expected prop 'groups'");
+    		}
+    	}
+
+    	get solo() {
+    		throw new Error("<Layers>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set solo(value) {
+    		throw new Error("<Layers>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get layers() {
+    		throw new Error("<Layers>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set layers(value) {
+    		throw new Error("<Layers>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get groups() {
+    		throw new Error("<Layers>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set groups(value) {
+    		throw new Error("<Layers>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src/lib/Title.svelte generated by Svelte v3.38.3 */
+
+    const file$4 = "src/lib/Title.svelte";
+
+    function create_fragment$4(ctx) {
     	let div1;
     	let div0;
     	let current;
@@ -46668,9 +47517,9 @@ void main(void) {
     			div0 = element("div");
     			if (default_slot) default_slot.c();
     			attr_dev(div0, "class", "pb0 mb0 f1 ");
-    			add_location(div0, file$2, 1, 1, 32);
+    			add_location(div0, file$4, 1, 1, 32);
     			attr_dev(div1, "class", "plr1 ptb0-5 pop ");
-    			add_location(div1, file$2, 0, 0, 0);
+    			add_location(div1, file$4, 0, 0, 0);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
@@ -46709,7 +47558,7 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_fragment$2.name,
+    		id: create_fragment$4.name,
     		type: "component",
     		source: "",
     		ctx
@@ -46718,7 +47567,7 @@ void main(void) {
     	return block;
     }
 
-    function instance$2($$self, $$props, $$invalidate) {
+    function instance$4($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots("Title", slots, ['default']);
     	const writable_props = [];
@@ -46737,63 +47586,2043 @@ void main(void) {
     class Title extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init$1(this, options, instance$2, create_fragment$2, safe_not_equal, {});
+    		init$1(this, options, instance$4, create_fragment$4, safe_not_equal, {});
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
     			tagName: "Title",
     			options,
-    			id: create_fragment$2.name
+    			id: create_fragment$4.name
     		});
     	}
     }
 
-    /* src/Project.svelte generated by Svelte v3.38.3 */
+    /**
+     * This module used to unify mouse wheel behavior between different browsers in 2014
+     * Now it's just a wrapper around addEventListener('wheel');
+     *
+     * Usage:
+     *  var addWheelListener = require('wheel').addWheelListener;
+     *  var removeWheelListener = require('wheel').removeWheelListener;
+     *  addWheelListener(domElement, function (e) {
+     *    // mouse wheel event
+     *  });
+     *  removeWheelListener(domElement, function);
+     */
+    var wheel = addWheelListener;
 
-    const { Object: Object_1, console: console_1$1, window: window_1 } = globals;
-    const file$1 = "src/Project.svelte";
+    // But also expose "advanced" api with unsubscribe:
+    var addWheelListener_1 = addWheelListener;
+    var removeWheelListener_1 = removeWheelListener;
 
-    function get_each_context$1(ctx, list, i) {
+
+    function addWheelListener(element, listener, useCapture) {
+      element.addEventListener('wheel', listener, useCapture);
+    }
+
+    function removeWheelListener( element, listener, useCapture ) {
+      element.removeEventListener('wheel', listener, useCapture);
+    }
+    wheel.addWheelListener = addWheelListener_1;
+    wheel.removeWheelListener = removeWheelListener_1;
+
+    /**
+     * https://github.com/gre/bezier-easing
+     * BezierEasing - use bezier curve for transition easing function
+     * by Gaëtan Renaudeau 2014 - 2015 – MIT License
+     */
+    // These values are established by empiricism with tests (tradeoff: performance VS precision)
+    var NEWTON_ITERATIONS = 4;
+    var NEWTON_MIN_SLOPE = 0.001;
+    var SUBDIVISION_PRECISION = 0.0000001;
+    var SUBDIVISION_MAX_ITERATIONS = 10;
+
+    var kSplineTableSize = 11;
+    var kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
+
+    var float32ArraySupported = typeof Float32Array === 'function';
+
+    function A (aA1, aA2) { return 1.0 - 3.0 * aA2 + 3.0 * aA1; }
+    function B (aA1, aA2) { return 3.0 * aA2 - 6.0 * aA1; }
+    function C (aA1)      { return 3.0 * aA1; }
+
+    // Returns x(t) given t, x1, and x2, or y(t) given t, y1, and y2.
+    function calcBezier (aT, aA1, aA2) { return ((A(aA1, aA2) * aT + B(aA1, aA2)) * aT + C(aA1)) * aT; }
+
+    // Returns dx/dt given t, x1, and x2, or dy/dt given t, y1, and y2.
+    function getSlope (aT, aA1, aA2) { return 3.0 * A(aA1, aA2) * aT * aT + 2.0 * B(aA1, aA2) * aT + C(aA1); }
+
+    function binarySubdivide (aX, aA, aB, mX1, mX2) {
+      var currentX, currentT, i = 0;
+      do {
+        currentT = aA + (aB - aA) / 2.0;
+        currentX = calcBezier(currentT, mX1, mX2) - aX;
+        if (currentX > 0.0) {
+          aB = currentT;
+        } else {
+          aA = currentT;
+        }
+      } while (Math.abs(currentX) > SUBDIVISION_PRECISION && ++i < SUBDIVISION_MAX_ITERATIONS);
+      return currentT;
+    }
+
+    function newtonRaphsonIterate (aX, aGuessT, mX1, mX2) {
+     for (var i = 0; i < NEWTON_ITERATIONS; ++i) {
+       var currentSlope = getSlope(aGuessT, mX1, mX2);
+       if (currentSlope === 0.0) {
+         return aGuessT;
+       }
+       var currentX = calcBezier(aGuessT, mX1, mX2) - aX;
+       aGuessT -= currentX / currentSlope;
+     }
+     return aGuessT;
+    }
+
+    function LinearEasing (x) {
+      return x;
+    }
+
+    var src = function bezier (mX1, mY1, mX2, mY2) {
+      if (!(0 <= mX1 && mX1 <= 1 && 0 <= mX2 && mX2 <= 1)) {
+        throw new Error('bezier x values must be in [0, 1] range');
+      }
+
+      if (mX1 === mY1 && mX2 === mY2) {
+        return LinearEasing;
+      }
+
+      // Precompute samples table
+      var sampleValues = float32ArraySupported ? new Float32Array(kSplineTableSize) : new Array(kSplineTableSize);
+      for (var i = 0; i < kSplineTableSize; ++i) {
+        sampleValues[i] = calcBezier(i * kSampleStepSize, mX1, mX2);
+      }
+
+      function getTForX (aX) {
+        var intervalStart = 0.0;
+        var currentSample = 1;
+        var lastSample = kSplineTableSize - 1;
+
+        for (; currentSample !== lastSample && sampleValues[currentSample] <= aX; ++currentSample) {
+          intervalStart += kSampleStepSize;
+        }
+        --currentSample;
+
+        // Interpolate to provide an initial guess for t
+        var dist = (aX - sampleValues[currentSample]) / (sampleValues[currentSample + 1] - sampleValues[currentSample]);
+        var guessForT = intervalStart + dist * kSampleStepSize;
+
+        var initialSlope = getSlope(guessForT, mX1, mX2);
+        if (initialSlope >= NEWTON_MIN_SLOPE) {
+          return newtonRaphsonIterate(aX, guessForT, mX1, mX2);
+        } else if (initialSlope === 0.0) {
+          return guessForT;
+        } else {
+          return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, mX1, mX2);
+        }
+      }
+
+      return function BezierEasing (x) {
+        // Because JavaScript number are imprecise, we should guarantee the extremes are right.
+        if (x === 0) {
+          return 0;
+        }
+        if (x === 1) {
+          return 1;
+        }
+        return calcBezier(getTForX(x), mY1, mY2);
+      };
+    };
+
+    // Predefined set of animations. Similar to CSS easing functions
+    var animations = {
+      ease:  src(0.25, 0.1, 0.25, 1),
+      easeIn: src(0.42, 0, 1, 1),
+      easeOut: src(0, 0, 0.58, 1),
+      easeInOut: src(0.42, 0, 0.58, 1),
+      linear: src(0, 0, 1, 1)
+    };
+
+
+    var amator = animate;
+    var makeAggregateRaf_1 = makeAggregateRaf;
+    var sharedScheduler = makeAggregateRaf();
+
+
+    function animate(source, target, options) {
+      var start = Object.create(null);
+      var diff = Object.create(null);
+      options = options || {};
+      // We let clients specify their own easing function
+      var easing = (typeof options.easing === 'function') ? options.easing : animations[options.easing];
+
+      // if nothing is specified, default to ease (similar to CSS animations)
+      if (!easing) {
+        if (options.easing) {
+          console.warn('Unknown easing function in amator: ' + options.easing);
+        }
+        easing = animations.ease;
+      }
+
+      var step = typeof options.step === 'function' ? options.step : noop$2;
+      var done = typeof options.done === 'function' ? options.done : noop$2;
+
+      var scheduler = getScheduler(options.scheduler);
+
+      var keys = Object.keys(target);
+      keys.forEach(function(key) {
+        start[key] = source[key];
+        diff[key] = target[key] - source[key];
+      });
+
+      var durationInMs = typeof options.duration === 'number' ? options.duration : 400;
+      var durationInFrames = Math.max(1, durationInMs * 0.06); // 0.06 because 60 frames pers 1,000 ms
+      var previousAnimationId;
+      var frame = 0;
+
+      previousAnimationId = scheduler.next(loop);
+
+      return {
+        cancel: cancel
+      }
+
+      function cancel() {
+        scheduler.cancel(previousAnimationId);
+        previousAnimationId = 0;
+      }
+
+      function loop() {
+        var t = easing(frame/durationInFrames);
+        frame += 1;
+        setValues(t);
+        if (frame <= durationInFrames) {
+          previousAnimationId = scheduler.next(loop);
+          step(source);
+        } else {
+          previousAnimationId = 0;
+          setTimeout(function() { done(source); }, 0);
+        }
+      }
+
+      function setValues(t) {
+        keys.forEach(function(key) {
+          source[key] = diff[key] * t + start[key];
+        });
+      }
+    }
+
+    function noop$2() { }
+
+    function getScheduler(scheduler) {
+      if (!scheduler) {
+        var canRaf = typeof window !== 'undefined' && window.requestAnimationFrame;
+        return canRaf ? rafScheduler() : timeoutScheduler()
+      }
+      if (typeof scheduler.next !== 'function') throw new Error('Scheduler is supposed to have next(cb) function')
+      if (typeof scheduler.cancel !== 'function') throw new Error('Scheduler is supposed to have cancel(handle) function')
+
+      return scheduler
+    }
+
+    function rafScheduler() {
+      return {
+        next: window.requestAnimationFrame.bind(window),
+        cancel: window.cancelAnimationFrame.bind(window)
+      }
+    }
+
+    function timeoutScheduler() {
+      return {
+        next: function(cb) {
+          return setTimeout(cb, 1000/60)
+        },
+        cancel: function (id) {
+          return clearTimeout(id)
+        }
+      }
+    }
+
+    function makeAggregateRaf() {
+      var frontBuffer = new Set();
+      var backBuffer = new Set();
+      var frameToken = 0;
+
+      return {
+        next: next,
+        cancel: next,
+        clearAll: clearAll
+      }
+
+      function clearAll() {
+        frontBuffer.clear();
+        backBuffer.clear();
+        cancelAnimationFrame(frameToken);
+        frameToken = 0;
+      }
+
+      function next(callback) {
+        backBuffer.add(callback);
+        renderNextFrame();
+      }
+
+      function renderNextFrame() {
+        if (!frameToken) frameToken = requestAnimationFrame(renderFrame);
+      }
+
+      function renderFrame() {
+        frameToken = 0;
+
+        var t = backBuffer;
+        backBuffer = frontBuffer;
+        frontBuffer = t;
+
+        frontBuffer.forEach(function(callback) {
+          callback();
+        });
+        frontBuffer.clear();
+      }
+    }
+    amator.makeAggregateRaf = makeAggregateRaf_1;
+    amator.sharedScheduler = sharedScheduler;
+
+    var ngraph_events = function eventify(subject) {
+      validateSubject(subject);
+
+      var eventsStorage = createEventsStorage(subject);
+      subject.on = eventsStorage.on;
+      subject.off = eventsStorage.off;
+      subject.fire = eventsStorage.fire;
+      return subject;
+    };
+
+    function createEventsStorage(subject) {
+      // Store all event listeners to this hash. Key is event name, value is array
+      // of callback records.
+      //
+      // A callback record consists of callback function and its optional context:
+      // { 'eventName' => [{callback: function, ctx: object}] }
+      var registeredEvents = Object.create(null);
+
+      return {
+        on: function (eventName, callback, ctx) {
+          if (typeof callback !== 'function') {
+            throw new Error('callback is expected to be a function');
+          }
+          var handlers = registeredEvents[eventName];
+          if (!handlers) {
+            handlers = registeredEvents[eventName] = [];
+          }
+          handlers.push({callback: callback, ctx: ctx});
+
+          return subject;
+        },
+
+        off: function (eventName, callback) {
+          var wantToRemoveAll = (typeof eventName === 'undefined');
+          if (wantToRemoveAll) {
+            // Killing old events storage should be enough in this case:
+            registeredEvents = Object.create(null);
+            return subject;
+          }
+
+          if (registeredEvents[eventName]) {
+            var deleteAllCallbacksForEvent = (typeof callback !== 'function');
+            if (deleteAllCallbacksForEvent) {
+              delete registeredEvents[eventName];
+            } else {
+              var callbacks = registeredEvents[eventName];
+              for (var i = 0; i < callbacks.length; ++i) {
+                if (callbacks[i].callback === callback) {
+                  callbacks.splice(i, 1);
+                }
+              }
+            }
+          }
+
+          return subject;
+        },
+
+        fire: function (eventName) {
+          var callbacks = registeredEvents[eventName];
+          if (!callbacks) {
+            return subject;
+          }
+
+          var fireArguments;
+          if (arguments.length > 1) {
+            fireArguments = Array.prototype.splice.call(arguments, 1);
+          }
+          for(var i = 0; i < callbacks.length; ++i) {
+            var callbackInfo = callbacks[i];
+            callbackInfo.callback.apply(callbackInfo.ctx, fireArguments);
+          }
+
+          return subject;
+        }
+      };
+    }
+
+    function validateSubject(subject) {
+      if (!subject) {
+        throw new Error('Eventify cannot use falsy object as events subject');
+      }
+      var reservedWords = ['on', 'fire', 'off'];
+      for (var i = 0; i < reservedWords.length; ++i) {
+        if (subject.hasOwnProperty(reservedWords[i])) {
+          throw new Error("Subject cannot be eventified, since it already has property '" + reservedWords[i] + "'");
+        }
+      }
+    }
+
+    /**
+     * Allows smooth kinetic scrolling of the surface
+     */
+    var kinetic_1 = kinetic;
+
+    function kinetic(getPoint, scroll, settings) {
+      if (typeof settings !== 'object') {
+        // setting could come as boolean, we should ignore it, and use an object.
+        settings = {};
+      }
+
+      var minVelocity = typeof settings.minVelocity === 'number' ? settings.minVelocity : 5;
+      var amplitude = typeof settings.amplitude === 'number' ? settings.amplitude : 0.25;
+      var cancelAnimationFrame = typeof settings.cancelAnimationFrame === 'function' ? settings.cancelAnimationFrame : getCancelAnimationFrame();
+      var requestAnimationFrame = typeof settings.requestAnimationFrame === 'function' ? settings.requestAnimationFrame : getRequestAnimationFrame();
+
+      var lastPoint;
+      var timestamp;
+      var timeConstant = 342;
+
+      var ticker;
+      var vx, targetX, ax;
+      var vy, targetY, ay;
+
+      var raf;
+
+      return {
+        start: start,
+        stop: stop,
+        cancel: dispose
+      };
+
+      function dispose() {
+        cancelAnimationFrame(ticker);
+        cancelAnimationFrame(raf);
+      }
+
+      function start() {
+        lastPoint = getPoint();
+
+        ax = ay = vx = vy = 0;
+        timestamp = new Date();
+
+        cancelAnimationFrame(ticker);
+        cancelAnimationFrame(raf);
+
+        // we start polling the point position to accumulate velocity
+        // Once we stop(), we will use accumulated velocity to keep scrolling
+        // an object.
+        ticker = requestAnimationFrame(track);
+      }
+
+      function track() {
+        var now = Date.now();
+        var elapsed = now - timestamp;
+        timestamp = now;
+
+        var currentPoint = getPoint();
+
+        var dx = currentPoint.x - lastPoint.x;
+        var dy = currentPoint.y - lastPoint.y;
+
+        lastPoint = currentPoint;
+
+        var dt = 1000 / (1 + elapsed);
+
+        // moving average
+        vx = 0.8 * dx * dt + 0.2 * vx;
+        vy = 0.8 * dy * dt + 0.2 * vy;
+
+        ticker = requestAnimationFrame(track);
+      }
+
+      function stop() {
+        cancelAnimationFrame(ticker);
+        cancelAnimationFrame(raf);
+
+        var currentPoint = getPoint();
+
+        targetX = currentPoint.x;
+        targetY = currentPoint.y;
+        timestamp = Date.now();
+
+        if (vx < -minVelocity || vx > minVelocity) {
+          ax = amplitude * vx;
+          targetX += ax;
+        }
+
+        if (vy < -minVelocity || vy > minVelocity) {
+          ay = amplitude * vy;
+          targetY += ay;
+        }
+
+        raf = requestAnimationFrame(autoScroll);
+      }
+
+      function autoScroll() {
+        var elapsed = Date.now() - timestamp;
+
+        var moving = false;
+        var dx = 0;
+        var dy = 0;
+
+        if (ax) {
+          dx = -ax * Math.exp(-elapsed / timeConstant);
+
+          if (dx > 0.5 || dx < -0.5) moving = true;
+          else dx = ax = 0;
+        }
+
+        if (ay) {
+          dy = -ay * Math.exp(-elapsed / timeConstant);
+
+          if (dy > 0.5 || dy < -0.5) moving = true;
+          else dy = ay = 0;
+        }
+
+        if (moving) {
+          scroll(targetX + dx, targetY + dy);
+          raf = requestAnimationFrame(autoScroll);
+        }
+      }
+    }
+
+    function getCancelAnimationFrame() {
+      if (typeof cancelAnimationFrame === 'function') return cancelAnimationFrame;
+      return clearTimeout;
+    }
+
+    function getRequestAnimationFrame() {
+      if (typeof requestAnimationFrame === 'function') return requestAnimationFrame;
+
+      return function (handler) {
+        return setTimeout(handler, 16);
+      };
+    }
+
+    /**
+     * Disallows selecting text.
+     */
+    var createTextSelectionInterceptor_1 = createTextSelectionInterceptor;
+
+    function createTextSelectionInterceptor(useFake) {
+      if (useFake) {
+        return {
+          capture: noop$1,
+          release: noop$1
+        };
+      }
+
+      var dragObject;
+      var prevSelectStart;
+      var prevDragStart;
+      var wasCaptured = false;
+
+      return {
+        capture: capture,
+        release: release
+      };
+
+      function capture(domObject) {
+        wasCaptured = true;
+        prevSelectStart = window.document.onselectstart;
+        prevDragStart = window.document.ondragstart;
+
+        window.document.onselectstart = disabled;
+
+        dragObject = domObject;
+        dragObject.ondragstart = disabled;
+      }
+
+      function release() {
+        if (!wasCaptured) return;
+        
+        wasCaptured = false;
+        window.document.onselectstart = prevSelectStart;
+        if (dragObject) dragObject.ondragstart = prevDragStart;
+      }
+    }
+
+    function disabled(e) {
+      e.stopPropagation();
+      return false;
+    }
+
+    function noop$1() {}
+
+    var transform = Transform;
+
+    function Transform() {
+      this.x = 0;
+      this.y = 0;
+      this.scale = 1;
+    }
+
+    var svgController = makeSvgController;
+    var canAttach$1 = isSVGElement;
+
+    function makeSvgController(svgElement, options) {
+      if (!isSVGElement(svgElement)) {
+        throw new Error('svg element is required for svg.panzoom to work');
+      }
+
+      var owner = svgElement.ownerSVGElement;
+      if (!owner) {
+        throw new Error(
+          'Do not apply panzoom to the root <svg> element. ' +
+          'Use its child instead (e.g. <g></g>). ' +
+          'As of March 2016 only FireFox supported transform on the root element');
+      }
+
+      if (!options.disableKeyboardInteraction) {
+        owner.setAttribute('tabindex', 0);
+      }
+
+      var api = {
+        getBBox: getBBox,
+        getScreenCTM: getScreenCTM,
+        getOwner: getOwner,
+        applyTransform: applyTransform,
+        initTransform: initTransform
+      };
+      
+      return api;
+
+      function getOwner() {
+        return owner;
+      }
+
+      function getBBox() {
+        var bbox =  svgElement.getBBox();
+        return {
+          left: bbox.x,
+          top: bbox.y,
+          width: bbox.width,
+          height: bbox.height,
+        };
+      }
+
+      function getScreenCTM() {
+        var ctm = owner.getCTM();
+        if (!ctm) {
+          // This is likely firefox: https://bugzilla.mozilla.org/show_bug.cgi?id=873106
+          // The code below is not entirely correct, but still better than nothing
+          return owner.getScreenCTM();
+        }
+        return ctm;
+      }
+
+      function initTransform(transform) {
+        var screenCTM = svgElement.getCTM();
+
+        // The above line returns null on Firefox
+        if (screenCTM === null) {
+          screenCTM = document.createElementNS("http://www.w3.org/2000/svg", "svg").createSVGMatrix();
+        }
+
+        transform.x = screenCTM.e;
+        transform.y = screenCTM.f;
+        transform.scale = screenCTM.a;
+        owner.removeAttributeNS(null, 'viewBox');
+      }
+
+      function applyTransform(transform) {
+        svgElement.setAttribute('transform', 'matrix(' +
+          transform.scale + ' 0 0 ' +
+          transform.scale + ' ' +
+          transform.x + ' ' + transform.y + ')');
+      }
+    }
+
+    function isSVGElement(element) {
+      return element && element.ownerSVGElement && element.getCTM;
+    }
+    svgController.canAttach = canAttach$1;
+
+    var domController = makeDomController;
+
+    var canAttach = isDomElement;
+
+    function makeDomController(domElement, options) {
+      var elementValid = isDomElement(domElement); 
+      if (!elementValid) {
+        throw new Error('panzoom requires DOM element to be attached to the DOM tree');
+      }
+
+      var owner = domElement.parentElement;
+      domElement.scrollTop = 0;
+      
+      if (!options.disableKeyboardInteraction) {
+        owner.setAttribute('tabindex', 0);
+      }
+
+      var api = {
+        getBBox: getBBox,
+        getOwner: getOwner,
+        applyTransform: applyTransform,
+      };
+      
+      return api;
+
+      function getOwner() {
+        return owner;
+      }
+
+      function getBBox() {
+        // TODO: We should probably cache this?
+        return  {
+          left: 0,
+          top: 0,
+          width: domElement.clientWidth,
+          height: domElement.clientHeight
+        };
+      }
+
+      function applyTransform(transform) {
+        // TODO: Should we cache this?
+        domElement.style.transformOrigin = '0 0 0';
+        domElement.style.transform = 'matrix(' +
+          transform.scale + ', 0, 0, ' +
+          transform.scale + ', ' +
+          transform.x + ', ' + transform.y + ')';
+      }
+    }
+
+    function isDomElement(element) {
+      return element && element.parentElement && element.style;
+    }
+    domController.canAttach = canAttach;
+
+    /**
+     * Allows to drag and zoom svg elements
+     */
+
+
+
+
+
+    var domTextSelectionInterceptor = createTextSelectionInterceptor_1();
+    var fakeTextSelectorInterceptor = createTextSelectionInterceptor_1(true);
+
+
+
+
+    var defaultZoomSpeed = 1;
+    var defaultDoubleTapZoomSpeed = 1.75;
+    var doubleTapSpeedInMS = 300;
+
+    var panzoom = createPanZoom;
+
+    /**
+     * Creates a new instance of panzoom, so that an object can be panned and zoomed
+     *
+     * @param {DOMElement} domElement where panzoom should be attached.
+     * @param {Object} options that configure behavior.
+     */
+    function createPanZoom(domElement, options) {
+      options = options || {};
+
+      var panController = options.controller;
+
+      if (!panController) {
+        if (svgController.canAttach(domElement)) {
+          panController = svgController(domElement, options);
+        } else if (domController.canAttach(domElement)) {
+          panController = domController(domElement, options);
+        }
+      }
+
+      if (!panController) {
+        throw new Error(
+          'Cannot create panzoom for the current type of dom element'
+        );
+      }
+      var owner = panController.getOwner();
+      // just to avoid GC pressure, every time we do intermediate transform
+      // we return this object. For internal use only. Never give it back to the consumer of this library
+      var storedCTMResult = { x: 0, y: 0 };
+
+      var isDirty = false;
+      var transform$1 = new transform();
+
+      if (panController.initTransform) {
+        panController.initTransform(transform$1);
+      }
+
+      var filterKey = typeof options.filterKey === 'function' ? options.filterKey : noop;
+      // TODO: likely need to unite pinchSpeed with zoomSpeed
+      var pinchSpeed = typeof options.pinchSpeed === 'number' ? options.pinchSpeed : 1;
+      var bounds = options.bounds;
+      var maxZoom = typeof options.maxZoom === 'number' ? options.maxZoom : Number.POSITIVE_INFINITY;
+      var minZoom = typeof options.minZoom === 'number' ? options.minZoom : 0;
+
+      var boundsPadding = typeof options.boundsPadding === 'number' ? options.boundsPadding : 0.05;
+      var zoomDoubleClickSpeed = typeof options.zoomDoubleClickSpeed === 'number' ? options.zoomDoubleClickSpeed : defaultDoubleTapZoomSpeed;
+      var beforeWheel = options.beforeWheel || noop;
+      var beforeMouseDown = options.beforeMouseDown || noop;
+      var speed = typeof options.zoomSpeed === 'number' ? options.zoomSpeed : defaultZoomSpeed;
+      var transformOrigin = parseTransformOrigin(options.transformOrigin);
+      var textSelection = options.enableTextSelection ? fakeTextSelectorInterceptor : domTextSelectionInterceptor;
+
+      validateBounds(bounds);
+
+      if (options.autocenter) {
+        autocenter();
+      }
+
+      var frameAnimation;
+      var lastTouchEndTime = 0;
+      var lastSingleFingerOffset;
+      var touchInProgress = false;
+
+      // We only need to fire panstart when actual move happens
+      var panstartFired = false;
+
+      // cache mouse coordinates here
+      var mouseX;
+      var mouseY;
+
+      var pinchZoomLength;
+
+      var smoothScroll;
+      if ('smoothScroll' in options && !options.smoothScroll) {
+        // If user explicitly asked us not to use smooth scrolling, we obey
+        smoothScroll = rigidScroll();
+      } else {
+        // otherwise we use forward smoothScroll settings to kinetic API
+        // which makes scroll smoothing.
+        smoothScroll = kinetic_1(getPoint, scroll, options.smoothScroll);
+      }
+
+      var moveByAnimation;
+      var zoomToAnimation;
+
+      var multiTouch;
+      var paused = false;
+
+      listenForEvents();
+
+      var api = {
+        dispose: dispose,
+        moveBy: internalMoveBy,
+        moveTo: moveTo,
+        smoothMoveTo: smoothMoveTo, 
+        centerOn: centerOn,
+        zoomTo: publicZoomTo,
+        zoomAbs: zoomAbs,
+        smoothZoom: smoothZoom,
+        smoothZoomAbs: smoothZoomAbs,
+        showRectangle: showRectangle,
+
+        pause: pause,
+        resume: resume,
+        isPaused: isPaused,
+
+        getTransform: getTransformModel,
+
+        getMinZoom: getMinZoom,
+        setMinZoom: setMinZoom,
+
+        getMaxZoom: getMaxZoom,
+        setMaxZoom: setMaxZoom,
+
+        getTransformOrigin: getTransformOrigin,
+        setTransformOrigin: setTransformOrigin,
+
+        getZoomSpeed: getZoomSpeed,
+        setZoomSpeed: setZoomSpeed
+      };
+
+      ngraph_events(api);
+      
+      var initialX = typeof options.initialX === 'number' ? options.initialX : transform$1.x;
+      var initialY = typeof options.initialY === 'number' ? options.initialY : transform$1.y;
+      var initialZoom = typeof options.initialZoom === 'number' ? options.initialZoom : transform$1.scale;
+
+      if(initialX != transform$1.x || initialY != transform$1.y || initialZoom != transform$1.scale){
+        zoomAbs(initialX, initialY, initialZoom);
+      }
+
+      return api;
+
+      function pause() {
+        releaseEvents();
+        paused = true;
+      }
+
+      function resume() {
+        if (paused) {
+          listenForEvents();
+          paused = false;
+        }
+      }
+
+      function isPaused() {
+        return paused;
+      }
+
+      function showRectangle(rect) {
+        // TODO: this duplicates autocenter. I think autocenter should go.
+        var clientRect = owner.getBoundingClientRect();
+        var size = transformToScreen(clientRect.width, clientRect.height);
+
+        var rectWidth = rect.right - rect.left;
+        var rectHeight = rect.bottom - rect.top;
+        if (!Number.isFinite(rectWidth) || !Number.isFinite(rectHeight)) {
+          throw new Error('Invalid rectangle');
+        }
+
+        var dw = size.x / rectWidth;
+        var dh = size.y / rectHeight;
+        var scale = Math.min(dw, dh);
+        transform$1.x = -(rect.left + rectWidth / 2) * scale + size.x / 2;
+        transform$1.y = -(rect.top + rectHeight / 2) * scale + size.y / 2;
+        transform$1.scale = scale;
+      }
+
+      function transformToScreen(x, y) {
+        if (panController.getScreenCTM) {
+          var parentCTM = panController.getScreenCTM();
+          var parentScaleX = parentCTM.a;
+          var parentScaleY = parentCTM.d;
+          var parentOffsetX = parentCTM.e;
+          var parentOffsetY = parentCTM.f;
+          storedCTMResult.x = x * parentScaleX - parentOffsetX;
+          storedCTMResult.y = y * parentScaleY - parentOffsetY;
+        } else {
+          storedCTMResult.x = x;
+          storedCTMResult.y = y;
+        }
+
+        return storedCTMResult;
+      }
+
+      function autocenter() {
+        var w; // width of the parent
+        var h; // height of the parent
+        var left = 0;
+        var top = 0;
+        var sceneBoundingBox = getBoundingBox();
+        if (sceneBoundingBox) {
+          // If we have bounding box - use it.
+          left = sceneBoundingBox.left;
+          top = sceneBoundingBox.top;
+          w = sceneBoundingBox.right - sceneBoundingBox.left;
+          h = sceneBoundingBox.bottom - sceneBoundingBox.top;
+        } else {
+          // otherwise just use whatever space we have
+          var ownerRect = owner.getBoundingClientRect();
+          w = ownerRect.width;
+          h = ownerRect.height;
+        }
+        var bbox = panController.getBBox();
+        if (bbox.width === 0 || bbox.height === 0) {
+          // we probably do not have any elements in the SVG
+          // just bail out;
+          return;
+        }
+        var dh = h / bbox.height;
+        var dw = w / bbox.width;
+        var scale = Math.min(dw, dh);
+        transform$1.x = -(bbox.left + bbox.width / 2) * scale + w / 2 + left;
+        transform$1.y = -(bbox.top + bbox.height / 2) * scale + h / 2 + top;
+        transform$1.scale = scale;
+      }
+
+      function getTransformModel() {
+        // TODO: should this be read only?
+        return transform$1;
+      }
+
+      function getMinZoom() {
+        return minZoom;
+      }
+
+      function setMinZoom(newMinZoom) {
+        minZoom = newMinZoom;
+      }
+
+      function getMaxZoom() {
+        return maxZoom;
+      }
+
+      function setMaxZoom(newMaxZoom) {
+        maxZoom = newMaxZoom;
+      }
+
+      function getTransformOrigin() {
+        return transformOrigin;
+      }
+
+      function setTransformOrigin(newTransformOrigin) {
+        transformOrigin = parseTransformOrigin(newTransformOrigin);
+      }
+
+      function getZoomSpeed() {
+        return speed;
+      }
+
+      function setZoomSpeed(newSpeed) {
+        if (!Number.isFinite(newSpeed)) {
+          throw new Error('Zoom speed should be a number');
+        }
+        speed = newSpeed;
+      }
+
+      function getPoint() {
+        return {
+          x: transform$1.x,
+          y: transform$1.y
+        };
+      }
+
+      function moveTo(x, y) {
+        transform$1.x = x;
+        transform$1.y = y;
+
+        keepTransformInsideBounds();
+
+        triggerEvent('pan');
+        makeDirty();
+      }
+
+      function moveBy(dx, dy) {
+        moveTo(transform$1.x + dx, transform$1.y + dy);
+      }
+
+      function keepTransformInsideBounds() {
+        var boundingBox = getBoundingBox();
+        if (!boundingBox) return;
+
+        var adjusted = false;
+        var clientRect = getClientRect();
+
+        var diff = boundingBox.left - clientRect.right;
+        if (diff > 0) {
+          transform$1.x += diff;
+          adjusted = true;
+        }
+        // check the other side:
+        diff = boundingBox.right - clientRect.left;
+        if (diff < 0) {
+          transform$1.x += diff;
+          adjusted = true;
+        }
+
+        // y axis:
+        diff = boundingBox.top - clientRect.bottom;
+        if (diff > 0) {
+          // we adjust transform, so that it matches exactly our bounding box:
+          // transform.y = boundingBox.top - (boundingBox.height + boundingBox.y) * transform.scale =>
+          // transform.y = boundingBox.top - (clientRect.bottom - transform.y) =>
+          // transform.y = diff + transform.y =>
+          transform$1.y += diff;
+          adjusted = true;
+        }
+
+        diff = boundingBox.bottom - clientRect.top;
+        if (diff < 0) {
+          transform$1.y += diff;
+          adjusted = true;
+        }
+        return adjusted;
+      }
+
+      /**
+       * Returns bounding box that should be used to restrict scene movement.
+       */
+      function getBoundingBox() {
+        if (!bounds) return; // client does not want to restrict movement
+
+        if (typeof bounds === 'boolean') {
+          // for boolean type we use parent container bounds
+          var ownerRect = owner.getBoundingClientRect();
+          var sceneWidth = ownerRect.width;
+          var sceneHeight = ownerRect.height;
+
+          return {
+            left: sceneWidth * boundsPadding,
+            top: sceneHeight * boundsPadding,
+            right: sceneWidth * (1 - boundsPadding),
+            bottom: sceneHeight * (1 - boundsPadding)
+          };
+        }
+
+        return bounds;
+      }
+
+      function getClientRect() {
+        var bbox = panController.getBBox();
+        var leftTop = client(bbox.left, bbox.top);
+
+        return {
+          left: leftTop.x,
+          top: leftTop.y,
+          right: bbox.width * transform$1.scale + leftTop.x,
+          bottom: bbox.height * transform$1.scale + leftTop.y
+        };
+      }
+
+      function client(x, y) {
+        return {
+          x: x * transform$1.scale + transform$1.x,
+          y: y * transform$1.scale + transform$1.y
+        };
+      }
+
+      function makeDirty() {
+        isDirty = true;
+        frameAnimation = window.requestAnimationFrame(frame);
+      }
+
+      function zoomByRatio(clientX, clientY, ratio) {
+        if (isNaN$1(clientX) || isNaN$1(clientY) || isNaN$1(ratio)) {
+          throw new Error('zoom requires valid numbers');
+        }
+
+        var newScale = transform$1.scale * ratio;
+
+        if (newScale < minZoom) {
+          if (transform$1.scale === minZoom) return;
+
+          ratio = minZoom / transform$1.scale;
+        }
+        if (newScale > maxZoom) {
+          if (transform$1.scale === maxZoom) return;
+
+          ratio = maxZoom / transform$1.scale;
+        }
+
+        var size = transformToScreen(clientX, clientY);
+
+        transform$1.x = size.x - ratio * (size.x - transform$1.x);
+        transform$1.y = size.y - ratio * (size.y - transform$1.y);
+
+        // TODO: https://github.com/anvaka/panzoom/issues/112
+        if (bounds && boundsPadding === 1 && minZoom === 1) {
+          transform$1.scale *= ratio;
+          keepTransformInsideBounds();
+        } else {
+          var transformAdjusted = keepTransformInsideBounds();
+          if (!transformAdjusted) transform$1.scale *= ratio;
+        }
+
+        triggerEvent('zoom');
+
+        makeDirty();
+      }
+
+      function zoomAbs(clientX, clientY, zoomLevel) {
+        var ratio = zoomLevel / transform$1.scale;
+        zoomByRatio(clientX, clientY, ratio);
+      }
+
+      function centerOn(ui) {
+        var parent = ui.ownerSVGElement;
+        if (!parent)
+          throw new Error('ui element is required to be within the scene');
+
+        // TODO: should i use controller's screen CTM?
+        var clientRect = ui.getBoundingClientRect();
+        var cx = clientRect.left + clientRect.width / 2;
+        var cy = clientRect.top + clientRect.height / 2;
+
+        var container = parent.getBoundingClientRect();
+        var dx = container.width / 2 - cx;
+        var dy = container.height / 2 - cy;
+
+        internalMoveBy(dx, dy, true);
+      }
+
+      function smoothMoveTo(x, y){
+        internalMoveBy(x - transform$1.x, y - transform$1.y, true);
+      }
+
+      function internalMoveBy(dx, dy, smooth) {
+        if (!smooth) {
+          return moveBy(dx, dy);
+        }
+
+        if (moveByAnimation) moveByAnimation.cancel();
+
+        var from = { x: 0, y: 0 };
+        var to = { x: dx, y: dy };
+        var lastX = 0;
+        var lastY = 0;
+
+        moveByAnimation = amator(from, to, {
+          step: function (v) {
+            moveBy(v.x - lastX, v.y - lastY);
+
+            lastX = v.x;
+            lastY = v.y;
+          }
+        });
+      }
+
+      function scroll(x, y) {
+        cancelZoomAnimation();
+        moveTo(x, y);
+      }
+
+      function dispose() {
+        releaseEvents();
+      }
+
+      function listenForEvents() {
+        owner.addEventListener('mousedown', onMouseDown, { passive: false });
+        owner.addEventListener('dblclick', onDoubleClick, { passive: false });
+        owner.addEventListener('touchstart', onTouch, { passive: false });
+        owner.addEventListener('keydown', onKeyDown, { passive: false });
+
+        // Need to listen on the owner container, so that we are not limited
+        // by the size of the scrollable domElement
+        wheel.addWheelListener(owner, onMouseWheel, { passive: false });
+
+        makeDirty();
+      }
+
+      function releaseEvents() {
+        wheel.removeWheelListener(owner, onMouseWheel);
+        owner.removeEventListener('mousedown', onMouseDown);
+        owner.removeEventListener('keydown', onKeyDown);
+        owner.removeEventListener('dblclick', onDoubleClick);
+        owner.removeEventListener('touchstart', onTouch);
+
+        if (frameAnimation) {
+          window.cancelAnimationFrame(frameAnimation);
+          frameAnimation = 0;
+        }
+
+        smoothScroll.cancel();
+
+        releaseDocumentMouse();
+        releaseTouches();
+        textSelection.release();
+
+        triggerPanEnd();
+      }
+
+      function frame() {
+        if (isDirty) applyTransform();
+      }
+
+      function applyTransform() {
+        isDirty = false;
+
+        // TODO: Should I allow to cancel this?
+        panController.applyTransform(transform$1);
+
+        triggerEvent('transform');
+        frameAnimation = 0;
+      }
+
+      function onKeyDown(e) {
+        var x = 0,
+          y = 0,
+          z = 0;
+        if (e.keyCode === 38) {
+          y = 1; // up
+        } else if (e.keyCode === 40) {
+          y = -1; // down
+        } else if (e.keyCode === 37) {
+          x = 1; // left
+        } else if (e.keyCode === 39) {
+          x = -1; // right
+        } else if (e.keyCode === 189 || e.keyCode === 109) {
+          // DASH or SUBTRACT
+          z = 1; // `-` -  zoom out
+        } else if (e.keyCode === 187 || e.keyCode === 107) {
+          // EQUAL SIGN or ADD
+          z = -1; // `=` - zoom in (equal sign on US layout is under `+`)
+        }
+
+        if (filterKey(e, x, y, z)) {
+          // They don't want us to handle the key: https://github.com/anvaka/panzoom/issues/45
+          return;
+        }
+
+        if (x || y) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          var clientRect = owner.getBoundingClientRect();
+          // movement speed should be the same in both X and Y direction:
+          var offset = Math.min(clientRect.width, clientRect.height);
+          var moveSpeedRatio = 0.05;
+          var dx = offset * moveSpeedRatio * x;
+          var dy = offset * moveSpeedRatio * y;
+
+          // TODO: currently we do not animate this. It could be better to have animation
+          internalMoveBy(dx, dy);
+        }
+
+        if (z) {
+          var scaleMultiplier = getScaleMultiplier(z * 100);
+          var offset = transformOrigin ? getTransformOriginOffset() : midPoint();
+          publicZoomTo(offset.x, offset.y, scaleMultiplier);
+        }
+      }
+
+      function midPoint() {
+        var ownerRect = owner.getBoundingClientRect();
+        return {
+          x: ownerRect.width / 2,
+          y: ownerRect.height / 2
+        };
+      }
+
+      function onTouch(e) {
+        // let the override the touch behavior
+        beforeTouch(e);
+
+        if (e.touches.length === 1) {
+          return handleSingleFingerTouch(e, e.touches[0]);
+        } else if (e.touches.length === 2) {
+          // handleTouchMove() will care about pinch zoom.
+          pinchZoomLength = getPinchZoomLength(e.touches[0], e.touches[1]);
+          multiTouch = true;
+          startTouchListenerIfNeeded();
+        }
+      }
+
+      function beforeTouch(e) {
+        // TODO: Need to unify this filtering names. E.g. use `beforeTouch`
+        if (options.onTouch && !options.onTouch(e)) {
+          // if they return `false` from onTouch, we don't want to stop
+          // events propagation. Fixes https://github.com/anvaka/panzoom/issues/12
+          return;
+        }
+
+        e.stopPropagation();
+        e.preventDefault();
+      }
+
+      function beforeDoubleClick(e) {
+        // TODO: Need to unify this filtering names. E.g. use `beforeDoubleClick``
+        if (options.onDoubleClick && !options.onDoubleClick(e)) {
+          // if they return `false` from onTouch, we don't want to stop
+          // events propagation. Fixes https://github.com/anvaka/panzoom/issues/46
+          return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function handleSingleFingerTouch(e) {
+        var touch = e.touches[0];
+        var offset = getOffsetXY(touch);
+        lastSingleFingerOffset = offset;
+        var point = transformToScreen(offset.x, offset.y);
+        mouseX = point.x;
+        mouseY = point.y;
+
+        smoothScroll.cancel();
+        startTouchListenerIfNeeded();
+      }
+
+      function startTouchListenerIfNeeded() {
+        if (touchInProgress) {
+          // no need to do anything, as we already listen to events;
+          return;
+        }
+
+        touchInProgress = true;
+        document.addEventListener('touchmove', handleTouchMove);
+        document.addEventListener('touchend', handleTouchEnd);
+        document.addEventListener('touchcancel', handleTouchEnd);
+      }
+
+      function handleTouchMove(e) {
+        if (e.touches.length === 1) {
+          e.stopPropagation();
+          var touch = e.touches[0];
+
+          var offset = getOffsetXY(touch);
+          var point = transformToScreen(offset.x, offset.y);
+
+          var dx = point.x - mouseX;
+          var dy = point.y - mouseY;
+
+          if (dx !== 0 && dy !== 0) {
+            triggerPanStart();
+          }
+          mouseX = point.x;
+          mouseY = point.y;
+          internalMoveBy(dx, dy);
+        } else if (e.touches.length === 2) {
+          // it's a zoom, let's find direction
+          multiTouch = true;
+          var t1 = e.touches[0];
+          var t2 = e.touches[1];
+          var currentPinchLength = getPinchZoomLength(t1, t2);
+
+          // since the zoom speed is always based on distance from 1, we need to apply
+          // pinch speed only on that distance from 1:
+          var scaleMultiplier =
+            1 + (currentPinchLength / pinchZoomLength - 1) * pinchSpeed;
+
+          var firstTouchPoint = getOffsetXY(t1);
+          var secondTouchPoint = getOffsetXY(t2);
+          mouseX = (firstTouchPoint.x + secondTouchPoint.x) / 2;
+          mouseY = (firstTouchPoint.y + secondTouchPoint.y) / 2;
+          if (transformOrigin) {
+            var offset = getTransformOriginOffset();
+            mouseX = offset.x;
+            mouseY = offset.y;
+          }
+
+          publicZoomTo(mouseX, mouseY, scaleMultiplier);
+
+          pinchZoomLength = currentPinchLength;
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }
+
+      function handleTouchEnd(e) {
+        if (e.touches.length > 0) {
+          var offset = getOffsetXY(e.touches[0]);
+          var point = transformToScreen(offset.x, offset.y);
+          mouseX = point.x;
+          mouseY = point.y;
+        } else {
+          var now = new Date();
+          if (now - lastTouchEndTime < doubleTapSpeedInMS) {
+            if (transformOrigin) {
+              var offset = getTransformOriginOffset();
+              smoothZoom(offset.x, offset.y, zoomDoubleClickSpeed);
+            } else {
+              // We want untransformed x/y here.
+              smoothZoom(lastSingleFingerOffset.x, lastSingleFingerOffset.y, zoomDoubleClickSpeed);
+            }
+          }
+
+          lastTouchEndTime = now;
+
+          triggerPanEnd();
+          releaseTouches();
+        }
+      }
+
+      function getPinchZoomLength(finger1, finger2) {
+        var dx = finger1.clientX - finger2.clientX;
+        var dy = finger1.clientY - finger2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+      function onDoubleClick(e) {
+        beforeDoubleClick(e);
+        var offset = getOffsetXY(e);
+        if (transformOrigin) {
+          // TODO: looks like this is duplicated in the file.
+          // Need to refactor
+          offset = getTransformOriginOffset();
+        }
+        smoothZoom(offset.x, offset.y, zoomDoubleClickSpeed);
+      }
+
+      function onMouseDown(e) {
+        // if client does not want to handle this event - just ignore the call
+        if (beforeMouseDown(e)) return;
+
+        if (touchInProgress) {
+          // modern browsers will fire mousedown for touch events too
+          // we do not want this: touch is handled separately.
+          e.stopPropagation();
+          return false;
+        }
+        // for IE, left click == 1
+        // for Firefox, left click == 0
+        var isLeftButton =
+          (e.button === 1 && window.event !== null) || e.button === 0;
+        if (!isLeftButton) return;
+
+        smoothScroll.cancel();
+
+        var offset = getOffsetXY(e);
+        var point = transformToScreen(offset.x, offset.y);
+        mouseX = point.x;
+        mouseY = point.y;
+
+        // We need to listen on document itself, since mouse can go outside of the
+        // window, and we will loose it
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+        textSelection.capture(e.target || e.srcElement);
+
+        return false;
+      }
+
+      function onMouseMove(e) {
+        // no need to worry about mouse events when touch is happening
+        if (touchInProgress) return;
+
+        triggerPanStart();
+
+        var offset = getOffsetXY(e);
+        var point = transformToScreen(offset.x, offset.y);
+        var dx = point.x - mouseX;
+        var dy = point.y - mouseY;
+
+        mouseX = point.x;
+        mouseY = point.y;
+
+        internalMoveBy(dx, dy);
+      }
+
+      function onMouseUp() {
+        textSelection.release();
+        triggerPanEnd();
+        releaseDocumentMouse();
+      }
+
+      function releaseDocumentMouse() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        panstartFired = false;
+      }
+
+      function releaseTouches() {
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener('touchcancel', handleTouchEnd);
+        panstartFired = false;
+        multiTouch = false;
+        touchInProgress = false;
+      }
+
+      function onMouseWheel(e) {
+        // if client does not want to handle this event - just ignore the call
+        if (beforeWheel(e)) return;
+
+        smoothScroll.cancel();
+
+        var delta = e.deltaY;
+        if (e.deltaMode > 0) delta *= 100;
+
+        var scaleMultiplier = getScaleMultiplier(delta);
+
+        if (scaleMultiplier !== 1) {
+          var offset = transformOrigin
+            ? getTransformOriginOffset()
+            : getOffsetXY(e);
+          publicZoomTo(offset.x, offset.y, scaleMultiplier);
+          e.preventDefault();
+        }
+      }
+
+      function getOffsetXY(e) {
+        var offsetX, offsetY;
+        // I tried using e.offsetX, but that gives wrong results for svg, when user clicks on a path.
+        var ownerRect = owner.getBoundingClientRect();
+        offsetX = e.clientX - ownerRect.left;
+        offsetY = e.clientY - ownerRect.top;
+
+        return { x: offsetX, y: offsetY };
+      }
+
+      function smoothZoom(clientX, clientY, scaleMultiplier) {
+        var fromValue = transform$1.scale;
+        var from = { scale: fromValue };
+        var to = { scale: scaleMultiplier * fromValue };
+
+        smoothScroll.cancel();
+        cancelZoomAnimation();
+
+        zoomToAnimation = amator(from, to, {
+          step: function (v) {
+            zoomAbs(clientX, clientY, v.scale);
+          },
+          done: triggerZoomEnd
+        });
+      }
+
+      function smoothZoomAbs(clientX, clientY, toScaleValue) {
+        var fromValue = transform$1.scale;
+        var from = { scale: fromValue };
+        var to = { scale: toScaleValue };
+
+        smoothScroll.cancel();
+        cancelZoomAnimation();
+
+        zoomToAnimation = amator(from, to, {
+          step: function (v) {
+            zoomAbs(clientX, clientY, v.scale);
+          }
+        });
+      }
+
+      function getTransformOriginOffset() {
+        var ownerRect = owner.getBoundingClientRect();
+        return {
+          x: ownerRect.width * transformOrigin.x,
+          y: ownerRect.height * transformOrigin.y
+        };
+      }
+
+      function publicZoomTo(clientX, clientY, scaleMultiplier) {
+        smoothScroll.cancel();
+        cancelZoomAnimation();
+        return zoomByRatio(clientX, clientY, scaleMultiplier);
+      }
+
+      function cancelZoomAnimation() {
+        if (zoomToAnimation) {
+          zoomToAnimation.cancel();
+          zoomToAnimation = null;
+        }
+      }
+
+      function getScaleMultiplier(delta) {
+        var sign = Math.sign(delta);
+        var deltaAdjustedSpeed = Math.min(0.25, Math.abs(speed * delta / 128));
+        return 1 - sign * deltaAdjustedSpeed;
+      }
+
+      function triggerPanStart() {
+        if (!panstartFired) {
+          triggerEvent('panstart');
+          panstartFired = true;
+          smoothScroll.start();
+        }
+      }
+
+      function triggerPanEnd() {
+        if (panstartFired) {
+          // we should never run smooth scrolling if it was multiTouch (pinch zoom animation):
+          if (!multiTouch) smoothScroll.stop();
+          triggerEvent('panend');
+        }
+      }
+
+      function triggerZoomEnd() {
+        triggerEvent('zoomend');
+      }
+
+      function triggerEvent(name) {
+        api.fire(name, api);
+      }
+    }
+
+    function parseTransformOrigin(options) {
+      if (!options) return;
+      if (typeof options === 'object') {
+        if (!isNumber(options.x) || !isNumber(options.y))
+          failTransformOrigin(options);
+        return options;
+      }
+
+      failTransformOrigin();
+    }
+
+    function failTransformOrigin(options) {
+      console.error(options);
+      throw new Error(
+        [
+          'Cannot parse transform origin.',
+          'Some good examples:',
+          '  "center center" can be achieved with {x: 0.5, y: 0.5}',
+          '  "top center" can be achieved with {x: 0.5, y: 0}',
+          '  "bottom right" can be achieved with {x: 1, y: 1}'
+        ].join('\n')
+      );
+    }
+
+    function noop() { }
+
+    function validateBounds(bounds) {
+      var boundsType = typeof bounds;
+      if (boundsType === 'undefined' || boundsType === 'boolean') return; // this is okay
+      // otherwise need to be more thorough:
+      var validBounds =
+        isNumber(bounds.left) &&
+        isNumber(bounds.top) &&
+        isNumber(bounds.bottom) &&
+        isNumber(bounds.right);
+
+      if (!validBounds)
+        throw new Error(
+          'Bounds object is not valid. It can be: ' +
+          'undefined, boolean (true|false) or an object {left, top, right, bottom}'
+        );
+    }
+
+    function isNumber(x) {
+      return Number.isFinite(x);
+    }
+
+    // IE 11 does not support isNaN:
+    function isNaN$1(value) {
+      if (Number.isNaN) {
+        return Number.isNaN(value);
+      }
+
+      return value !== value;
+    }
+
+    function rigidScroll() {
+      return {
+        start: noop,
+        stop: noop,
+        cancel: noop
+      };
+    }
+
+    function autoRun() {
+      if (typeof document === 'undefined') return;
+
+      var scripts = document.getElementsByTagName('script');
+      if (!scripts) return;
+      var panzoomScript;
+
+      for (var i = 0; i < scripts.length; ++i) {
+        var x = scripts[i];
+        if (x.src && x.src.match(/\bpanzoom(\.min)?\.js/)) {
+          panzoomScript = x;
+          break;
+        }
+      }
+
+      if (!panzoomScript) return;
+
+      var query = panzoomScript.getAttribute('query');
+      if (!query) return;
+
+      var globalName = panzoomScript.getAttribute('name') || 'pz';
+      var started = Date.now();
+
+      tryAttach();
+
+      function tryAttach() {
+        var el = document.querySelector(query);
+        if (!el) {
+          var now = Date.now();
+          var elapsed = now - started;
+          if (elapsed < 2000) {
+            // Let's wait a bit
+            setTimeout(tryAttach, 100);
+            return;
+          }
+          // If we don't attach within 2 seconds to the target element, consider it a failure
+          console.error('Cannot find the panzoom element', globalName);
+          return;
+        }
+        var options = collectOptions(panzoomScript);
+        console.log(options);
+        window[globalName] = createPanZoom(el, options);
+      }
+
+      function collectOptions(script) {
+        var attrs = script.attributes;
+        var options = {};
+        for (var j = 0; j < attrs.length; ++j) {
+          var attr = attrs[j];
+          var nameValue = getPanzoomAttributeNameValue(attr);
+          if (nameValue) {
+            options[nameValue.name] = nameValue.value;
+          }
+        }
+
+        return options;
+      }
+
+      function getPanzoomAttributeNameValue(attr) {
+        if (!attr.name) return;
+        var isPanZoomAttribute =
+          attr.name[0] === 'p' && attr.name[1] === 'z' && attr.name[2] === '-';
+
+        if (!isPanZoomAttribute) return;
+
+        var name = attr.name.substr(3);
+        var value = JSON.parse(attr.value);
+        return { name: name, value: value };
+      }
+    }
+
+    autoRun();
+
+    /* src/lib/Canvas.svelte generated by Svelte v3.38.3 */
+
+    const { console: console_1$3, window: window_1 } = globals;
+    const file$3 = "src/lib/Canvas.svelte";
+
+    function create_fragment$3(ctx) {
+    	let section;
+    	let div1;
+    	let div0;
+    	let canvas;
+    	let t0;
+    	let div2;
+    	let t1_value = /*project*/ ctx[1].info.width + "";
+    	let t1;
+    	let t2;
+    	let t3_value = /*project*/ ctx[1].info.height + "";
+    	let t3;
+    	let t4;
+    	let div4;
+    	let div3;
+    	let mounted;
+    	let dispose;
+
+    	const block = {
+    		c: function create() {
+    			section = element("section");
+    			div1 = element("div");
+    			div0 = element("div");
+    			canvas = element("canvas");
+    			t0 = space();
+    			div2 = element("div");
+    			t1 = text(t1_value);
+    			t2 = text(" x ");
+    			t3 = text(t3_value);
+    			t4 = space();
+    			div4 = element("div");
+    			div3 = element("div");
+    			attr_dev(canvas, "id", "lores");
+    			attr_dev(canvas, "class", "fill");
+    			add_location(canvas, file$3, 54, 12, 1179);
+    			attr_dev(div0, "class", "w100pc h100pc");
+    			add_location(div0, file$3, 53, 8, 1118);
+    			attr_dev(div1, "id", "zoom");
+    			attr_dev(div1, "class", "flex fill");
+    			add_location(div1, file$3, 50, 4, 1059);
+    			attr_dev(div2, "class", "t1 l1 abs");
+    			add_location(div2, file$3, 57, 4, 1244);
+    			attr_dev(div3, "class", "flex column");
+    			add_location(div3, file$3, 62, 8, 1386);
+    			attr_dev(div4, "class", "abs t0 r2 p1 flex row w3em");
+    			add_location(div4, file$3, 60, 4, 1336);
+    			attr_dev(section, "class", "rel basis70pc minw50em pointer grow flex row-center-flex-start maxh100vh overflow-hidden");
+    			add_location(section, file$3, 46, 0, 848);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, section, anchor);
+    			append_dev(section, div1);
+    			append_dev(div1, div0);
+    			append_dev(div0, canvas);
+    			/*div0_binding*/ ctx[4](div0);
+    			append_dev(section, t0);
+    			append_dev(section, div2);
+    			append_dev(div2, t1);
+    			append_dev(div2, t2);
+    			append_dev(div2, t3);
+    			append_dev(section, t4);
+    			append_dev(section, div4);
+    			append_dev(div4, div3);
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(window_1, "keydown", /*onKeyDown*/ ctx[2], false, false, false),
+    					listen_dev(window_1, "keyup", /*onKeyUp*/ ctx[3], false, false, false),
+    					listen_dev(section, "mousedown", /*mousedown_handler*/ ctx[5], false, false, false),
+    					listen_dev(section, "mouseup", /*mouseup_handler*/ ctx[6], false, false, false)
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*project*/ 2 && t1_value !== (t1_value = /*project*/ ctx[1].info.width + "")) set_data_dev(t1, t1_value);
+    			if (dirty & /*project*/ 2 && t3_value !== (t3_value = /*project*/ ctx[1].info.height + "")) set_data_dev(t3, t3_value);
+    		},
+    		i: noop$4,
+    		o: noop$4,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(section);
+    			/*div0_binding*/ ctx[4](null);
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$3.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function togglePreview(b) {
+    	console.log("[Canvas] 👁  toggle preview");
+    } // mode = b
+    // if (mode) {
+
+    function instance$3($$self, $$props, $$invalidate) {
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots("Canvas", slots, []);
+    	let { project } = $$props;
+    	let lastXY;
+    	let { editorEl } = $$props;
+    	let zoomer;
+
+    	onMount(async e => {
+    		window.zoomer = zoomer = panzoom(editorEl);
+    		console.log(zoomer);
+    	}); // zoomer.zoomTo( 800, 10, zoom )
+
+    	//     // rectd.auto( fit, raw )
+    	//     // stage.addChild( raw )
+    	// } else {
+    	//     // stage.removeChild( raw )
+    	// }
+    	let keys = {};
+
+    	async function onKeyDown(e) {
+    		keys[e.key] = true;
+    	}
+
+    	async function onKeyUp(e) {
+    		keys[e.key] = false;
+    	}
+
+    	const writable_props = ["project", "editorEl"];
+
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$3.warn(`<Canvas> was created with unknown prop '${key}'`);
+    	});
+
+    	function div0_binding($$value) {
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			editorEl = $$value;
+    			$$invalidate(0, editorEl);
+    		});
+    	}
+
+    	const mousedown_handler = e => togglePreview();
+    	const mouseup_handler = e => togglePreview();
+
+    	$$self.$$set = $$props => {
+    		if ("project" in $$props) $$invalidate(1, project = $$props.project);
+    		if ("editorEl" in $$props) $$invalidate(0, editorEl = $$props.editorEl);
+    	};
+
+    	$$self.$capture_state = () => ({
+    		panzoom,
+    		onMount,
+    		project,
+    		lastXY,
+    		editorEl,
+    		zoomer,
+    		togglePreview,
+    		keys,
+    		onKeyDown,
+    		onKeyUp
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("project" in $$props) $$invalidate(1, project = $$props.project);
+    		if ("lastXY" in $$props) lastXY = $$props.lastXY;
+    		if ("editorEl" in $$props) $$invalidate(0, editorEl = $$props.editorEl);
+    		if ("zoomer" in $$props) zoomer = $$props.zoomer;
+    		if ("keys" in $$props) keys = $$props.keys;
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	return [
+    		editorEl,
+    		project,
+    		onKeyDown,
+    		onKeyUp,
+    		div0_binding,
+    		mousedown_handler,
+    		mouseup_handler
+    	];
+    }
+
+    class Canvas extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init$1(this, options, instance$3, create_fragment$3, safe_not_equal, { project: 1, editorEl: 0 });
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Canvas",
+    			options,
+    			id: create_fragment$3.name
+    		});
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+
+    		if (/*project*/ ctx[1] === undefined && !("project" in props)) {
+    			console_1$3.warn("<Canvas> was created without expected prop 'project'");
+    		}
+
+    		if (/*editorEl*/ ctx[0] === undefined && !("editorEl" in props)) {
+    			console_1$3.warn("<Canvas> was created without expected prop 'editorEl'");
+    		}
+    	}
+
+    	get project() {
+    		throw new Error("<Canvas>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set project(value) {
+    		throw new Error("<Canvas>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get editorEl() {
+    		throw new Error("<Canvas>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set editorEl(value) {
+    		throw new Error("<Canvas>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src/lib/Project.svelte generated by Svelte v3.38.3 */
+
+    const { Object: Object_1, console: console_1$2 } = globals;
+    const file$2 = "src/lib/Project.svelte";
+
+    function get_each_context$2(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[78] = list[i];
-    	child_ctx[79] = list;
-    	child_ctx[80] = i;
+    	child_ctx[48] = list[i];
     	return child_ctx;
     }
 
     function get_each_context_1(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[81] = list[i];
+    	child_ctx[51] = list[i];
     	return child_ctx;
     }
 
     function get_each_context_2(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[84] = list[i];
+    	child_ctx[54] = list[i];
+    	child_ctx[56] = i;
     	return child_ctx;
     }
 
-    function get_each_context_3(ctx, list, i) {
-    	const child_ctx = ctx.slice();
-    	child_ctx[87] = list[i];
-    	child_ctx[89] = i;
-    	return child_ctx;
-    }
-
-    function get_each_context_4(ctx, list, i) {
-    	const child_ctx = ctx.slice();
-    	child_ctx[90] = list[i];
-    	child_ctx[92] = i;
-    	return child_ctx;
-    }
-
-    // (489:4) <Title>
-    function create_default_slot_2(ctx) {
+    // (390:4) <Title>
+    function create_default_slot(ctx) {
     	let t;
 
     	const block = {
     		c: function create() {
-    			t = text("Files");
+    			t = text("Layout");
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, t, anchor);
@@ -46805,19 +49634,1354 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_default_slot_2.name,
+    		id: create_default_slot.name,
     		type: "slot",
-    		source: "(489:4) <Title>",
+    		source: "(390:4) <Title>",
     		ctx
     	});
 
     	return block;
     }
 
-    // (533:8) {:else}
+    // (414:6) {#if !project.files || project.files.length == 0}
+    function create_if_block$1(ctx) {
+    	let div;
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			div.textContent = "No image(s) selected";
+    			attr_dev(div, "class", "button b1-solid error");
+    			add_location(div, file$2, 414, 7, 9688);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_if_block$1.name,
+    		type: "if",
+    		source: "(414:6) {#if !project.files || project.files.length == 0}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (417:6) {#each project.files as file, idx}
+    function create_each_block_2(ctx) {
+    	let div;
+    	let span;
+    	let t0_value = /*file*/ ctx[54] + "";
+    	let t0;
+    	let t1;
+    	let button0;
+    	let t2;
+    	let button1;
+    	let t3;
+    	let mounted;
+    	let dispose;
+
+    	function click_handler_2(...args) {
+    		return /*click_handler_2*/ ctx[20](/*idx*/ ctx[56], ...args);
+    	}
+
+    	function click_handler_3(...args) {
+    		return /*click_handler_3*/ ctx[21](/*idx*/ ctx[56], ...args);
+    	}
+
+    	const block = {
+    		c: function create() {
+    			div = element("div");
+    			span = element("span");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			button0 = element("button");
+    			t2 = space();
+    			button1 = element("button");
+    			t3 = space();
+    			attr_dev(span, "class", "h3em flex column-flex-start-center plr1 grow");
+    			add_location(span, file$2, 418, 8, 9890);
+    			attr_dev(button0, "class", "" + (/*arrowClass*/ ctx[6] + " arrow rotate180 br1-solid"));
+    			add_location(button0, file$2, 419, 8, 9971);
+    			attr_dev(button1, "class", "" + (/*arrowClass*/ ctx[6] + " arrow bl1-solid "));
+    			add_location(button1, file$2, 422, 8, 10088);
+    			attr_dev(div, "class", "flex row-stretch-stretch b1-solid");
+    			set_style(div, "margin-top", "-1px");
+    			add_location(div, file$2, 417, 7, 9810);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div, anchor);
+    			append_dev(div, span);
+    			append_dev(span, t0);
+    			append_dev(div, t1);
+    			append_dev(div, button0);
+    			append_dev(div, t2);
+    			append_dev(div, button1);
+    			append_dev(div, t3);
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(button0, "click", click_handler_2, false, false, false),
+    					listen_dev(button1, "click", click_handler_3, false, false, false)
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(new_ctx, dirty) {
+    			ctx = new_ctx;
+    			if (dirty[0] & /*project*/ 1 && t0_value !== (t0_value = /*file*/ ctx[54] + "")) set_data_dev(t0, t0_value);
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div);
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_2.name,
+    		type: "each",
+    		source: "(417:6) {#each project.files as file, idx}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (441:8) {#each options.backgrounds as bg}
+    function create_each_block_1(ctx) {
+    	let option;
+    	let t_value = /*bg*/ ctx[51].name + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			option = element("option");
+    			t = text(t_value);
+    			option.__value = /*bg*/ ctx[51].name;
+    			option.value = option.__value;
+    			attr_dev(option, "name", /*bg*/ ctx[51].name);
+    			add_location(option, file$2, 441, 9, 10710);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t);
+    		},
+    		p: noop$4,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(option);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block_1.name,
+    		type: "each",
+    		source: "(441:8) {#each options.backgrounds as bg}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    // (453:8) {#each options.sizes as sz}
+    function create_each_block$2(ctx) {
+    	let option;
+    	let t_value = /*sz*/ ctx[48].name + "";
+    	let t;
+
+    	const block = {
+    		c: function create() {
+    			option = element("option");
+    			t = text(t_value);
+    			option.__value = /*sz*/ ctx[48].name;
+    			option.value = option.__value;
+    			attr_dev(option, "name", /*sz*/ ctx[48].name);
+    			add_location(option, file$2, 453, 9, 11105);
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t);
+    		},
+    		p: noop$4,
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(option);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_each_block$2.name,
+    		type: "each",
+    		source: "(453:8) {#each options.sizes as sz}",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    function create_fragment$2(ctx) {
+    	let div11;
+    	let nav;
+    	let div10;
+    	let section0;
+    	let title;
+    	let t0;
+    	let div9;
+    	let div2;
+    	let div0;
+    	let span1;
+    	let span0;
+    	let t1;
+    	let t2;
+    	let div1;
+    	let span3;
+    	let span2;
+    	let t3;
+    	let t4;
+    	let aside;
+    	let t5;
+    	let t6;
+    	let div4;
+    	let span4;
+    	let t8;
+    	let div3;
+    	let select0;
+    	let t9;
+    	let div6;
+    	let span5;
+    	let t11;
+    	let div5;
+    	let select1;
+    	let t12;
+    	let div7;
+    	let span6;
+    	let t14;
+    	let input0;
+    	let t15;
+    	let div8;
+    	let span7;
+    	let t17;
+    	let input1;
+    	let t18;
+    	let section1;
+    	let layers_1;
+    	let updating_groups;
+    	let updating_layers;
+    	let updating_solo;
+    	let t19;
+    	let canvas;
+    	let updating_project;
+    	let updating_editorEl;
+    	let current;
+    	let mounted;
+    	let dispose;
+
+    	title = new Title({
+    			props: {
+    				$$slots: { default: [create_default_slot] },
+    				$$scope: { ctx }
+    			},
+    			$$inline: true
+    		});
+
+    	let if_block = (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) && create_if_block$1(ctx);
+    	let each_value_2 = /*project*/ ctx[0].files;
+    	validate_each_argument(each_value_2);
+    	let each_blocks_2 = [];
+
+    	for (let i = 0; i < each_value_2.length; i += 1) {
+    		each_blocks_2[i] = create_each_block_2(get_each_context_2(ctx, each_value_2, i));
+    	}
+
+    	let each_value_1 = options.backgrounds;
+    	validate_each_argument(each_value_1);
+    	let each_blocks_1 = [];
+
+    	for (let i = 0; i < each_value_1.length; i += 1) {
+    		each_blocks_1[i] = create_each_block_1(get_each_context_1(ctx, each_value_1, i));
+    	}
+
+    	let each_value = options.sizes;
+    	validate_each_argument(each_value);
+    	let each_blocks = [];
+
+    	for (let i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block$2(get_each_context$2(ctx, each_value, i));
+    	}
+
+    	function layers_1_groups_binding(value) {
+    		/*layers_1_groups_binding*/ ctx[26](value);
+    	}
+
+    	function layers_1_layers_binding(value) {
+    		/*layers_1_layers_binding*/ ctx[27](value);
+    	}
+
+    	function layers_1_solo_binding(value) {
+    		/*layers_1_solo_binding*/ ctx[28](value);
+    	}
+
+    	let layers_1_props = {};
+
+    	if (/*layers*/ ctx[2].groups !== void 0) {
+    		layers_1_props.groups = /*layers*/ ctx[2].groups;
+    	}
+
+    	if (/*project*/ ctx[0].layers !== void 0) {
+    		layers_1_props.layers = /*project*/ ctx[0].layers;
+    	}
+
+    	if (/*solo*/ ctx[1] !== void 0) {
+    		layers_1_props.solo = /*solo*/ ctx[1];
+    	}
+
+    	layers_1 = new Layers({ props: layers_1_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(layers_1, "groups", layers_1_groups_binding));
+    	binding_callbacks.push(() => bind$1(layers_1, "layers", layers_1_layers_binding));
+    	binding_callbacks.push(() => bind$1(layers_1, "solo", layers_1_solo_binding));
+
+    	function canvas_project_binding(value) {
+    		/*canvas_project_binding*/ ctx[29](value);
+    	}
+
+    	function canvas_editorEl_binding(value) {
+    		/*canvas_editorEl_binding*/ ctx[30](value);
+    	}
+
+    	let canvas_props = {};
+
+    	if (/*project*/ ctx[0] !== void 0) {
+    		canvas_props.project = /*project*/ ctx[0];
+    	}
+
+    	if (/*editorEl*/ ctx[4] !== void 0) {
+    		canvas_props.editorEl = /*editorEl*/ ctx[4];
+    	}
+
+    	canvas = new Canvas({ props: canvas_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(canvas, "project", canvas_project_binding));
+    	binding_callbacks.push(() => bind$1(canvas, "editorEl", canvas_editorEl_binding));
+
+    	const block = {
+    		c: function create() {
+    			div11 = element("div");
+    			nav = element("nav");
+    			div10 = element("div");
+    			section0 = element("section");
+    			create_component(title.$$.fragment);
+    			t0 = space();
+    			div9 = element("div");
+    			div2 = element("div");
+    			div0 = element("div");
+    			span1 = element("span");
+    			span0 = element("span");
+    			t1 = text("\n\t\t\t\t\t\t\tSingle");
+    			t2 = space();
+    			div1 = element("div");
+    			span3 = element("span");
+    			span2 = element("span");
+    			t3 = text("\n\t\t\t\t\t\t\tMultiple");
+    			t4 = space();
+    			aside = element("aside");
+    			if (if_block) if_block.c();
+    			t5 = space();
+
+    			for (let i = 0; i < each_blocks_2.length; i += 1) {
+    				each_blocks_2[i].c();
+    			}
+
+    			t6 = space();
+    			div4 = element("div");
+    			span4 = element("span");
+    			span4.textContent = "Paper";
+    			t8 = space();
+    			div3 = element("div");
+    			select0 = element("select");
+
+    			for (let i = 0; i < each_blocks_1.length; i += 1) {
+    				each_blocks_1[i].c();
+    			}
+
+    			t9 = space();
+    			div6 = element("div");
+    			span5 = element("span");
+    			span5.textContent = "Size";
+    			t11 = space();
+    			div5 = element("div");
+    			select1 = element("select");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			t12 = space();
+    			div7 = element("div");
+    			span6 = element("span");
+    			span6.textContent = "DPI";
+    			t14 = space();
+    			input0 = element("input");
+    			t15 = space();
+    			div8 = element("div");
+    			span7 = element("span");
+    			span7.textContent = "Margin";
+    			t17 = space();
+    			input1 = element("input");
+    			t18 = space();
+    			section1 = element("section");
+    			create_component(layers_1.$$.fragment);
+    			t19 = space();
+    			create_component(canvas.$$.fragment);
+    			attr_dev(span0, "class", "fill");
+    			toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
+    			add_location(span0, file$2, 397, 8, 9208);
+    			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block mr1");
+    			add_location(span1, file$2, 395, 7, 9135);
+    			attr_dev(div0, "class", "br0-solid flex row-flex-start-center mr1 ");
+    			add_location(div0, file$2, 392, 6, 9016);
+    			attr_dev(span2, "class", "fill");
+    			toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
+    			add_location(span2, file$2, 406, 8, 9501);
+    			attr_dev(span3, "class", "b1-solid rel checker w2em h2em block mr1");
+    			add_location(span3, file$2, 404, 7, 9428);
+    			attr_dev(div1, "class", "br0-solid flex row-flex-start-center mr1 ");
+    			add_location(div1, file$2, 401, 6, 9310);
+    			attr_dev(div2, "class", "flex row");
+    			add_location(div2, file$2, 391, 5, 8987);
+    			add_location(aside, file$2, 412, 5, 9616);
+    			attr_dev(span4, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span4, file$2, 435, 6, 10440);
+    			attr_dev(select0, "class", "pl5 w100pc align-right");
+    			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[22].call(select0));
+    			add_location(select0, file$2, 439, 7, 10580);
+    			attr_dev(div3, "class", "select w100pc grow");
+    			add_location(div3, file$2, 438, 6, 10540);
+    			attr_dev(div4, "class", "flex rel");
+    			add_location(div4, file$2, 434, 5, 10411);
+    			attr_dev(span5, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span5, file$2, 447, 6, 10860);
+    			attr_dev(select1, "class", "pl5 w100pc");
+    			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[23].call(select1));
+    			add_location(select1, file$2, 451, 7, 10999);
+    			attr_dev(div5, "class", "select w100pc grow");
+    			add_location(div5, file$2, 450, 6, 10959);
+    			attr_dev(div6, "class", "flex rel");
+    			add_location(div6, file$2, 446, 5, 10831);
+    			attr_dev(span6, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span6, file$2, 459, 6, 11255);
+    			attr_dev(input0, "min", 150);
+    			attr_dev(input0, "max", 600);
+    			attr_dev(input0, "step", 50);
+    			attr_dev(input0, "type", "number");
+    			attr_dev(input0, "class", "w100pc grow");
+    			set_style(input0, "padding-left", "5em");
+    			attr_dev(input0, "placeholder", "DPI");
+    			add_location(input0, file$2, 462, 6, 11353);
+    			attr_dev(div7, "class", "flex rel");
+    			add_location(div7, file$2, 458, 5, 11226);
+    			attr_dev(span7, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
+    			add_location(span7, file$2, 473, 6, 11607);
+    			attr_dev(input1, "min", 0);
+    			attr_dev(input1, "max", 1);
+    			attr_dev(input1, "step", 1);
+    			attr_dev(input1, "class", "w100pc grow");
+    			set_style(input1, "padding-left", "5em");
+    			attr_dev(input1, "type", "number");
+    			attr_dev(input1, "placeholder", "Margin");
+    			add_location(input1, file$2, 476, 6, 11708);
+    			attr_dev(div8, "class", "flex rel");
+    			add_location(div8, file$2, 472, 5, 11578);
+    			attr_dev(div9, "class", "p1 flex column cmb1 bb1-solid");
+    			add_location(div9, file$2, 390, 4, 8938);
+    			attr_dev(section0, "class", /*classes*/ ctx[5].lanes + " basis0pc");
+    			add_location(section0, file$2, 384, 3, 8839);
+    			attr_dev(section1, "id", "layers");
+    			attr_dev(section1, "class", /*classes*/ ctx[5].lanes + " basis20pc");
+    			add_location(section1, file$2, 500, 3, 12002);
+    			attr_dev(div10, "class", "flex row grow overflow-hidden");
+    			add_location(div10, file$2, 371, 2, 8750);
+    			attr_dev(nav, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow");
+    			add_location(nav, file$2, 369, 1, 8672);
+    			attr_dev(div11, "class", "flex row-stretch-stretch bg overflow-hidden grow");
+    			add_location(div11, file$2, 364, 0, 8580);
+    		},
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+    		m: function mount(target, anchor) {
+    			insert_dev(target, div11, anchor);
+    			append_dev(div11, nav);
+    			append_dev(nav, div10);
+    			append_dev(div10, section0);
+    			mount_component(title, section0, null);
+    			append_dev(section0, t0);
+    			append_dev(section0, div9);
+    			append_dev(div9, div2);
+    			append_dev(div2, div0);
+    			append_dev(div0, span1);
+    			append_dev(span1, span0);
+    			append_dev(div0, t1);
+    			append_dev(div2, t2);
+    			append_dev(div2, div1);
+    			append_dev(div1, span3);
+    			append_dev(span3, span2);
+    			append_dev(div1, t3);
+    			append_dev(div9, t4);
+    			append_dev(div9, aside);
+    			if (if_block) if_block.m(aside, null);
+    			append_dev(aside, t5);
+
+    			for (let i = 0; i < each_blocks_2.length; i += 1) {
+    				each_blocks_2[i].m(aside, null);
+    			}
+
+    			append_dev(div9, t6);
+    			append_dev(div9, div4);
+    			append_dev(div4, span4);
+    			append_dev(div4, t8);
+    			append_dev(div4, div3);
+    			append_dev(div3, select0);
+
+    			for (let i = 0; i < each_blocks_1.length; i += 1) {
+    				each_blocks_1[i].m(select0, null);
+    			}
+
+    			select_option(select0, /*project*/ ctx[0].config.background);
+    			append_dev(div9, t9);
+    			append_dev(div9, div6);
+    			append_dev(div6, span5);
+    			append_dev(div6, t11);
+    			append_dev(div6, div5);
+    			append_dev(div5, select1);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(select1, null);
+    			}
+
+    			select_option(select1, /*project*/ ctx[0].config.size);
+    			append_dev(div9, t12);
+    			append_dev(div9, div7);
+    			append_dev(div7, span6);
+    			append_dev(div7, t14);
+    			append_dev(div7, input0);
+    			set_input_value(input0, /*project*/ ctx[0].config.dpi);
+    			append_dev(div9, t15);
+    			append_dev(div9, div8);
+    			append_dev(div8, span7);
+    			append_dev(div8, t17);
+    			append_dev(div8, input1);
+    			set_input_value(input1, /*project*/ ctx[0].config.margin);
+    			append_dev(div10, t18);
+    			append_dev(div10, section1);
+    			mount_component(layers_1, section1, null);
+    			append_dev(div11, t19);
+    			mount_component(canvas, div11, null);
+    			/*div11_binding*/ ctx[31](div11);
+    			current = true;
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(div0, "click", /*click_handler*/ ctx[18], false, false, false),
+    					listen_dev(div1, "click", /*click_handler_1*/ ctx[19], false, false, false),
+    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[22]),
+    					listen_dev(select1, "change", /*select1_change_handler*/ ctx[23]),
+    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[24]),
+    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[25])
+    				];
+
+    				mounted = true;
+    			}
+    		},
+    		p: function update(ctx, dirty) {
+    			const title_changes = {};
+
+    			if (dirty[1] & /*$$scope*/ 67108864) {
+    				title_changes.$$scope = { dirty, ctx };
+    			}
+
+    			title.$set(title_changes);
+
+    			if (dirty[0] & /*project*/ 1) {
+    				toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
+    			}
+
+    			if (dirty[0] & /*project*/ 1) {
+    				toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
+    			}
+
+    			if (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) {
+    				if (if_block) ; else {
+    					if_block = create_if_block$1(ctx);
+    					if_block.c();
+    					if_block.m(aside, t5);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+
+    			if (dirty[0] & /*arrowClass, onFileDown, onFileUp, project*/ 449) {
+    				each_value_2 = /*project*/ ctx[0].files;
+    				validate_each_argument(each_value_2);
+    				let i;
+
+    				for (i = 0; i < each_value_2.length; i += 1) {
+    					const child_ctx = get_each_context_2(ctx, each_value_2, i);
+
+    					if (each_blocks_2[i]) {
+    						each_blocks_2[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks_2[i] = create_each_block_2(child_ctx);
+    						each_blocks_2[i].c();
+    						each_blocks_2[i].m(aside, null);
+    					}
+    				}
+
+    				for (; i < each_blocks_2.length; i += 1) {
+    					each_blocks_2[i].d(1);
+    				}
+
+    				each_blocks_2.length = each_value_2.length;
+    			}
+
+    			if (dirty & /*options*/ 0) {
+    				each_value_1 = options.backgrounds;
+    				validate_each_argument(each_value_1);
+    				let i;
+
+    				for (i = 0; i < each_value_1.length; i += 1) {
+    					const child_ctx = get_each_context_1(ctx, each_value_1, i);
+
+    					if (each_blocks_1[i]) {
+    						each_blocks_1[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks_1[i] = create_each_block_1(child_ctx);
+    						each_blocks_1[i].c();
+    						each_blocks_1[i].m(select0, null);
+    					}
+    				}
+
+    				for (; i < each_blocks_1.length; i += 1) {
+    					each_blocks_1[i].d(1);
+    				}
+
+    				each_blocks_1.length = each_value_1.length;
+    			}
+
+    			if (dirty[0] & /*project*/ 1) {
+    				select_option(select0, /*project*/ ctx[0].config.background);
+    			}
+
+    			if (dirty & /*options*/ 0) {
+    				each_value = options.sizes;
+    				validate_each_argument(each_value);
+    				let i;
+
+    				for (i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context$2(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks[i] = create_each_block$2(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(select1, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+
+    				each_blocks.length = each_value.length;
+    			}
+
+    			if (dirty[0] & /*project*/ 1) {
+    				select_option(select1, /*project*/ ctx[0].config.size);
+    			}
+
+    			if (dirty[0] & /*project*/ 1 && to_number(input0.value) !== /*project*/ ctx[0].config.dpi) {
+    				set_input_value(input0, /*project*/ ctx[0].config.dpi);
+    			}
+
+    			if (dirty[0] & /*project*/ 1 && to_number(input1.value) !== /*project*/ ctx[0].config.margin) {
+    				set_input_value(input1, /*project*/ ctx[0].config.margin);
+    			}
+
+    			const layers_1_changes = {};
+
+    			if (!updating_groups && dirty[0] & /*layers*/ 4) {
+    				updating_groups = true;
+    				layers_1_changes.groups = /*layers*/ ctx[2].groups;
+    				add_flush_callback(() => updating_groups = false);
+    			}
+
+    			if (!updating_layers && dirty[0] & /*project*/ 1) {
+    				updating_layers = true;
+    				layers_1_changes.layers = /*project*/ ctx[0].layers;
+    				add_flush_callback(() => updating_layers = false);
+    			}
+
+    			if (!updating_solo && dirty[0] & /*solo*/ 2) {
+    				updating_solo = true;
+    				layers_1_changes.solo = /*solo*/ ctx[1];
+    				add_flush_callback(() => updating_solo = false);
+    			}
+
+    			layers_1.$set(layers_1_changes);
+    			const canvas_changes = {};
+
+    			if (!updating_project && dirty[0] & /*project*/ 1) {
+    				updating_project = true;
+    				canvas_changes.project = /*project*/ ctx[0];
+    				add_flush_callback(() => updating_project = false);
+    			}
+
+    			if (!updating_editorEl && dirty[0] & /*editorEl*/ 16) {
+    				updating_editorEl = true;
+    				canvas_changes.editorEl = /*editorEl*/ ctx[4];
+    				add_flush_callback(() => updating_editorEl = false);
+    			}
+
+    			canvas.$set(canvas_changes);
+    		},
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(title.$$.fragment, local);
+    			transition_in(layers_1.$$.fragment, local);
+    			transition_in(canvas.$$.fragment, local);
+    			current = true;
+    		},
+    		o: function outro(local) {
+    			transition_out(title.$$.fragment, local);
+    			transition_out(layers_1.$$.fragment, local);
+    			transition_out(canvas.$$.fragment, local);
+    			current = false;
+    		},
+    		d: function destroy(detaching) {
+    			if (detaching) detach_dev(div11);
+    			destroy_component(title);
+    			if (if_block) if_block.d();
+    			destroy_each(each_blocks_2, detaching);
+    			destroy_each(each_blocks_1, detaching);
+    			destroy_each(each_blocks, detaching);
+    			destroy_component(layers_1);
+    			destroy_component(canvas);
+    			/*div11_binding*/ ctx[31](null);
+    			mounted = false;
+    			run_all(dispose);
+    		}
+    	};
+
+    	dispatch_dev("SvelteRegisterBlock", {
+    		block,
+    		id: create_fragment$2.name,
+    		type: "component",
+    		source: "",
+    		ctx
+    	});
+
+    	return block;
+    }
+
+    async function removeChildren(obj) {
+    	for (let x = obj.children.length - 1; x >= 0; x--) {
+    		// await obj.children[x].destroy( { children: true })
+    		await obj.removeChild(obj.children[x]);
+    	}
+    }
+
+    function instance$2($$self, $$props, $$invalidate) {
+    	let { $$slots: slots = {}, $$scope } = $$props;
+    	validate_slots("Project", slots, []);
+    	let main, app, stage, loader, mode;
+    	let solo = null;
+    	window.PIXI = PIXI;
+    	settings.SCALE_MODE = SCALE_MODES$1.NEAREST;
+
+    	let layers = window.layers = {
+    		background: new Graphics(),
+    		container: new Container(),
+    		groups: [],
+    		processed: new Container()
+    	};
+
+    	let pixi = window.pixi = {
+    		app: new Application({
+    				antialias: false,
+    				transparent: true,
+    				resolution: 1,
+    				forceCanvas: true,
+    				preserveDrawingBuffer: true
+    			}),
+    		loader: new Loader()
+    	};
+
+    	// let thumb = new PIXI.Application({
+    	// 	antialias: false,
+    	// 	transparent: true,
+    	// 	resolution: 1,
+    	// 	forceCanvas: true,
+    	// 	preserveDrawingBuffer: true
+    	// })
+    	onMount(async e => {
+    		await init();
+    	});
+
+    	let { project } = $$props;
+    	let { files } = $$props;
+    	let { IDX } = $$props;
+    	let { THUMBS } = $$props;
+    	let editorEl;
+    	const mm2px = mm => Math.round(project.config.dpi / 25.4 * mm);
+
+    	/* UNIFORMS - set uniforms and px width and height */
+    	let lastConfig;
+
+    	let uniforms = {};
+    	let fit = {};
+
+    	async function init() {
+    		console.log(`[Project] 🎉  initing`);
+    		editorEl.appendChild(pixi.app.view);
+    		layers.background.drawRect(0, 0, project.info.width, project.info.height);
+
+    		$$invalidate(
+    			2,
+    			layers.background.filters = [
+    				new Filter(null,
+    				`
+			${glLib}
+			varying vec2 vTextureCoord;
+			uniform bool solo;
+			uniform sampler2D uSampler;
+			uniform vec4 hsla;
+
+			void main(void) {
+
+				vec3 bg3 = vec3(hsla.x / 360.0, hsla.y / 100.0, hsla.z / 100.0);
+				vec4 bg4 = vec4( hsl2rgb( bg3 ), 1.0 );
+				if (solo) bg4 = vec4(0.0,0.0,0.0,0.0);
+				gl_FragColor = bg4;
+
+			}`,
+    				uniforms)
+    			],
+    			layers
+    		);
+
+    		pixi.app.stage.addChild(layers.container);
+    		layers.container.addChild(layers.background);
+    		layers.container.addChild(layers.processed);
+    		console.log(`[Project] 🎉  run update?`);
+    	}
+
+    	let lastFiles;
+
+    	async function setup(files) {
+    		let str = JSON.stringify(files);
+    		if (lastFiles == str) return;
+    		lastFiles = str;
+    		console.log("[Project] 💿  setup, pixi.loader is resetting", files);
+
+    		if (!files?.srcs) {
+    			console.log(`[Project] 💿 ❌  no files.srcs`);
+    			return;
+    		}
+
+    		let list = project.files.filter(name => files.srcs[name]);
+
+    		if (list.length != project.files.length) {
+    			console.log(`[Project] 💿 ❌  list doesn't match project.files`);
+    			return;
+    		}
+
+    		await pixi.loader.reset();
+
+    		for (const name of project.files) {
+    			let o = files.srcs[name];
+    			if (!pixi.loader.resources[o.url]) pixi.loader.add(o.url, { crossOrigin: "anonymous" });
+    		}
+
+    		await setPositions();
+
+    		pixi.loader.load(async e => {
+    			console.log("[Project] 💿 ✅  pixi.loader loaded files");
+    			await drawImages();
+    		}); // await renderThumbnail()
+
+    		$$invalidate(17, inited = true);
+    	}
+
+    	/* UPDATE - when project config changes...*/
+    	let updateTimeout;
+
+    	let lastLayerLength;
+    	let prevMargin;
+
+    	async function drawImages() {
+    		const { width, height } = project.info;
+    		console.log(`[Project] 🖼  drawing images ${width} ${height}`);
+    		const len = Object.keys(pixi.loader.resources).length;
+    		const size = rectd.neu(0, 0, width, height);
+    		const inner = rectd.shrinkBy(size, mm2px(project.config.margin));
+    		$$invalidate(16, prevMargin = project.config.margin);
+    		let splits = rectd.splitUp(inner, len);
+
+    		for (let idx = 0; idx < project.layers.length; idx++) {
+    			if (!layers.groups[idx]) $$invalidate(2, layers.groups[idx] = new Container(), layers);
+    			await removeChildren(layers.groups[idx]);
+    			let i = 0;
+
+    			for (const [name, resource] of Object.entries(pixi.loader.resources)) {
+    				let sprite = new Sprite(resource.texture);
+    				let image = rectd.neu(0, 0, resource.data.width, resource.data.height);
+    				sprite.width = width;
+    				sprite.height = height;
+    				let fit = rectd.fitInto(image, inner);
+    				rectd.auto(fit, sprite);
+
+    				if (splits.length > 1) {
+    					let mask = new Graphics();
+    					mask.drawRect(splits[i].x, splits[i].y, splits[i].width, splits[i].height);
+    					sprite.mask = mask;
+    				}
+
+    				console.log(`[Project] 🖼  added sprite ${name} ${sprite.width} ${sprite.height}`);
+    				await layers.groups[idx].addChild(sprite);
+    				i += 1;
+    			}
+
+    			layers.processed.addChild(layers.groups[idx]);
+    		}
+
+    		console.log(`[Project] 🖼 ✅  ${Object.keys(pixi.loader.resources).length} images drawn in ${project.layers.length} layers`);
+    	}
+
+    	let inited = false;
+
+    	async function setPositions() {
+    		const { width, height } = project.info;
+    		$$invalidate(2, layers.background.width = width, layers);
+    		$$invalidate(2, layers.background.height = height, layers);
+
+    		// layers.container.x = editorEl.offsetWidth / 2
+    		// layers.container.y = editorEl.offsetHeight / 2
+    		// layers.container.pivot.x = width/2
+    		// layers.container.pivot.y = height/2
+    		console.log(`[Project] 📐  positions set ${width} ${height}`);
+    	}
+
+    	let classes = {
+    		miniButtons: `p0 rel w3em h3em bg pointer z-index4 bt0-solid br0-solid`,
+    		lanes: `flex column br1-solid overflow-auto no-basis grow`
+    	};
+
+    	let targets = {};
+    	let arrowClass = `p0 no-grow flex row-center-center w3em b0-solid`;
+
+    	function move(from, to) {
+    		let cp = project.files;
+    		$$invalidate(0, project.files = [], project);
+    		let i = cp.splice(from, 1)[0];
+    		cp.splice(to, 0, i);
+    		$$invalidate(0, project.files = cp, project);
+    	}
+
+    	function onFileDown(idx) {
+    		let to = idx + 1;
+    		if (to >= project.files.length) return;
+    		move(idx, to);
+    	}
+
+    	function onFileUp(idx) {
+    		let to = idx - 1;
+    		if (to < 0) return;
+    		move(idx, to);
+    	}
+
+    	function onFileDelete(idx) {
+    		$$invalidate(
+    			0,
+    			project.files = [
+    				...project.files.slice(0, idx),
+    				...project.files.slice(idx + 1, project.files.length)
+    			],
+    			project
+    		);
+    	}
+
+    	const writable_props = ["project", "files", "IDX", "THUMBS"];
+
+    	Object_1.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$2.warn(`<Project> was created with unknown prop '${key}'`);
+    	});
+
+    	const click_handler = e => $$invalidate(0, project.multiple = false, project);
+    	const click_handler_1 = e => $$invalidate(0, project.multiple = true, project);
+    	const click_handler_2 = (idx, e) => onFileUp(idx);
+    	const click_handler_3 = (idx, e) => onFileDown(idx);
+
+    	function select0_change_handler() {
+    		project.config.background = select_value(this);
+    		(((((((((($$invalidate(0, project), $$invalidate(1, solo)), $$invalidate(12, lastConfig)), $$invalidate(13, uniforms)), $$invalidate(38, pixi)), $$invalidate(17, inited)), $$invalidate(14, updateTimeout)), $$invalidate(2, layers)), $$invalidate(16, prevMargin)), $$invalidate(15, lastLayerLength)), $$invalidate(9, files));
+    	}
+
+    	function select1_change_handler() {
+    		project.config.size = select_value(this);
+    		(((((((((($$invalidate(0, project), $$invalidate(1, solo)), $$invalidate(12, lastConfig)), $$invalidate(13, uniforms)), $$invalidate(38, pixi)), $$invalidate(17, inited)), $$invalidate(14, updateTimeout)), $$invalidate(2, layers)), $$invalidate(16, prevMargin)), $$invalidate(15, lastLayerLength)), $$invalidate(9, files));
+    	}
+
+    	function input0_input_handler() {
+    		project.config.dpi = to_number(this.value);
+    		(((((((((($$invalidate(0, project), $$invalidate(1, solo)), $$invalidate(12, lastConfig)), $$invalidate(13, uniforms)), $$invalidate(38, pixi)), $$invalidate(17, inited)), $$invalidate(14, updateTimeout)), $$invalidate(2, layers)), $$invalidate(16, prevMargin)), $$invalidate(15, lastLayerLength)), $$invalidate(9, files));
+    	}
+
+    	function input1_input_handler() {
+    		project.config.margin = to_number(this.value);
+    		(((((((((($$invalidate(0, project), $$invalidate(1, solo)), $$invalidate(12, lastConfig)), $$invalidate(13, uniforms)), $$invalidate(38, pixi)), $$invalidate(17, inited)), $$invalidate(14, updateTimeout)), $$invalidate(2, layers)), $$invalidate(16, prevMargin)), $$invalidate(15, lastLayerLength)), $$invalidate(9, files));
+    	}
+
+    	function layers_1_groups_binding(value) {
+    		if ($$self.$$.not_equal(layers.groups, value)) {
+    			layers.groups = value;
+    			$$invalidate(2, layers);
+    		}
+    	}
+
+    	function layers_1_layers_binding(value) {
+    		if ($$self.$$.not_equal(project.layers, value)) {
+    			project.layers = value;
+    			(((((((((($$invalidate(0, project), $$invalidate(1, solo)), $$invalidate(12, lastConfig)), $$invalidate(13, uniforms)), $$invalidate(38, pixi)), $$invalidate(17, inited)), $$invalidate(14, updateTimeout)), $$invalidate(2, layers)), $$invalidate(16, prevMargin)), $$invalidate(15, lastLayerLength)), $$invalidate(9, files));
+    		}
+    	}
+
+    	function layers_1_solo_binding(value) {
+    		solo = value;
+    		$$invalidate(1, solo);
+    	}
+
+    	function canvas_project_binding(value) {
+    		project = value;
+    		(((((((((($$invalidate(0, project), $$invalidate(1, solo)), $$invalidate(12, lastConfig)), $$invalidate(13, uniforms)), $$invalidate(38, pixi)), $$invalidate(17, inited)), $$invalidate(14, updateTimeout)), $$invalidate(2, layers)), $$invalidate(16, prevMargin)), $$invalidate(15, lastLayerLength)), $$invalidate(9, files));
+    	}
+
+    	function canvas_editorEl_binding(value) {
+    		editorEl = value;
+    		$$invalidate(4, editorEl);
+    	}
+
+    	function div11_binding($$value) {
+    		binding_callbacks[$$value ? "unshift" : "push"](() => {
+    			main = $$value;
+    			$$invalidate(3, main);
+    		});
+    	}
+
+    	$$self.$$set = $$props => {
+    		if ("project" in $$props) $$invalidate(0, project = $$props.project);
+    		if ("files" in $$props) $$invalidate(9, files = $$props.files);
+    		if ("IDX" in $$props) $$invalidate(10, IDX = $$props.IDX);
+    		if ("THUMBS" in $$props) $$invalidate(11, THUMBS = $$props.THUMBS);
+    	};
+
+    	$$self.$capture_state = () => ({
+    		glLib,
+    		PIXI,
+    		onMount,
+    		get,
+    		set: set$1,
+    		rectd,
+    		options,
+    		Layers,
+    		Palette,
+    		Title,
+    		Canvas,
+    		main,
+    		app,
+    		stage,
+    		loader,
+    		mode,
+    		solo,
+    		layers,
+    		pixi,
+    		project,
+    		files,
+    		IDX,
+    		THUMBS,
+    		editorEl,
+    		mm2px,
+    		lastConfig,
+    		uniforms,
+    		fit,
+    		init,
+    		lastFiles,
+    		setup,
+    		updateTimeout,
+    		lastLayerLength,
+    		prevMargin,
+    		removeChildren,
+    		drawImages,
+    		inited,
+    		setPositions,
+    		classes,
+    		targets,
+    		arrowClass,
+    		move,
+    		onFileDown,
+    		onFileUp,
+    		onFileDelete
+    	});
+
+    	$$self.$inject_state = $$props => {
+    		if ("main" in $$props) $$invalidate(3, main = $$props.main);
+    		if ("app" in $$props) app = $$props.app;
+    		if ("stage" in $$props) stage = $$props.stage;
+    		if ("loader" in $$props) loader = $$props.loader;
+    		if ("mode" in $$props) mode = $$props.mode;
+    		if ("solo" in $$props) $$invalidate(1, solo = $$props.solo);
+    		if ("layers" in $$props) $$invalidate(2, layers = $$props.layers);
+    		if ("pixi" in $$props) $$invalidate(38, pixi = $$props.pixi);
+    		if ("project" in $$props) $$invalidate(0, project = $$props.project);
+    		if ("files" in $$props) $$invalidate(9, files = $$props.files);
+    		if ("IDX" in $$props) $$invalidate(10, IDX = $$props.IDX);
+    		if ("THUMBS" in $$props) $$invalidate(11, THUMBS = $$props.THUMBS);
+    		if ("editorEl" in $$props) $$invalidate(4, editorEl = $$props.editorEl);
+    		if ("lastConfig" in $$props) $$invalidate(12, lastConfig = $$props.lastConfig);
+    		if ("uniforms" in $$props) $$invalidate(13, uniforms = $$props.uniforms);
+    		if ("fit" in $$props) fit = $$props.fit;
+    		if ("lastFiles" in $$props) lastFiles = $$props.lastFiles;
+    		if ("updateTimeout" in $$props) $$invalidate(14, updateTimeout = $$props.updateTimeout);
+    		if ("lastLayerLength" in $$props) $$invalidate(15, lastLayerLength = $$props.lastLayerLength);
+    		if ("prevMargin" in $$props) $$invalidate(16, prevMargin = $$props.prevMargin);
+    		if ("inited" in $$props) $$invalidate(17, inited = $$props.inited);
+    		if ("classes" in $$props) $$invalidate(5, classes = $$props.classes);
+    		if ("targets" in $$props) targets = $$props.targets;
+    		if ("arrowClass" in $$props) $$invalidate(6, arrowClass = $$props.arrowClass);
+    	};
+
+    	if ($$props && "$$inject" in $$props) {
+    		$$self.$inject_state($$props.$$inject);
+    	}
+
+    	$$self.$$.update = () => {
+    		if ($$self.$$.dirty[0] & /*solo, project, lastConfig, uniforms*/ 12291) {
+    			(async project_ => {
+    				$$invalidate(13, uniforms.solo = solo != null, uniforms);
+    				let str = JSON.stringify(project.config);
+    				if (str == lastConfig) return;
+    				$$invalidate(12, lastConfig = str);
+    				console.log("[Project] 🛠  project config updated");
+    				$$invalidate(13, uniforms.hsla = options.backgrounds.find(b => b.name == project.config.background).colour, uniforms);
+    				$$invalidate(13, uniforms.size = options.sizes.find(b => b.name == project.config.size).xy, uniforms);
+    				if (!project.info) $$invalidate(0, project.info = {}, project);
+    				$$invalidate(0, project.info.width = mm2px(uniforms.size[0]), project);
+    				$$invalidate(0, project.info.height = mm2px(uniforms.size[1]), project);
+    				await pixi.app.renderer.resize(project.info.width, project.info.height);
+    			})();
+    		}
+
+    		if ($$self.$$.dirty[0] & /*files*/ 512) {
+    			setup(files);
+    		}
+
+    		if ($$self.$$.dirty[0] & /*inited, project, updateTimeout, layers, prevMargin, lastLayerLength, files*/ 246277) {
+    			(config => {
+    				if (pixi?.app?.renderer && inited) {
+    					const { width, height } = project.info;
+
+    					if (updateTimeout) {
+    						clearTimeout(updateTimeout);
+    						$$invalidate(14, updateTimeout = null);
+    					}
+
+    					$$invalidate(14, updateTimeout = setTimeout(
+    						async e => {
+    							// console.log('[Project] 🪡  update')
+    							console.log("[Project] 💫  update triggered..."); // await drawImages()
+    							// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
+
+    							if (!project.multiple && project.files.length > 1) {
+    								if (!window.confirm(`Remove ${project.files.length - 1} images from project?`)) return;
+    								$$invalidate(0, project.files = project.files.splice(1, project.files.length), project);
+    							}
+
+    							const neuSize = width != layers.background.width || height != layers.background.height;
+    							const neuMargin = project.config.margin != prevMargin;
+    							const isCanvasChanged = neuSize || neuMargin;
+    							const isNewFiles = project.files.length != Object.keys(pixi.loader.resources).length;
+    							const isNewLayer = project.layers.length != lastLayerLength;
+    							$$invalidate(15, lastLayerLength = project.layers.length);
+    							const isTrigger = project.trigger;
+
+    							// console.log( { isCanvasChanged, isNewLayer, isNewFiles, isTrigger } )
+    							if (isNewFiles || isTrigger) {
+    								console.log("[Project] 💫  new files, running setup...");
+    								await setup(files);
+    								$$invalidate(0, project.trigger = false, project);
+    							}
+
+    							if (isCanvasChanged || isNewLayer) {
+    								console.log("[Project] 💫  canvas is changed, running setPositions and drawImages...");
+    								await setPositions();
+    								await drawImages();
+    							}
+    						},
+    						// await renderThumbnail()
+    						/* draw lores version */
+    						// let loresEl = editorEl.querySelector('#lores')
+    						// console.log(editorEl, loresEl)
+    						// loresEl.width = project.info.width / 2
+    						// loresEl.height = project.info.height / 2
+    						// let pix = await pixi.app.renderer.plugins.extract.image()
+    						// loresEl.getContext('2d').putImageData(, loresEl.width, loresEl.height)
+    						100
+    					)); // await drawImages()
+    					// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
+    				}
+    			})(project.config);
+    		}
+    	};
+
+    	return [
+    		project,
+    		solo,
+    		layers,
+    		main,
+    		editorEl,
+    		classes,
+    		arrowClass,
+    		onFileDown,
+    		onFileUp,
+    		files,
+    		IDX,
+    		THUMBS,
+    		lastConfig,
+    		uniforms,
+    		updateTimeout,
+    		lastLayerLength,
+    		prevMargin,
+    		inited,
+    		click_handler,
+    		click_handler_1,
+    		click_handler_2,
+    		click_handler_3,
+    		select0_change_handler,
+    		select1_change_handler,
+    		input0_input_handler,
+    		input1_input_handler,
+    		layers_1_groups_binding,
+    		layers_1_layers_binding,
+    		layers_1_solo_binding,
+    		canvas_project_binding,
+    		canvas_editorEl_binding,
+    		div11_binding
+    	];
+    }
+
+    class Project extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+
+    		init$1(
+    			this,
+    			options,
+    			instance$2,
+    			create_fragment$2,
+    			safe_not_equal,
+    			{
+    				project: 0,
+    				files: 9,
+    				IDX: 10,
+    				THUMBS: 11
+    			},
+    			[-1, -1]
+    		);
+
+    		dispatch_dev("SvelteRegisterComponent", {
+    			component: this,
+    			tagName: "Project",
+    			options,
+    			id: create_fragment$2.name
+    		});
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+
+    		if (/*project*/ ctx[0] === undefined && !("project" in props)) {
+    			console_1$2.warn("<Project> was created without expected prop 'project'");
+    		}
+
+    		if (/*files*/ ctx[9] === undefined && !("files" in props)) {
+    			console_1$2.warn("<Project> was created without expected prop 'files'");
+    		}
+
+    		if (/*IDX*/ ctx[10] === undefined && !("IDX" in props)) {
+    			console_1$2.warn("<Project> was created without expected prop 'IDX'");
+    		}
+
+    		if (/*THUMBS*/ ctx[11] === undefined && !("THUMBS" in props)) {
+    			console_1$2.warn("<Project> was created without expected prop 'THUMBS'");
+    		}
+    	}
+
+    	get project() {
+    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set project(value) {
+    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get files() {
+    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set files(value) {
+    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get IDX() {
+    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set IDX(value) {
+    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get THUMBS() {
+    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set THUMBS(value) {
+    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src/lib/Files.svelte generated by Svelte v3.38.3 */
+
+    const { console: console_1$1 } = globals;
+    const file$1 = "src/lib/Files.svelte";
+
+    function get_each_context$1(ctx, list, i) {
+    	const child_ctx = ctx.slice();
+    	child_ctx[13] = list[i];
+    	child_ctx[15] = i;
+    	return child_ctx;
+    }
+
+    // (157:20) {:else}
     function create_else_block(ctx) {
     	let div;
-    	let t_value = /*handle*/ ctx[90].name + "";
+    	let t_value = /*handle*/ ctx[13].name + "";
     	let t;
 
     	const block = {
@@ -46825,14 +50989,14 @@ void main(void) {
     			div = element("div");
     			t = text(t_value);
     			attr_dev(div, "class", " minh8em flex row-center-center");
-    			add_location(div, file$1, 533, 9, 12150);
+    			add_location(div, file$1, 157, 24, 4983);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
     			append_dev(div, t);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*files*/ 2 && t_value !== (t_value = /*handle*/ ctx[90].name + "")) set_data_dev(t, t_value);
+    			if (dirty & /*files*/ 1 && t_value !== (t_value = /*handle*/ ctx[13].name + "")) set_data_dev(t, t_value);
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div);
@@ -46843,15 +51007,15 @@ void main(void) {
     		block,
     		id: create_else_block.name,
     		type: "else",
-    		source: "(533:8) {:else}",
+    		source: "(157:20) {:else}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (527:8) {#if files.srcs[handle.name]}
-    function create_if_block_2(ctx) {
+    // (151:20) {#if files.srcs[handle.name]}
+    function create_if_block_1(ctx) {
     	let img;
     	let img_style_value;
     	let img_src_value;
@@ -46861,30 +51025,30 @@ void main(void) {
     		c: function create() {
     			img = element("img");
 
-    			attr_dev(img, "style", img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1
+    			attr_dev(img, "style", img_style_value = `opacity:${/*project*/ ctx[1].files.indexOf(/*handle*/ ctx[13].name) != -1
 			? "1;"
 			: "0.8;filter: grayscale(100%);"}`);
 
     			attr_dev(img, "class", "");
-    			if (img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[90].name].url)) attr_dev(img, "src", img_src_value);
-    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[90].name);
-    			add_location(img, file$1, 527, 10, 11909);
+    			if (img.src !== (img_src_value = /*files*/ ctx[0].srcs[/*handle*/ ctx[13].name].url)) attr_dev(img, "src", img_src_value);
+    			attr_dev(img, "alt", img_alt_value = /*handle*/ ctx[13].name);
+    			add_location(img, file$1, 151, 28, 4631);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, img, anchor);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty[0] & /*project, files*/ 3 && img_style_value !== (img_style_value = `opacity:${/*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1
+    			if (dirty & /*project, files*/ 3 && img_style_value !== (img_style_value = `opacity:${/*project*/ ctx[1].files.indexOf(/*handle*/ ctx[13].name) != -1
 			? "1;"
 			: "0.8;filter: grayscale(100%);"}`)) {
     				attr_dev(img, "style", img_style_value);
     			}
 
-    			if (dirty[0] & /*files*/ 2 && img.src !== (img_src_value = /*files*/ ctx[1].srcs[/*handle*/ ctx[90].name].url)) {
+    			if (dirty & /*files*/ 1 && img.src !== (img_src_value = /*files*/ ctx[0].srcs[/*handle*/ ctx[13].name].url)) {
     				attr_dev(img, "src", img_src_value);
     			}
 
-    			if (dirty[0] & /*files*/ 2 && img_alt_value !== (img_alt_value = /*handle*/ ctx[90].name)) {
+    			if (dirty & /*files*/ 1 && img_alt_value !== (img_alt_value = /*handle*/ ctx[13].name)) {
     				attr_dev(img, "alt", img_alt_value);
     			}
     		},
@@ -46895,17 +51059,17 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_if_block_2.name,
+    		id: create_if_block_1.name,
     		type: "if",
-    		source: "(527:8) {#if files.srcs[handle.name]}",
+    		source: "(151:20) {#if files.srcs[handle.name]}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (509:5) {#each files.handles as handle, i}
-    function create_each_block_4(ctx) {
+    // (133:8) {#each files.handles as handle, i}
+    function create_each_block$1(ctx) {
     	let div2;
     	let div0;
     	let button0;
@@ -46920,15 +51084,15 @@ void main(void) {
     	let dispose;
 
     	function click_handler(...args) {
-    		return /*click_handler*/ ctx[28](/*handle*/ ctx[90], ...args);
+    		return /*click_handler*/ ctx[5](/*handle*/ ctx[13], ...args);
     	}
 
     	function click_handler_1(...args) {
-    		return /*click_handler_1*/ ctx[29](/*handle*/ ctx[90], ...args);
+    		return /*click_handler_1*/ ctx[6](/*handle*/ ctx[13], ...args);
     	}
 
     	function select_block_type(ctx, dirty) {
-    		if (/*files*/ ctx[1].srcs[/*handle*/ ctx[90].name]) return create_if_block_2;
+    		if (/*files*/ ctx[0].srcs[/*handle*/ ctx[13].name]) return create_if_block_1;
     		return create_else_block;
     	}
 
@@ -46936,7 +51100,7 @@ void main(void) {
     	let if_block = current_block_type(ctx);
 
     	function click_handler_2(...args) {
-    		return /*click_handler_2*/ ctx[30](/*handle*/ ctx[90], ...args);
+    		return /*click_handler_2*/ ctx[7](/*handle*/ ctx[13], ...args);
     	}
 
     	const block = {
@@ -46952,18 +51116,18 @@ void main(void) {
     			div1 = element("div");
     			if_block.c();
     			t4 = space();
-    			attr_dev(button0, "class", /*classes*/ ctx[19].miniButtons);
-    			add_location(button0, file$1, 514, 8, 11489);
-    			attr_dev(button1, "class", /*classes*/ ctx[19].miniButtons);
-    			add_location(button1, file$1, 519, 8, 11631);
+    			attr_dev(button0, "class", /*classes*/ ctx[4].miniButtons);
+    			add_location(button0, file$1, 138, 20, 4037);
+    			attr_dev(button1, "class", /*classes*/ ctx[4].miniButtons);
+    			add_location(button1, file$1, 143, 20, 4248);
     			attr_dev(div0, "class", "overlay abs t1 l1 bt1-solid br1-solid flex grow row-flex-end-flex-start z-index2");
-    			add_location(div0, file$1, 513, 7, 11386);
+    			add_location(div0, file$1, 137, 16, 3922);
     			attr_dev(div1, "class", "b1-solid flex");
-    			add_location(div1, file$1, 525, 7, 11788);
+    			add_location(div1, file$1, 149, 16, 4480);
     			attr_dev(div2, "class", "rel bb1-solid file p1");
-    			toggle_class(div2, "bt1-solid", /*i*/ ctx[92] == 0);
-    			toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1);
-    			add_location(div2, file$1, 509, 6, 11247);
+    			toggle_class(div2, "bt1-solid", /*i*/ ctx[15] == 0);
+    			toggle_class(div2, "pop", /*project*/ ctx[1].files.indexOf(/*handle*/ ctx[13].name) != -1);
+    			add_location(div2, file$1, 133, 12, 3747);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div2, anchor);
@@ -47003,8 +51167,8 @@ void main(void) {
     				}
     			}
 
-    			if (dirty[0] & /*project, files*/ 3) {
-    				toggle_class(div2, "pop", /*project*/ ctx[0].files.indexOf(/*handle*/ ctx[90].name) != -1);
+    			if (dirty & /*project, files*/ 3) {
+    				toggle_class(div2, "pop", /*project*/ ctx[1].files.indexOf(/*handle*/ ctx[13].name) != -1);
     			}
     		},
     		d: function destroy(detaching) {
@@ -47017,17 +51181,17 @@ void main(void) {
 
     	dispatch_dev("SvelteRegisterBlock", {
     		block,
-    		id: create_each_block_4.name,
+    		id: create_each_block$1.name,
     		type: "each",
-    		source: "(509:5) {#each files.handles as handle, i}",
+    		source: "(133:8) {#each files.handles as handle, i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (545:4) {#if files.handles.length == 0 }
-    function create_if_block_1(ctx) {
+    // (169:4) {#if files.handles.length == 0 }
+    function create_if_block(ctx) {
     	let div;
 
     	const block = {
@@ -47035,64 +51199,7 @@ void main(void) {
     			div = element("div");
     			div.textContent = "No files";
     			attr_dev(div, "class", "p1");
-    			add_location(div, file$1, 545, 5, 12361);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_if_block_1.name,
-    		type: "if",
-    		source: "(545:4) {#if files.handles.length == 0 }",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (576:4) <Title>
-    function create_default_slot_1$1(ctx) {
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			t = text("Layout");
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, t, anchor);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(t);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_default_slot_1$1.name,
-    		type: "slot",
-    		source: "(576:4) <Title>",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (605:6) {#if !project.files || project.files.length == 0}
-    function create_if_block(ctx) {
-    	let div;
-
-    	const block = {
-    		c: function create() {
-    			div = element("div");
-    			div.textContent = "No image(s) selected";
-    			attr_dev(div, "class", "button b1-solid error");
-    			add_location(div, file$1, 605, 7, 13644);
+    			add_location(div, file$1, 169, 8, 5281);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div, anchor);
@@ -47106,295 +51213,7 @@ void main(void) {
     		block,
     		id: create_if_block.name,
     		type: "if",
-    		source: "(605:6) {#if !project.files || project.files.length == 0}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (608:6) {#each project.files as file, idx}
-    function create_each_block_3(ctx) {
-    	let div;
-    	let span;
-    	let t0_value = /*file*/ ctx[87] + "";
-    	let t0;
-    	let t1;
-    	let button0;
-    	let t2;
-    	let button1;
-    	let t3;
-    	let mounted;
-    	let dispose;
-
-    	function click_handler_5(...args) {
-    		return /*click_handler_5*/ ctx[34](/*idx*/ ctx[89], ...args);
-    	}
-
-    	function click_handler_6(...args) {
-    		return /*click_handler_6*/ ctx[35](/*idx*/ ctx[89], ...args);
-    	}
-
-    	const block = {
-    		c: function create() {
-    			div = element("div");
-    			span = element("span");
-    			t0 = text(t0_value);
-    			t1 = space();
-    			button0 = element("button");
-    			t2 = space();
-    			button1 = element("button");
-    			t3 = space();
-    			attr_dev(span, "class", "h3em flex column-flex-start-center plr1 grow");
-    			add_location(span, file$1, 609, 8, 13846);
-    			attr_dev(button0, "class", "" + (/*arrowClass*/ ctx[20] + " arrow rotate180 br1-solid"));
-    			add_location(button0, file$1, 610, 8, 13927);
-    			attr_dev(button1, "class", "" + (/*arrowClass*/ ctx[20] + " arrow bl1-solid "));
-    			add_location(button1, file$1, 613, 8, 14044);
-    			attr_dev(div, "class", "flex row-stretch-stretch b1-solid");
-    			set_style(div, "margin-top", "-1px");
-    			add_location(div, file$1, 608, 7, 13766);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			append_dev(div, span);
-    			append_dev(span, t0);
-    			append_dev(div, t1);
-    			append_dev(div, button0);
-    			append_dev(div, t2);
-    			append_dev(div, button1);
-    			append_dev(div, t3);
-
-    			if (!mounted) {
-    				dispose = [
-    					listen_dev(button0, "click", click_handler_5, false, false, false),
-    					listen_dev(button1, "click", click_handler_6, false, false, false)
-    				];
-
-    				mounted = true;
-    			}
-    		},
-    		p: function update(new_ctx, dirty) {
-    			ctx = new_ctx;
-    			if (dirty[0] & /*project*/ 1 && t0_value !== (t0_value = /*file*/ ctx[87] + "")) set_data_dev(t0, t0_value);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
-    			mounted = false;
-    			run_all(dispose);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_3.name,
-    		type: "each",
-    		source: "(608:6) {#each project.files as file, idx}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (632:8) {#each options.backgrounds as bg}
-    function create_each_block_2(ctx) {
-    	let option;
-    	let t_value = /*bg*/ ctx[84].name + "";
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			option = element("option");
-    			t = text(t_value);
-    			option.__value = /*bg*/ ctx[84].name;
-    			option.value = option.__value;
-    			attr_dev(option, "name", /*bg*/ ctx[84].name);
-    			add_location(option, file$1, 632, 9, 14666);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, option, anchor);
-    			append_dev(option, t);
-    		},
-    		p: noop$1,
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(option);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_2.name,
-    		type: "each",
-    		source: "(632:8) {#each options.backgrounds as bg}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (644:8) {#each options.sizes as sz}
-    function create_each_block_1(ctx) {
-    	let option;
-    	let t_value = /*sz*/ ctx[81].name + "";
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			option = element("option");
-    			t = text(t_value);
-    			option.__value = /*sz*/ ctx[81].name;
-    			option.value = option.__value;
-    			attr_dev(option, "name", /*sz*/ ctx[81].name);
-    			add_location(option, file$1, 644, 9, 15061);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, option, anchor);
-    			append_dev(option, t);
-    		},
-    		p: noop$1,
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(option);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block_1.name,
-    		type: "each",
-    		source: "(644:8) {#each options.sizes as sz}",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (685:4) <Title>
-    function create_default_slot$1(ctx) {
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			t = text("Layers");
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, t, anchor);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(t);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_default_slot$1.name,
-    		type: "slot",
-    		source: "(685:4) <Title>",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (686:4) {#each layers.groups as group, index}
-    function create_each_block$1(ctx) {
-    	let div;
-    	let layer;
-    	let updating_group;
-    	let updating_solo;
-    	let updating_layer;
-    	let current;
-
-    	function layer_group_binding(value) {
-    		/*layer_group_binding*/ ctx[40](value, /*group*/ ctx[78], /*each_value*/ ctx[79], /*index*/ ctx[80]);
-    	}
-
-    	function layer_solo_binding(value) {
-    		/*layer_solo_binding*/ ctx[41](value);
-    	}
-
-    	function layer_layer_binding(value) {
-    		/*layer_layer_binding*/ ctx[42](value, /*index*/ ctx[80]);
-    	}
-
-    	let layer_props = {
-    		index: /*index*/ ctx[80],
-    		pixi: /*pixi*/ ctx[15]
-    	};
-
-    	if (/*group*/ ctx[78] !== void 0) {
-    		layer_props.group = /*group*/ ctx[78];
-    	}
-
-    	if (/*solo*/ ctx[9] !== void 0) {
-    		layer_props.solo = /*solo*/ ctx[9];
-    	}
-
-    	if (/*project*/ ctx[0].layers[/*index*/ ctx[80]] !== void 0) {
-    		layer_props.layer = /*project*/ ctx[0].layers[/*index*/ ctx[80]];
-    	}
-
-    	layer = new Layer({ props: layer_props, $$inline: true });
-    	binding_callbacks.push(() => bind$1(layer, "group", layer_group_binding));
-    	binding_callbacks.push(() => bind$1(layer, "solo", layer_solo_binding));
-    	binding_callbacks.push(() => bind$1(layer, "layer", layer_layer_binding));
-
-    	const block = {
-    		c: function create() {
-    			div = element("div");
-    			create_component(layer.$$.fragment);
-    			attr_dev(div, "class", "p1");
-    			toggle_class(div, "bt1-solid", /*index*/ ctx[80] != 0);
-    			add_location(div, file$1, 686, 5, 16048);
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			mount_component(layer, div, null);
-    			current = true;
-    		},
-    		p: function update(new_ctx, dirty) {
-    			ctx = new_ctx;
-    			const layer_changes = {};
-
-    			if (!updating_group && dirty[0] & /*layers*/ 1024) {
-    				updating_group = true;
-    				layer_changes.group = /*group*/ ctx[78];
-    				add_flush_callback(() => updating_group = false);
-    			}
-
-    			if (!updating_solo && dirty[0] & /*solo*/ 512) {
-    				updating_solo = true;
-    				layer_changes.solo = /*solo*/ ctx[9];
-    				add_flush_callback(() => updating_solo = false);
-    			}
-
-    			if (!updating_layer && dirty[0] & /*project*/ 1) {
-    				updating_layer = true;
-    				layer_changes.layer = /*project*/ ctx[0].layers[/*index*/ ctx[80]];
-    				add_flush_callback(() => updating_layer = false);
-    			}
-
-    			layer.$set(layer_changes);
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(layer.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(layer.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
-    			destroy_component(layer);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_each_block$1.name,
-    		type: "each",
-    		source: "(686:4) {#each layers.groups as group, index}",
+    		source: "(169:4) {#if files.handles.length == 0 }",
     		ctx
     	});
 
@@ -47402,178 +51221,20 @@ void main(void) {
     }
 
     function create_fragment$1(ctx) {
-    	let main_1;
-    	let div14;
-    	let sidebar;
-    	let section0;
-    	let title0;
-    	let t0;
+    	let section;
     	let div0;
     	let button0;
+    	let t0;
     	let t1;
-    	let t2;
     	let button1;
-    	let t4;
+    	let t3;
     	let button2;
-    	let t6;
+    	let t5;
     	let div1;
-    	let t7;
-    	let t8;
-    	let section1;
-    	let t9;
-    	let section2;
-    	let title1;
-    	let t10;
-    	let div2;
-    	let canvas;
-    	let t11;
-    	let img;
-    	let img_src_value;
-    	let t12;
-    	let div12;
-    	let div5;
-    	let div3;
-    	let span1;
-    	let span0;
-    	let t13;
-    	let t14;
-    	let div4;
-    	let span3;
-    	let span2;
-    	let t15;
-    	let t16;
-    	let aside;
-    	let t17;
-    	let t18;
-    	let div7;
-    	let span4;
-    	let t20;
-    	let div6;
-    	let select0;
-    	let t21;
-    	let div9;
-    	let span5;
-    	let t23;
-    	let div8;
-    	let select1;
-    	let t24;
-    	let div10;
-    	let span6;
-    	let t26;
-    	let input0;
-    	let t27;
-    	let div11;
-    	let span7;
-    	let t29;
-    	let input1;
-    	let input1_max_value;
-    	let t30;
-    	let title2;
-    	let t31;
-    	let t32;
-    	let div13;
-    	let button3;
-    	let t34;
-    	let section3;
-    	let div15;
-    	let t35;
-    	let div17;
-    	let div16;
-    	let t36;
-    	let div18;
-    	let t37_value = /*calculate*/ ctx[13].width + "";
-    	let t37;
-    	let t38;
-    	let t39_value = /*calculate*/ ctx[13].height + "";
-    	let t39;
-    	let t40;
-    	let div21;
-    	let div20;
-    	let button4;
-    	let span8;
-    	let t41;
-    	let div19;
-    	let input2;
-    	let t42;
-    	let button5;
-    	let span9;
-    	let t43;
-    	let button6;
-    	let t45;
-    	let button7;
-    	let t47;
-    	let button8;
-    	let t49;
-    	let footer;
-    	let span10;
-    	let t50;
-    	let button9;
-    	let current;
+    	let t6;
     	let mounted;
     	let dispose;
-
-    	title0 = new Title({
-    			props: {
-    				$$slots: { default: [create_default_slot_2] },
-    				$$scope: { ctx }
-    			},
-    			$$inline: true
-    		});
-
-    	let each_value_4 = /*files*/ ctx[1].handles;
-    	validate_each_argument(each_value_4);
-    	let each_blocks_4 = [];
-
-    	for (let i = 0; i < each_value_4.length; i += 1) {
-    		each_blocks_4[i] = create_each_block_4(get_each_context_4(ctx, each_value_4, i));
-    	}
-
-    	let if_block0 = /*files*/ ctx[1].handles.length == 0 && create_if_block_1(ctx);
-    	const default_slot_template = /*#slots*/ ctx[27].default;
-    	const default_slot = create_slot(default_slot_template, ctx, /*$$scope*/ ctx[53], null);
-
-    	title1 = new Title({
-    			props: {
-    				$$slots: { default: [create_default_slot_1$1] },
-    				$$scope: { ctx }
-    			},
-    			$$inline: true
-    		});
-
-    	let if_block1 = (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) && create_if_block(ctx);
-    	let each_value_3 = /*project*/ ctx[0].files;
-    	validate_each_argument(each_value_3);
-    	let each_blocks_3 = [];
-
-    	for (let i = 0; i < each_value_3.length; i += 1) {
-    		each_blocks_3[i] = create_each_block_3(get_each_context_3(ctx, each_value_3, i));
-    	}
-
-    	let each_value_2 = options.backgrounds;
-    	validate_each_argument(each_value_2);
-    	let each_blocks_2 = [];
-
-    	for (let i = 0; i < each_value_2.length; i += 1) {
-    		each_blocks_2[i] = create_each_block_2(get_each_context_2(ctx, each_value_2, i));
-    	}
-
-    	let each_value_1 = options.sizes;
-    	validate_each_argument(each_value_1);
-    	let each_blocks_1 = [];
-
-    	for (let i = 0; i < each_value_1.length; i += 1) {
-    		each_blocks_1[i] = create_each_block_1(get_each_context_1(ctx, each_value_1, i));
-    	}
-
-    	title2 = new Title({
-    			props: {
-    				$$slots: { default: [create_default_slot$1] },
-    				$$scope: { ctx }
-    			},
-    			$$inline: true
-    		});
-
-    	let each_value = /*layers*/ ctx[10].groups;
+    	let each_value = /*files*/ ctx[0].handles;
     	validate_each_argument(each_value);
     	let each_blocks = [];
 
@@ -47581,702 +51242,82 @@ void main(void) {
     		each_blocks[i] = create_each_block$1(get_each_context$1(ctx, each_value, i));
     	}
 
-    	const out = i => transition_out(each_blocks[i], 1, 1, () => {
-    		each_blocks[i] = null;
-    	});
+    	let if_block = /*files*/ ctx[0].handles.length == 0 && create_if_block(ctx);
 
     	const block = {
     		c: function create() {
-    			main_1 = element("main");
-    			div14 = element("div");
-    			sidebar = element("sidebar");
-    			section0 = element("section");
-    			create_component(title0.$$.fragment);
-    			t0 = space();
+    			section = element("section");
     			div0 = element("div");
     			button0 = element("button");
-    			t1 = text("Sync files");
-    			t2 = space();
+    			t0 = text("Sync files");
+    			t1 = space();
     			button1 = element("button");
     			button1.textContent = "Add files";
-    			t4 = space();
+    			t3 = space();
     			button2 = element("button");
     			button2.textContent = "Clear all";
-    			t6 = space();
+    			t5 = space();
     			div1 = element("div");
-
-    			for (let i = 0; i < each_blocks_4.length; i += 1) {
-    				each_blocks_4[i].c();
-    			}
-
-    			t7 = space();
-    			if (if_block0) if_block0.c();
-    			t8 = space();
-    			section1 = element("section");
-    			if (default_slot) default_slot.c();
-    			t9 = space();
-    			section2 = element("section");
-    			create_component(title1.$$.fragment);
-    			t10 = space();
-    			div2 = element("div");
-    			canvas = element("canvas");
-    			t11 = space();
-    			img = element("img");
-    			t12 = space();
-    			div12 = element("div");
-    			div5 = element("div");
-    			div3 = element("div");
-    			span1 = element("span");
-    			span0 = element("span");
-    			t13 = text("\n\t\t\t\t\t\t\tSingle");
-    			t14 = space();
-    			div4 = element("div");
-    			span3 = element("span");
-    			span2 = element("span");
-    			t15 = text("\n\t\t\t\t\t\t\tMultiple");
-    			t16 = space();
-    			aside = element("aside");
-    			if (if_block1) if_block1.c();
-    			t17 = space();
-
-    			for (let i = 0; i < each_blocks_3.length; i += 1) {
-    				each_blocks_3[i].c();
-    			}
-
-    			t18 = space();
-    			div7 = element("div");
-    			span4 = element("span");
-    			span4.textContent = "Paper";
-    			t20 = space();
-    			div6 = element("div");
-    			select0 = element("select");
-
-    			for (let i = 0; i < each_blocks_2.length; i += 1) {
-    				each_blocks_2[i].c();
-    			}
-
-    			t21 = space();
-    			div9 = element("div");
-    			span5 = element("span");
-    			span5.textContent = "Size";
-    			t23 = space();
-    			div8 = element("div");
-    			select1 = element("select");
-
-    			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				each_blocks_1[i].c();
-    			}
-
-    			t24 = space();
-    			div10 = element("div");
-    			span6 = element("span");
-    			span6.textContent = "DPI";
-    			t26 = space();
-    			input0 = element("input");
-    			t27 = space();
-    			div11 = element("div");
-    			span7 = element("span");
-    			span7.textContent = "Margin";
-    			t29 = space();
-    			input1 = element("input");
-    			t30 = space();
-    			create_component(title2.$$.fragment);
-    			t31 = space();
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
 
-    			t32 = space();
-    			div13 = element("div");
-    			button3 = element("button");
-    			button3.textContent = "Add layer";
-    			t34 = space();
-    			section3 = element("section");
-    			div15 = element("div");
-    			t35 = space();
-    			div17 = element("div");
-    			div16 = element("div");
-    			t36 = space();
-    			div18 = element("div");
-    			t37 = text(t37_value);
-    			t38 = text(" x ");
-    			t39 = text(t39_value);
-    			t40 = space();
-    			div21 = element("div");
-    			div20 = element("div");
-    			button4 = element("button");
-    			span8 = element("span");
-    			t41 = space();
-    			div19 = element("div");
-    			input2 = element("input");
-    			t42 = space();
-    			button5 = element("button");
-    			span9 = element("span");
-    			t43 = space();
-    			button6 = element("button");
-    			button6.textContent = "⤢";
-    			t45 = space();
-    			button7 = element("button");
-    			button7.textContent = "A";
-    			t47 = space();
-    			button8 = element("button");
-    			button8.textContent = "⬚";
-    			t49 = space();
-    			footer = element("footer");
-    			span10 = element("span");
-    			t50 = space();
-    			button9 = element("button");
-    			button9.textContent = "Export";
-    			button0.disabled = /*needsSync*/ ctx[14];
+    			t6 = space();
+    			if (if_block) if_block.c();
+    			button0.disabled = /*needsSync*/ ctx[2];
     			attr_dev(button0, "class", "w100pc");
-    			add_location(button0, file$1, 490, 5, 10812);
+    			add_location(button0, file$1, 114, 8, 3228);
     			attr_dev(button1, "class", "w100pc mt1");
-    			add_location(button1, file$1, 496, 5, 10945);
+    			add_location(button1, file$1, 120, 8, 3391);
     			attr_dev(button2, "class", "w100pc mt1");
-    			add_location(button2, file$1, 501, 5, 11055);
+    			add_location(button2, file$1, 125, 8, 3525);
     			attr_dev(div0, "class", "p1");
-    			add_location(div0, file$1, 489, 4, 10790);
+    			add_location(div0, file$1, 113, 4, 3203);
     			attr_dev(div1, "class", "checker");
-    			add_location(div1, file$1, 507, 4, 11179);
-    			attr_dev(section0, "class", /*classes*/ ctx[19].lanes);
-    			add_location(section0, file$1, 487, 3, 10729);
-    			attr_dev(section1, "class", /*classes*/ ctx[19].lanes + " basis0pc");
-    			add_location(section1, file$1, 558, 3, 12456);
-    			attr_dev(canvas, "class", "b1-solid");
-    			attr_dev(canvas, "id", "thumbnail");
-    			add_location(canvas, file$1, 578, 5, 12766);
-    			attr_dev(img, "class", "b1-solid");
-    			if (img.src !== (img_src_value = /*THUMBS*/ ctx[4][/*IDX*/ ctx[3]])) attr_dev(img, "src", img_src_value);
-    			add_location(img, file$1, 579, 5, 12836);
-    			attr_dev(div2, "class", "hidden abs");
-    			set_style(div2, "left", "-99999px");
-    			set_style(div2, "top", "-99999px");
-    			add_location(div2, file$1, 576, 4, 12680);
-    			attr_dev(span0, "class", "fill");
-    			toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
-    			add_location(span0, file$1, 588, 8, 13164);
-    			attr_dev(span1, "class", "b1-solid rel checker w2em h2em block mr1");
-    			add_location(span1, file$1, 586, 7, 13091);
-    			attr_dev(div3, "class", "br0-solid flex row-flex-start-center mr1 ");
-    			add_location(div3, file$1, 583, 6, 12972);
-    			attr_dev(span2, "class", "fill");
-    			toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
-    			add_location(span2, file$1, 597, 8, 13457);
-    			attr_dev(span3, "class", "b1-solid rel checker w2em h2em block mr1");
-    			add_location(span3, file$1, 595, 7, 13384);
-    			attr_dev(div4, "class", "br0-solid flex row-flex-start-center mr1 ");
-    			add_location(div4, file$1, 592, 6, 13266);
-    			attr_dev(div5, "class", "flex row");
-    			add_location(div5, file$1, 582, 5, 12943);
-    			add_location(aside, file$1, 603, 5, 13572);
-    			attr_dev(span4, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span4, file$1, 626, 6, 14396);
-    			attr_dev(select0, "class", "pl5 w100pc align-right");
-    			if (/*project*/ ctx[0].config.background === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[36].call(select0));
-    			add_location(select0, file$1, 630, 7, 14536);
-    			attr_dev(div6, "class", "select w100pc grow");
-    			add_location(div6, file$1, 629, 6, 14496);
-    			attr_dev(div7, "class", "flex rel");
-    			add_location(div7, file$1, 625, 5, 14367);
-    			attr_dev(span5, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span5, file$1, 638, 6, 14816);
-    			attr_dev(select1, "class", "pl5 w100pc");
-    			if (/*project*/ ctx[0].config.size === void 0) add_render_callback(() => /*select1_change_handler*/ ctx[37].call(select1));
-    			add_location(select1, file$1, 642, 7, 14955);
-    			attr_dev(div8, "class", "select w100pc grow");
-    			add_location(div8, file$1, 641, 6, 14915);
-    			attr_dev(div9, "class", "flex rel");
-    			add_location(div9, file$1, 637, 5, 14787);
-    			attr_dev(span6, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span6, file$1, 650, 6, 15211);
-    			attr_dev(input0, "min", 150);
-    			attr_dev(input0, "max", 600);
-    			attr_dev(input0, "step", 50);
-    			attr_dev(input0, "type", "number");
-    			attr_dev(input0, "class", "w100pc grow");
-    			set_style(input0, "padding-left", "5em");
-    			attr_dev(input0, "placeholder", "DPI");
-    			add_location(input0, file$1, 653, 6, 15309);
-    			attr_dev(div10, "class", "flex rel");
-    			add_location(div10, file$1, 649, 5, 15182);
-    			attr_dev(span7, "class", "h3em flex row-center-center abs l1 t0 z-index2 fade");
-    			add_location(span7, file$1, 664, 6, 15563);
-    			attr_dev(input1, "min", 0);
-    			attr_dev(input1, "max", input1_max_value = Math.max(/*_uniforms*/ ctx[6].size[0], /*_uniforms*/ ctx[6].size[1]) * 0.4);
-    			attr_dev(input1, "step", 1);
-    			attr_dev(input1, "class", "w100pc grow");
-    			set_style(input1, "padding-left", "5em");
-    			attr_dev(input1, "type", "number");
-    			attr_dev(input1, "placeholder", "Margin");
-    			add_location(input1, file$1, 667, 6, 15664);
-    			attr_dev(div11, "class", "flex rel");
-    			add_location(div11, file$1, 663, 5, 15534);
-    			attr_dev(div12, "class", "p1 flex column cmb1 bb1-solid");
-    			add_location(div12, file$1, 581, 4, 12894);
-    			attr_dev(button3, "class", "w100pc mb1");
-    			add_location(button3, file$1, 696, 5, 16284);
-    			attr_dev(div13, "class", "plr1");
-    			add_location(div13, file$1, 695, 4, 16260);
-    			attr_dev(section2, "id", "layers");
-    			attr_dev(section2, "class", /*classes*/ ctx[19].lanes + " basis30pc");
-    			add_location(section2, file$1, 570, 3, 12568);
-    			attr_dev(sidebar, "class", "flex row grow overflow-hidden");
-    			add_location(sidebar, file$1, 480, 2, 10652);
-    			attr_dev(div14, "class", "basis30pc minw52em maxw62em flex column-stretch-stretch grow minh100vh maxh100vh");
-    			add_location(div14, file$1, 476, 1, 10552);
-    			attr_dev(div15, "id", "zoom");
-    			attr_dev(div15, "class", "flex fill");
-    			add_location(div15, file$1, 711, 2, 16668);
-    			set_style(div16, "width", "9000px");
-    			set_style(div16, "height", "9000px");
-    			add_location(div16, file$1, 724, 3, 17022);
-    			attr_dev(div17, "id", "scroller");
-    			attr_dev(div17, "class", "abs fill overflow-auto");
-    			set_style(div17, "width", "120%");
-    			set_style(div17, "height", "120%");
-    			add_location(div17, file$1, 715, 2, 16734);
-    			attr_dev(div18, "class", "t1 r1 abs monospace hidden");
-    			add_location(div18, file$1, 726, 2, 17077);
-    			attr_dev(span8, "class", "flex w1em h1em cross rotate45");
-    			add_location(span8, file$1, 735, 5, 17367);
-    			attr_dev(button4, "class", "p0 h3em m0 w3em flex row-center-center");
-    			add_location(button4, file$1, 732, 4, 17246);
-    			attr_dev(input2, "class", "grow p0 m0 h1em round radius1em b1-solid rotate270 abs");
-    			set_style(input2, "left", "-1.5em");
-    			set_style(input2, "top", "8.5em");
-    			set_style(input2, "width", "8em");
-    			set_style(input2, "margin-left", "-0px");
-    			set_style(input2, "margin-top", "-0.5px");
-    			set_style(input2, "background", "transparent");
-    			attr_dev(input2, "type", "range");
-    			attr_dev(input2, "min", 0.01);
-    			attr_dev(input2, "max", 3);
-    			attr_dev(input2, "step", 0.001);
-    			add_location(input2, file$1, 738, 5, 17463);
-    			attr_dev(div19, "class", "h10em flex ");
-    			add_location(div19, file$1, 737, 4, 17432);
-    			attr_dev(span9, "class", "flex w1em pt0-5 mt0-5 bt1-solid");
-    			add_location(span9, file$1, 750, 6, 17892);
-    			attr_dev(button5, "class", "p0 h3em m0 w3em flex row-center-center");
-    			add_location(button5, file$1, 747, 4, 17767);
-    			attr_dev(button6, "class", "p0  m0 h3em w3em flex row-center-center bt0-solid");
-    			add_location(button6, file$1, 752, 4, 17960);
-    			attr_dev(button7, "class", "p0  m0 h3em w3em flex row-center-center bt0-solid");
-    			add_location(button7, file$1, 756, 4, 18061);
-    			attr_dev(button8, "class", "p0  m0 h3em w3em flex row-center-center mt1");
-    			add_location(button8, file$1, 760, 4, 18162);
-    			attr_dev(div20, "class", "flex column");
-    			add_location(div20, file$1, 731, 3, 17216);
-    			attr_dev(div21, "class", "abs t0 r2 p1 flex row w3em");
-    			add_location(div21, file$1, 729, 2, 17171);
-    			attr_dev(span10, "class", "f1 italic");
-    			add_location(span10, file$1, 769, 3, 18353);
-    			add_location(button9, file$1, 770, 3, 18388);
-    			attr_dev(footer, "class", "abs b0 l0 p1 w100pc flex row-space-between-flex-end");
-    			add_location(footer, file$1, 768, 2, 18281);
-    			attr_dev(section3, "class", "rel basis70pc minw50em pointer grow flex row-center-flex-start maxh100vh overflow-hidden");
-    			add_location(section3, file$1, 707, 1, 16465);
-    			attr_dev(main_1, "class", "flex row-stretch-stretch bg overflow-auto");
-    			add_location(main_1, file$1, 473, 0, 10468);
+    			add_location(div1, file$1, 131, 4, 3670);
+    			attr_dev(section, "class", /*classes*/ ctx[4].lanes);
+    			add_location(section, file$1, 111, 0, 3133);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, main_1, anchor);
-    			append_dev(main_1, div14);
-    			append_dev(div14, sidebar);
-    			append_dev(sidebar, section0);
-    			mount_component(title0, section0, null);
-    			append_dev(section0, t0);
-    			append_dev(section0, div0);
+    			insert_dev(target, section, anchor);
+    			append_dev(section, div0);
     			append_dev(div0, button0);
-    			append_dev(button0, t1);
-    			append_dev(div0, t2);
+    			append_dev(button0, t0);
+    			append_dev(div0, t1);
     			append_dev(div0, button1);
-    			append_dev(div0, t4);
+    			append_dev(div0, t3);
     			append_dev(div0, button2);
-    			append_dev(section0, t6);
-    			append_dev(section0, div1);
-
-    			for (let i = 0; i < each_blocks_4.length; i += 1) {
-    				each_blocks_4[i].m(div1, null);
-    			}
-
-    			append_dev(section0, t7);
-    			if (if_block0) if_block0.m(section0, null);
-    			append_dev(sidebar, t8);
-    			append_dev(sidebar, section1);
-
-    			if (default_slot) {
-    				default_slot.m(section1, null);
-    			}
-
-    			append_dev(sidebar, t9);
-    			append_dev(sidebar, section2);
-    			mount_component(title1, section2, null);
-    			append_dev(section2, t10);
-    			append_dev(section2, div2);
-    			append_dev(div2, canvas);
-    			/*canvas_binding*/ ctx[31](canvas);
-    			append_dev(div2, t11);
-    			append_dev(div2, img);
-    			append_dev(section2, t12);
-    			append_dev(section2, div12);
-    			append_dev(div12, div5);
-    			append_dev(div5, div3);
-    			append_dev(div3, span1);
-    			append_dev(span1, span0);
-    			append_dev(div3, t13);
-    			append_dev(div5, t14);
-    			append_dev(div5, div4);
-    			append_dev(div4, span3);
-    			append_dev(span3, span2);
-    			append_dev(div4, t15);
-    			append_dev(div12, t16);
-    			append_dev(div12, aside);
-    			if (if_block1) if_block1.m(aside, null);
-    			append_dev(aside, t17);
-
-    			for (let i = 0; i < each_blocks_3.length; i += 1) {
-    				each_blocks_3[i].m(aside, null);
-    			}
-
-    			append_dev(div12, t18);
-    			append_dev(div12, div7);
-    			append_dev(div7, span4);
-    			append_dev(div7, t20);
-    			append_dev(div7, div6);
-    			append_dev(div6, select0);
-
-    			for (let i = 0; i < each_blocks_2.length; i += 1) {
-    				each_blocks_2[i].m(select0, null);
-    			}
-
-    			select_option(select0, /*project*/ ctx[0].config.background);
-    			append_dev(div12, t21);
-    			append_dev(div12, div9);
-    			append_dev(div9, span5);
-    			append_dev(div9, t23);
-    			append_dev(div9, div8);
-    			append_dev(div8, select1);
-
-    			for (let i = 0; i < each_blocks_1.length; i += 1) {
-    				each_blocks_1[i].m(select1, null);
-    			}
-
-    			select_option(select1, /*project*/ ctx[0].config.size);
-    			append_dev(div12, t24);
-    			append_dev(div12, div10);
-    			append_dev(div10, span6);
-    			append_dev(div10, t26);
-    			append_dev(div10, input0);
-    			set_input_value(input0, /*project*/ ctx[0].config.dpi);
-    			append_dev(div12, t27);
-    			append_dev(div12, div11);
-    			append_dev(div11, span7);
-    			append_dev(div11, t29);
-    			append_dev(div11, input1);
-    			set_input_value(input1, /*project*/ ctx[0].config.margin);
-    			append_dev(section2, t30);
-    			mount_component(title2, section2, null);
-    			append_dev(section2, t31);
+    			append_dev(section, t5);
+    			append_dev(section, div1);
 
     			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].m(section2, null);
+    				each_blocks[i].m(div1, null);
     			}
 
-    			append_dev(section2, t32);
-    			append_dev(section2, div13);
-    			append_dev(div13, button3);
-    			append_dev(main_1, t34);
-    			append_dev(main_1, section3);
-    			append_dev(section3, div15);
-    			/*div15_binding*/ ctx[43](div15);
-    			append_dev(section3, t35);
-    			append_dev(section3, div17);
-    			append_dev(div17, div16);
-    			append_dev(section3, t36);
-    			append_dev(section3, div18);
-    			append_dev(div18, t37);
-    			append_dev(div18, t38);
-    			append_dev(div18, t39);
-    			append_dev(section3, t40);
-    			append_dev(section3, div21);
-    			append_dev(div21, div20);
-    			append_dev(div20, button4);
-    			append_dev(button4, span8);
-    			append_dev(div20, t41);
-    			append_dev(div20, div19);
-    			append_dev(div19, input2);
-    			set_input_value(input2, /*zoom*/ ctx[5]);
-    			append_dev(div20, t42);
-    			append_dev(div20, button5);
-    			append_dev(button5, span9);
-    			append_dev(div20, t43);
-    			append_dev(div20, button6);
-    			append_dev(div20, t45);
-    			append_dev(div20, button7);
-    			append_dev(div20, t47);
-    			append_dev(div20, button8);
-    			append_dev(section3, t49);
-    			append_dev(section3, footer);
-    			append_dev(footer, span10);
-    			append_dev(footer, t50);
-    			append_dev(footer, button9);
-    			/*main_1_binding*/ ctx[52](main_1);
-    			current = true;
+    			append_dev(section, t6);
+    			if (if_block) if_block.m(section, null);
 
     			if (!mounted) {
     				dispose = [
-    					listen_dev(window_1, "mouseup", onMouseUp, false, false, false),
-    					listen_dev(window_1, "resize", /*onResize*/ ctx[16], false, false, false),
-    					listen_dev(window_1, "keydown", /*onKeyDown*/ ctx[25], false, false, false),
-    					listen_dev(window_1, "keyup", /*onKeyUp*/ ctx[26], false, false, false),
-    					listen_dev(
-    						button0,
-    						"click",
-    						function () {
-    							if (is_function(/*handlers*/ ctx[2].requestAll)) /*handlers*/ ctx[2].requestAll.apply(this, arguments);
-    						},
-    						false,
-    						false,
-    						false
-    					),
-    					listen_dev(
-    						button1,
-    						"click",
-    						function () {
-    							if (is_function(/*handlers*/ ctx[2].accessFiles)) /*handlers*/ ctx[2].accessFiles.apply(this, arguments);
-    						},
-    						false,
-    						false,
-    						false
-    					),
-    					listen_dev(
-    						button2,
-    						"click",
-    						function () {
-    							if (is_function(/*handlers*/ ctx[2].clearAllHandles)) /*handlers*/ ctx[2].clearAllHandles.apply(this, arguments);
-    						},
-    						false,
-    						false,
-    						false
-    					),
-    					listen_dev(div3, "click", /*click_handler_3*/ ctx[32], false, false, false),
-    					listen_dev(div4, "click", /*click_handler_4*/ ctx[33], false, false, false),
-    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[36]),
-    					listen_dev(select1, "change", /*select1_change_handler*/ ctx[37]),
-    					listen_dev(input0, "input", /*input0_input_handler*/ ctx[38]),
-    					listen_dev(input1, "input", /*input1_input_handler*/ ctx[39]),
-    					listen_dev(button3, "click", click_handler_7, false, false, false),
-    					listen_dev(button3, "click", /*addLayer*/ ctx[18], false, false, false),
-    					listen_dev(div17, "mousedown", /*mousedown_handler*/ ctx[44], false, false, false),
-    					listen_dev(div17, "mouseup", /*mouseup_handler*/ ctx[45], false, false, false),
-    					listen_dev(div17, "mouseleave", /*mouseleave_handler*/ ctx[46], false, false, false),
-    					listen_dev(div17, "mousemove", /*onMove*/ ctx[23], false, false, false),
-    					listen_dev(div17, "scroll", onScroll, false, false, false),
-    					listen_dev(div17, "wheel", /*onWheel*/ ctx[24], false, false, false),
-    					listen_dev(button4, "click", /*click_handler_8*/ ctx[47], false, false, false),
-    					listen_dev(input2, "change", /*input2_change_input_handler*/ ctx[48]),
-    					listen_dev(input2, "input", /*input2_change_input_handler*/ ctx[48]),
-    					listen_dev(button5, "click", /*click_handler_9*/ ctx[49], false, false, false),
-    					listen_dev(section3, "mousedown", /*mousedown_handler_1*/ ctx[50], false, false, false),
-    					listen_dev(section3, "mouseup", /*mouseup_handler_1*/ ctx[51], false, false, false)
+    					listen_dev(button0, "click", /*handlers*/ ctx[3].requestAll, false, false, false),
+    					listen_dev(button1, "click", /*handlers*/ ctx[3].accessFiles, false, false, false),
+    					listen_dev(button2, "click", /*handlers*/ ctx[3].clearAllHandles, false, false, false)
     				];
 
     				mounted = true;
     			}
     		},
-    		p: function update(new_ctx, dirty) {
-    			ctx = new_ctx;
-    			const title0_changes = {};
-
-    			if (dirty[1] & /*$$scope*/ 4194304) {
-    				title0_changes.$$scope = { dirty, ctx };
+    		p: function update(ctx, [dirty]) {
+    			if (dirty & /*needsSync*/ 4) {
+    				prop_dev(button0, "disabled", /*needsSync*/ ctx[2]);
     			}
 
-    			title0.$set(title0_changes);
-
-    			if (!current || dirty[0] & /*needsSync*/ 16384) {
-    				prop_dev(button0, "disabled", /*needsSync*/ ctx[14]);
-    			}
-
-    			if (dirty[0] & /*project, files, handlers, classes*/ 524295) {
-    				each_value_4 = /*files*/ ctx[1].handles;
-    				validate_each_argument(each_value_4);
-    				let i;
-
-    				for (i = 0; i < each_value_4.length; i += 1) {
-    					const child_ctx = get_each_context_4(ctx, each_value_4, i);
-
-    					if (each_blocks_4[i]) {
-    						each_blocks_4[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks_4[i] = create_each_block_4(child_ctx);
-    						each_blocks_4[i].c();
-    						each_blocks_4[i].m(div1, null);
-    					}
-    				}
-
-    				for (; i < each_blocks_4.length; i += 1) {
-    					each_blocks_4[i].d(1);
-    				}
-
-    				each_blocks_4.length = each_value_4.length;
-    			}
-
-    			if (/*files*/ ctx[1].handles.length == 0) {
-    				if (if_block0) ; else {
-    					if_block0 = create_if_block_1(ctx);
-    					if_block0.c();
-    					if_block0.m(section0, null);
-    				}
-    			} else if (if_block0) {
-    				if_block0.d(1);
-    				if_block0 = null;
-    			}
-
-    			if (default_slot) {
-    				if (default_slot.p && (!current || dirty[1] & /*$$scope*/ 4194304)) {
-    					update_slot(default_slot, default_slot_template, ctx, /*$$scope*/ ctx[53], !current ? [-1, -1, -1] : dirty, null, null);
-    				}
-    			}
-
-    			const title1_changes = {};
-
-    			if (dirty[1] & /*$$scope*/ 4194304) {
-    				title1_changes.$$scope = { dirty, ctx };
-    			}
-
-    			title1.$set(title1_changes);
-
-    			if (!current || dirty[0] & /*THUMBS, IDX*/ 24 && img.src !== (img_src_value = /*THUMBS*/ ctx[4][/*IDX*/ ctx[3]])) {
-    				attr_dev(img, "src", img_src_value);
-    			}
-
-    			if (dirty[0] & /*project*/ 1) {
-    				toggle_class(span0, "cross", !/*project*/ ctx[0].multiple);
-    			}
-
-    			if (dirty[0] & /*project*/ 1) {
-    				toggle_class(span2, "cross", /*project*/ ctx[0].multiple);
-    			}
-
-    			if (!/*project*/ ctx[0].files || /*project*/ ctx[0].files.length == 0) {
-    				if (if_block1) ; else {
-    					if_block1 = create_if_block(ctx);
-    					if_block1.c();
-    					if_block1.m(aside, t17);
-    				}
-    			} else if (if_block1) {
-    				if_block1.d(1);
-    				if_block1 = null;
-    			}
-
-    			if (dirty[0] & /*arrowClass, onFileDown, onFileUp, project*/ 7340033) {
-    				each_value_3 = /*project*/ ctx[0].files;
-    				validate_each_argument(each_value_3);
-    				let i;
-
-    				for (i = 0; i < each_value_3.length; i += 1) {
-    					const child_ctx = get_each_context_3(ctx, each_value_3, i);
-
-    					if (each_blocks_3[i]) {
-    						each_blocks_3[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks_3[i] = create_each_block_3(child_ctx);
-    						each_blocks_3[i].c();
-    						each_blocks_3[i].m(aside, null);
-    					}
-    				}
-
-    				for (; i < each_blocks_3.length; i += 1) {
-    					each_blocks_3[i].d(1);
-    				}
-
-    				each_blocks_3.length = each_value_3.length;
-    			}
-
-    			if (dirty & /*options*/ 0) {
-    				each_value_2 = options.backgrounds;
-    				validate_each_argument(each_value_2);
-    				let i;
-
-    				for (i = 0; i < each_value_2.length; i += 1) {
-    					const child_ctx = get_each_context_2(ctx, each_value_2, i);
-
-    					if (each_blocks_2[i]) {
-    						each_blocks_2[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks_2[i] = create_each_block_2(child_ctx);
-    						each_blocks_2[i].c();
-    						each_blocks_2[i].m(select0, null);
-    					}
-    				}
-
-    				for (; i < each_blocks_2.length; i += 1) {
-    					each_blocks_2[i].d(1);
-    				}
-
-    				each_blocks_2.length = each_value_2.length;
-    			}
-
-    			if (dirty[0] & /*project*/ 1) {
-    				select_option(select0, /*project*/ ctx[0].config.background);
-    			}
-
-    			if (dirty & /*options*/ 0) {
-    				each_value_1 = options.sizes;
-    				validate_each_argument(each_value_1);
-    				let i;
-
-    				for (i = 0; i < each_value_1.length; i += 1) {
-    					const child_ctx = get_each_context_1(ctx, each_value_1, i);
-
-    					if (each_blocks_1[i]) {
-    						each_blocks_1[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks_1[i] = create_each_block_1(child_ctx);
-    						each_blocks_1[i].c();
-    						each_blocks_1[i].m(select1, null);
-    					}
-    				}
-
-    				for (; i < each_blocks_1.length; i += 1) {
-    					each_blocks_1[i].d(1);
-    				}
-
-    				each_blocks_1.length = each_value_1.length;
-    			}
-
-    			if (dirty[0] & /*project*/ 1) {
-    				select_option(select1, /*project*/ ctx[0].config.size);
-    			}
-
-    			if (dirty[0] & /*project*/ 1 && to_number(input0.value) !== /*project*/ ctx[0].config.dpi) {
-    				set_input_value(input0, /*project*/ ctx[0].config.dpi);
-    			}
-
-    			if (!current || dirty[0] & /*_uniforms*/ 64 && input1_max_value !== (input1_max_value = Math.max(/*_uniforms*/ ctx[6].size[0], /*_uniforms*/ ctx[6].size[1]) * 0.4)) {
-    				attr_dev(input1, "max", input1_max_value);
-    			}
-
-    			if (dirty[0] & /*project*/ 1 && to_number(input1.value) !== /*project*/ ctx[0].config.margin) {
-    				set_input_value(input1, /*project*/ ctx[0].config.margin);
-    			}
-
-    			const title2_changes = {};
-
-    			if (dirty[1] & /*$$scope*/ 4194304) {
-    				title2_changes.$$scope = { dirty, ctx };
-    			}
-
-    			title2.$set(title2_changes);
-
-    			if (dirty[0] & /*pixi, layers, solo, project*/ 34305) {
-    				each_value = /*layers*/ ctx[10].groups;
+    			if (dirty & /*project, files, handlers, classes*/ 27) {
+    				each_value = /*files*/ ctx[0].handles;
     				validate_each_argument(each_value);
     				let i;
 
@@ -48285,73 +51326,37 @@ void main(void) {
 
     					if (each_blocks[i]) {
     						each_blocks[i].p(child_ctx, dirty);
-    						transition_in(each_blocks[i], 1);
     					} else {
     						each_blocks[i] = create_each_block$1(child_ctx);
     						each_blocks[i].c();
-    						transition_in(each_blocks[i], 1);
-    						each_blocks[i].m(section2, t32);
+    						each_blocks[i].m(div1, null);
     					}
     				}
 
-    				group_outros();
-
-    				for (i = each_value.length; i < each_blocks.length; i += 1) {
-    					out(i);
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
     				}
 
-    				check_outros();
+    				each_blocks.length = each_value.length;
     			}
 
-    			if ((!current || dirty[0] & /*calculate*/ 8192) && t37_value !== (t37_value = /*calculate*/ ctx[13].width + "")) set_data_dev(t37, t37_value);
-    			if ((!current || dirty[0] & /*calculate*/ 8192) && t39_value !== (t39_value = /*calculate*/ ctx[13].height + "")) set_data_dev(t39, t39_value);
-
-    			if (dirty[0] & /*zoom*/ 32) {
-    				set_input_value(input2, /*zoom*/ ctx[5]);
+    			if (/*files*/ ctx[0].handles.length == 0) {
+    				if (if_block) ; else {
+    					if_block = create_if_block(ctx);
+    					if_block.c();
+    					if_block.m(section, null);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
     			}
     		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(title0.$$.fragment, local);
-    			transition_in(default_slot, local);
-    			transition_in(title1.$$.fragment, local);
-    			transition_in(title2.$$.fragment, local);
-
-    			for (let i = 0; i < each_value.length; i += 1) {
-    				transition_in(each_blocks[i]);
-    			}
-
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(title0.$$.fragment, local);
-    			transition_out(default_slot, local);
-    			transition_out(title1.$$.fragment, local);
-    			transition_out(title2.$$.fragment, local);
-    			each_blocks = each_blocks.filter(Boolean);
-
-    			for (let i = 0; i < each_blocks.length; i += 1) {
-    				transition_out(each_blocks[i]);
-    			}
-
-    			current = false;
-    		},
+    		i: noop$4,
+    		o: noop$4,
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(main_1);
-    			destroy_component(title0);
-    			destroy_each(each_blocks_4, detaching);
-    			if (if_block0) if_block0.d();
-    			if (default_slot) default_slot.d(detaching);
-    			destroy_component(title1);
-    			/*canvas_binding*/ ctx[31](null);
-    			if (if_block1) if_block1.d();
-    			destroy_each(each_blocks_3, detaching);
-    			destroy_each(each_blocks_2, detaching);
-    			destroy_each(each_blocks_1, detaching);
-    			destroy_component(title2);
+    			if (detaching) detach_dev(section);
     			destroy_each(each_blocks, detaching);
-    			/*div15_binding*/ ctx[43](null);
-    			/*main_1_binding*/ ctx[52](null);
+    			if (if_block) if_block.d();
     			mounted = false;
     			run_all(dispose);
     		}
@@ -48368,579 +51373,152 @@ void main(void) {
     	return block;
     }
 
-    async function renderThumbnail() {
-    	
-    } // console.log('doing render...')
-    // // await pixi.app.renderer.render(pixi.app.stage)
+    function selectImage(handle) {
+    	let idx = PROJECTS[IDX].files.indexOf(handle.name);
 
-    async function removeChildren(obj) {
-    	for (let x = obj.children.length - 1; x >= 0; x--) {
-    		// await obj.children[x].destroy( { children: true })
-    		await obj.removeChild(obj.children[x]);
+    	if (!PROJECTS[IDX].multiple) {
+    		PROJECTS[IDX].trigger = true;
+    		PROJECTS[IDX].files = [handle.name];
+    	} else {
+    		if (idx == -1) {
+    			let cp = PROJECTS[IDX].files;
+    			PROJECTS[IDX].files = [];
+    			cp.push(handle.name);
+    			PROJECTS[IDX].files = cp;
+    		} else {
+    			let cp = PROJECTS[IDX].files;
+    			cp.splice(idx, 1);
+    			PROJECTS[IDX].files = cp;
+    		}
     	}
     }
-
-    function onScroll(e) {
-    	e.target.scrollLeft = 4500;
-    	e.target.scrollTop = 4500;
-    }
-
-    async function onMouseUp(e) {
-    	await renderThumbnail();
-    }
-
-    const click_handler_7 = e => e.target.blur();
 
     function instance$1($$self, $$props, $$invalidate) {
-    	let _uniforms;
-    	let calculate;
     	let needsSync;
     	let { $$slots: slots = {}, $$scope } = $$props;
-    	validate_slots("Project", slots, ['default']);
-    	let main, editor, app, stage, loader, mode;
-    	let solo = null;
+    	validate_slots("Files", slots, []);
+    	let { files } = $$props;
+    	let { project } = $$props;
 
-    	let layers = window.layers = {
-    		background: new Graphics(),
-    		container: new Container(),
-    		groups: [],
-    		processed: new Container()
-    	};
-
-    	let pixi = window.pixi = {
-    		app: new Application({
-    				antialias: false,
-    				transparent: true,
-    				resolution: 1,
-    				forceCanvas: true,
-    				preserveDrawingBuffer: true
-    			}),
-    		loader: new Loader()
-    	};
-
-    	// let thumb = new PIXI.Application({
-    	// 	antialias: false,
-    	// 	transparent: true,
-    	// 	resolution: 1,
-    	// 	forceCanvas: true,
-    	// 	preserveDrawingBuffer: true
-    	// })
     	onMount(async e => {
-    		await init();
+    		console.log("!!");
+    		await requestAll();
     	});
 
-    	let { project } = $$props;
-    	let { files } = $$props;
-    	let { handlers } = $$props;
-    	let { IDX } = $$props;
-    	let { THUMBS } = $$props;
-    	let uniforms = {};
+    	async function requestFile(handle) {
+    		if (handle.static) {
+    			$$invalidate(0, files.srcs[handle.name] = handle, files);
+    		} else {
+    			let opts = { mode: "read" };
+    			let permission = await handle.queryPermission(opts);
+    			if (permission != "granted") permission = await handle.requestPermission(opts);
 
-    	function setUniforms(unis) {
-    		uniforms.hsla = unis.hsla;
-    		uniforms.size = unis.size;
-    		uniforms.solo = solo != null;
-    	}
+    			if (permission == "granted") {
+    				const file = await handle.getFile();
 
-    	const mm2px = mm => Math.round(project.config.dpi / 25.4 * mm);
-    	let fit = {};
-
-    	async function onResize(e) {
-    		await pixi.app.renderer.resize(editor.offsetWidth, editor.offsetHeight);
-    	}
-
-    	async function init() {
-    		await onResize();
-    		editor.appendChild(pixi.app.view);
-    		layers.background.drawRect(0, 0, calculate.width, calculate.height);
-
-    		$$invalidate(
-    			10,
-    			layers.background.filters = [
-    				new Filter(null,
-    				`
-			${lib}
-			varying vec2 vTextureCoord;
-			uniform bool solo;
-			uniform sampler2D uSampler;
-			uniform vec4 hsla;
-
-			void main(void) {
-
-				vec3 bg3 = vec3(hsla.x / 360.0, hsla.y / 100.0, hsla.z / 100.0);
-				vec4 bg4 = vec4( hsl2rgb( bg3 ), 1.0 );
-				if (solo) bg4 = vec4(0.0,0.0,0.0,0.0);
-				gl_FragColor = bg4;
-
-			}`,
-    				uniforms)
-    			],
-    			layers
-    		);
-
-    		pixi.app.stage.addChild(layers.container);
-    		layers.container.addChild(layers.background);
-    		layers.container.addChild(layers.processed);
-    		console.log(`[Project] 🎉  layers and background inited`);
-    		await update(project.config);
-    	}
-
-    	function togglePreview(b) {
-    		mode = b;
-    		// stage.removeChild( raw )
-    	}
-
-    	async function addLayer() {
-    		console.log("[Project] 🍰  adding layer ------------------------");
-    		let cp = project.layers;
-    		$$invalidate(0, project.layers = [], project);
-    		cp.push({ flag: true });
-    		$$invalidate(0, project.layers = cp, project);
-    		await drawImages();
-    	}
-
-    	let thumbTimeout, thumbLookup;
-
-    	// let {width,height} = calculate
-    	// let ctx = thumbnail.getContext('2d')
-    	// thumbnail.width = width > height ? 140 : 100
-    	// thumbnail.height = width > height ? 100 : 140
-    	// ctx.drawImage( (new PIXI.Extract(pixi.app.renderer)).image(layers.processed), 0, 0, thumbnail.width, thumbnail.height)
-    	// // let base64 = (new PIXI.Extract(pixi.app.renderer)).base64(layers.groups[0])
-    	// THUMBS[IDX] = thumbnail.toDataURL()
-    	// console.log('rendered?')
-    	async function setup(files) {
-    		if (!files?.srcs) return;
-    		let list = project.files.filter(name => files.srcs[name]);
-    		if (list.length != project.files.length) return;
-    		console.log("[Project] 💥  setup (reset)");
-    		await pixi.loader.reset();
-
-    		for (const name of project.files) {
-    			let o = files.srcs[name];
-    			if (!pixi.loader.resources[o.url]) pixi.loader.add(o.url, { crossOrigin: "anonymous" });
-    		}
-
-    		await setPositions();
-
-    		pixi.loader.load(async e => {
-    			console.log("[Project] ✅💥  files loaded");
-    			await drawImages();
-    		}); // await renderThumbnail()
-
-    		inited = true;
-    	}
-
-    	async function update(config) {
-    		if (pixi?.app?.renderer && inited) {
-    			const { width, height } = calculate;
-
-    			if (sizeTimeout) {
-    				clearTimeout(sizeTimeout);
-    				sizeTimeout = null;
+    				$$invalidate(
+    					0,
+    					files.srcs[handle.name] = {
+    						name: handle.name,
+    						url: URL.createObjectURL(file)
+    					},
+    					files
+    				);
+    			} else {
+    				window.alert(`Could not load ${handle.name}!`);
     			}
-
-    			sizeTimeout = setTimeout(
-    				async e => {
-    					// console.log('[Project] 🪡  update')
-    					if (!project.multiple && project.files.length > 1) {
-    						if (!window.confirm(`Remove ${project.files.length - 1} images from project?`)) return; // await drawImages()
-    						// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
-
-    						$$invalidate(0, project.files = project.files.splice(1, project.files.length), project);
-    					}
-
-    					const neuSize = width != layers.background.width || height != layers.background.height;
-    					const neuMargin = project.config.margin != prevMargin;
-    					const isCanvasChanged = neuSize || neuMargin;
-    					const isNewFiles = project.files.length != Object.keys(pixi.loader.resources).length;
-    					project.layers.length != layers.processed.children.length;
-    					const isTrigger = project.trigger;
-
-    					if (isNewFiles || isTrigger) {
-    						console.log("[Project] 🪡✨  new files, run setup");
-    						await setup(files);
-    						$$invalidate(0, project.trigger = false, project);
-    					}
-
-    					if (isCanvasChanged) {
-    						console.log("[Project] 🪡📐  set positions, draw images");
-    						await setPositions();
-    						await drawImages();
-    					}
-    				},
-    				// await renderThumbnail()
-    				100
-    			); // await drawImages()
-    			// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
     		}
     	}
 
-    	let sizeTimeout;
-    	let prevMargin;
+    	async function requestAll() {
+    		for (const handle of files.handles) requestFile(handle);
+    	}
 
-    	async function drawImages() {
-    		const { width, height } = calculate;
-
-    		// await removeChildren( layers.processed )
-    		console.log("[Project] 🛑  cleared groups ");
-
-    		const len = Object.keys(pixi.loader.resources).length;
-    		const size = rectd.neu(0, 0, width, height);
-    		const inner = rectd.shrinkBy(size, mm2px(project.config.margin));
-    		prevMargin = project.config.margin;
-    		let splits = rectd.splitUp(inner, len);
-
-    		for (let idx = 0; idx < project.layers.length; idx++) {
-    			let group = $$invalidate(
-    				10,
-    				layers.groups[idx] = layers.groups[idx]
-    				? layers.groups[idx]
-    				: new Container(),
-    				layers
-    			);
-
-    			await removeChildren(group);
-    			let i = 0;
-
-    			for (const [name, resource] of Object.entries(pixi.loader.resources)) {
-    				let sprite = new Sprite(resource.texture);
-    				let image = rectd.neu(0, 0, resource.data.width, resource.data.height);
-    				sprite.width = width;
-    				sprite.height = height;
-    				let fit = rectd.fitInto(image, inner);
-    				rectd.auto(fit, sprite);
-
-    				if (splits.length > 1) {
-    					let mask = new Graphics();
-    					mask.drawRect(splits[i].x, splits[i].y, splits[i].width, splits[i].height);
-    					sprite.mask = mask;
+    	async function accessFiles(e) {
+    		let neu = await window.showOpenFilePicker({
+    			types: [
+    				{
+    					description: "Images",
+    					accept: {
+    						"image/*": [".png", ".gif", ".jpeg", ".jpg"]
+    					}
     				}
+    			],
+    			excludeAcceptAllOption: true,
+    			multiple: true
+    		});
 
-    				console.log("[Project] 🎉  adding sprite to images:", name, i);
-    				await group.addChild(sprite);
-    				i += 1;
-    			}
-
-    			layers.processed.addChild(group);
-    		}
-
-    		console.log(`[Project] ✅🖼  ${Object.keys(pixi.loader.resources).length} image(s) drawn in ${project.layers.length} layers`);
+    		$$invalidate(0, files.handles = files.handles.concat(neu), files);
+    		await set(FILES_KEY, files.handles.filter(h => !h.static));
+    		await requestAll();
     	}
 
-    	async function onZoom(zoom_) {
-    		console.log("[Project] 🔭  zoom changed");
-    		$$invalidate(10, layers.container.scale.x = zoom, layers);
-    		$$invalidate(10, layers.container.scale.y = zoom, layers);
+    	async function removeHandle(handle) {
+    		if (!window.confirm(`Remove ${handle.name} from bin?`)) return;
+    		let cp = files.handles;
+    		$$invalidate(0, files.handles = [], files);
+    		const idx = cp.indexOf(handle);
+    		if (idx != -1) cp.splice(idx, 1);
+    		$$invalidate(0, files.handles = cp, files);
+    		await set(FILES_KEY, files.handles.filter(h => !h.static));
     	}
 
-    	let inited = false;
-
-    	async function setPositions() {
-    		const { width, height } = calculate;
-    		$$invalidate(10, layers.background.width = width, layers);
-    		$$invalidate(10, layers.background.height = height, layers);
-    		$$invalidate(10, layers.container.x = editor.offsetWidth / 2, layers);
-    		$$invalidate(10, layers.container.y = editor.offsetHeight / 2, layers);
-    		$$invalidate(10, layers.container.pivot.x = width / 2, layers);
-    		$$invalidate(10, layers.container.pivot.y = height / 2, layers);
-    		console.log("[Project] ✅📐  positions set", { width, height });
+    	async function clearAllHandles(handle) {
+    		if (!window.confirm(`Remove all files from bin?`)) return;
+    		$$invalidate(0, files.handles = files.handles.filter(h => h.static), files);
+    		await set(FILES_KEY, []);
     	}
+
+    	let handlers = {
+    		accessFiles,
+    		requestAll,
+    		selectImage,
+    		removeHandle,
+    		requestFile,
+    		clearAllHandles
+    	};
 
     	let classes = {
     		miniButtons: `p0 rel w3em h3em bg pointer z-index4 bt0-solid br0-solid`,
     		lanes: `flex column br1-solid overflow-auto no-basis grow`
     	};
 
-    	let targets = {};
-    	let arrowClass = `p0 no-grow flex row-center-center w3em b0-solid`;
-    	let zoom = 0.1;
+    	const writable_props = ["files", "project"];
 
-    	function move(from, to) {
-    		let cp = project.files;
-    		$$invalidate(0, project.files = [], project);
-    		let i = cp.splice(from, 1)[0];
-    		cp.splice(to, 0, i);
-    		$$invalidate(0, project.files = cp, project);
-    	}
-
-    	function onFileDown(idx) {
-    		let to = idx + 1;
-    		if (to >= project.files.length) return;
-    		move(idx, to);
-    	}
-
-    	function onFileUp(idx) {
-    		let to = idx - 1;
-    		if (to < 0) return;
-    		move(idx, to);
-    	}
-
-    	function onFileDelete(idx) {
-    		$$invalidate(
-    			0,
-    			project.files = [
-    				...project.files.slice(0, idx),
-    				...project.files.slice(idx + 1, project.files.length)
-    			],
-    			project
-    		);
-    	}
-
-    	let lastXY;
-
-    	function onMove(e) {
-    		let { x, y } = pixi.app.renderer.plugins.interaction.mouse.global;
-    		if (!lastXY) lastXY = { x, y };
-    		let { offsetWidth, offsetHeight } = editor;
-
-    		// layers.container.x = editor.offsetWidth / 2
-    		// layers.container.y = editor.offsetHeight / 2
-    		$$invalidate(10, layers.container.pivot.x -= x - lastXY.x, layers);
-
-    		$$invalidate(10, layers.container.pivot.y -= y - lastXY.y, layers);
-    		$$invalidate(10, layers.container.x -= (x - lastXY.x) * zoom, layers);
-    		$$invalidate(10, layers.container.y -= (y - lastXY.y) * zoom, layers);
-    		lastXY = { x, y };
-
-    		// layers.container.pivot.x = width/2
-    		// layers.container.pivot.y = height/2
-    		// pixi.app.stage.pivot.x = offsetWidth/2
-    		// pixi.app.stage.pivot.y = offsetHeight/2
-    		x /= offsetWidth;
-
-    		y /= offsetHeight;
-    		let { width, height } = calculate;
-    		width *= zoom;
-    		height *= zoom;
-    		if (!dragging) return;
-    		$$invalidate(10, layers.container.x = (width - offsetWidth) * x * -1, layers);
-    		$$invalidate(10, layers.container.y = (height - offsetHeight) * y * -1, layers);
-    	} // pixi.app.stage.pivot.x = pixi.app.stage.x 
-    	// pixi.app.stage.pivot.y = pixi.app.stage.y 
-
-    	function onWheel(e) {
-    		if (keys["Alt"]) {
-    			$$invalidate(5, zoom += e.deltaY * 0.001);
-    			if (zoom < 0.01) $$invalidate(5, zoom = 0.01);
-    			if (zoom > 3) $$invalidate(5, zoom = 3);
-    		} else {
-    			let fract = 0.5;
-    			$$invalidate(10, layers.container.x += e.deltaX * fract * -1, layers);
-    			$$invalidate(10, layers.container.y += e.deltaY * fract * -1, layers);
-    		}
-    	}
-
-    	let dragging = false;
-    	let keys = {};
-
-    	async function onKeyDown(e) {
-    		keys[e.key] = true;
-    	}
-
-    	async function onKeyUp(e) {
-    		keys[e.key] = false;
-    		await renderThumbnail();
-    	}
-
-    	let thumbnail;
-    	const writable_props = ["project", "files", "handlers", "IDX", "THUMBS"];
-
-    	Object_1.keys($$props).forEach(key => {
-    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$1.warn(`<Project> was created with unknown prop '${key}'`);
+    	Object.keys($$props).forEach(key => {
+    		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$1.warn(`<Files> was created with unknown prop '${key}'`);
     	});
 
     	const click_handler = (handle, e) => handlers.requestFile(handle);
     	const click_handler_1 = (handle, e) => handlers.removeHandle(handle);
     	const click_handler_2 = (handle, e) => handlers.selectImage(handle);
 
-    	function canvas_binding($$value) {
-    		binding_callbacks[$$value ? "unshift" : "push"](() => {
-    			thumbnail = $$value;
-    			$$invalidate(12, thumbnail);
-    		});
-    	}
-
-    	const click_handler_3 = e => $$invalidate(0, project.multiple = false, project);
-    	const click_handler_4 = e => $$invalidate(0, project.multiple = true, project);
-    	const click_handler_5 = (idx, e) => onFileUp(idx);
-    	const click_handler_6 = (idx, e) => onFileDown(idx);
-
-    	function select0_change_handler() {
-    		project.config.background = select_value(this);
-    		$$invalidate(0, project);
-    	}
-
-    	function select1_change_handler() {
-    		project.config.size = select_value(this);
-    		$$invalidate(0, project);
-    	}
-
-    	function input0_input_handler() {
-    		project.config.dpi = to_number(this.value);
-    		$$invalidate(0, project);
-    	}
-
-    	function input1_input_handler() {
-    		project.config.margin = to_number(this.value);
-    		$$invalidate(0, project);
-    	}
-
-    	function layer_group_binding(value, group, each_value, index) {
-    		each_value[index] = value;
-    		$$invalidate(10, layers);
-    	}
-
-    	function layer_solo_binding(value) {
-    		solo = value;
-    		$$invalidate(9, solo);
-    	}
-
-    	function layer_layer_binding(value, index) {
-    		if ($$self.$$.not_equal(project.layers[index], value)) {
-    			project.layers[index] = value;
-    			$$invalidate(0, project);
-    		}
-    	}
-
-    	function div15_binding($$value) {
-    		binding_callbacks[$$value ? "unshift" : "push"](() => {
-    			editor = $$value;
-    			$$invalidate(8, editor);
-    		});
-    	}
-
-    	const mousedown_handler = e => $$invalidate(11, dragging = true);
-    	const mouseup_handler = e => $$invalidate(11, dragging = false);
-    	const mouseleave_handler = e => $$invalidate(11, dragging = false);
-    	const click_handler_8 = e => zoom < 2 ? $$invalidate(5, zoom += 0.05) : null;
-
-    	function input2_change_input_handler() {
-    		zoom = to_number(this.value);
-    		$$invalidate(5, zoom);
-    	}
-
-    	const click_handler_9 = e => zoom > 0.05 ? $$invalidate(5, zoom -= 0.05) : null;
-    	const mousedown_handler_1 = e => togglePreview(true);
-    	const mouseup_handler_1 = e => togglePreview(false);
-
-    	function main_1_binding($$value) {
-    		binding_callbacks[$$value ? "unshift" : "push"](() => {
-    			main = $$value;
-    			$$invalidate(7, main);
-    		});
-    	}
-
     	$$self.$$set = $$props => {
-    		if ("project" in $$props) $$invalidate(0, project = $$props.project);
-    		if ("files" in $$props) $$invalidate(1, files = $$props.files);
-    		if ("handlers" in $$props) $$invalidate(2, handlers = $$props.handlers);
-    		if ("IDX" in $$props) $$invalidate(3, IDX = $$props.IDX);
-    		if ("THUMBS" in $$props) $$invalidate(4, THUMBS = $$props.THUMBS);
-    		if ("$$scope" in $$props) $$invalidate(53, $$scope = $$props.$$scope);
+    		if ("files" in $$props) $$invalidate(0, files = $$props.files);
+    		if ("project" in $$props) $$invalidate(1, project = $$props.project);
     	};
 
     	$$self.$capture_state = () => ({
-    		lib,
-    		PIXI,
     		onMount,
-    		get,
-    		set,
-    		rectd,
-    		options,
-    		Layer,
-    		Palette,
-    		Title,
-    		main,
-    		editor,
-    		app,
-    		stage,
-    		loader,
-    		mode,
-    		solo,
-    		layers,
-    		pixi,
-    		project,
     		files,
+    		project,
+    		selectImage,
+    		requestFile,
+    		requestAll,
+    		accessFiles,
+    		removeHandle,
+    		clearAllHandles,
     		handlers,
-    		IDX,
-    		THUMBS,
-    		uniforms,
-    		setUniforms,
-    		mm2px,
-    		fit,
-    		onResize,
-    		init,
-    		togglePreview,
-    		addLayer,
-    		thumbTimeout,
-    		thumbLookup,
-    		renderThumbnail,
-    		setup,
-    		update,
-    		sizeTimeout,
-    		prevMargin,
-    		removeChildren,
-    		drawImages,
-    		onZoom,
-    		inited,
-    		setPositions,
     		classes,
-    		targets,
-    		arrowClass,
-    		zoom,
-    		move,
-    		onFileDown,
-    		onFileUp,
-    		onFileDelete,
-    		lastXY,
-    		onMove,
-    		onScroll,
-    		onWheel,
-    		dragging,
-    		keys,
-    		onKeyDown,
-    		onKeyUp,
-    		onMouseUp,
-    		thumbnail,
-    		_uniforms,
-    		calculate,
     		needsSync
     	});
 
     	$$self.$inject_state = $$props => {
-    		if ("main" in $$props) $$invalidate(7, main = $$props.main);
-    		if ("editor" in $$props) $$invalidate(8, editor = $$props.editor);
-    		if ("app" in $$props) app = $$props.app;
-    		if ("stage" in $$props) stage = $$props.stage;
-    		if ("loader" in $$props) loader = $$props.loader;
-    		if ("mode" in $$props) mode = $$props.mode;
-    		if ("solo" in $$props) $$invalidate(9, solo = $$props.solo);
-    		if ("layers" in $$props) $$invalidate(10, layers = $$props.layers);
-    		if ("pixi" in $$props) $$invalidate(15, pixi = $$props.pixi);
-    		if ("project" in $$props) $$invalidate(0, project = $$props.project);
-    		if ("files" in $$props) $$invalidate(1, files = $$props.files);
-    		if ("handlers" in $$props) $$invalidate(2, handlers = $$props.handlers);
-    		if ("IDX" in $$props) $$invalidate(3, IDX = $$props.IDX);
-    		if ("THUMBS" in $$props) $$invalidate(4, THUMBS = $$props.THUMBS);
-    		if ("uniforms" in $$props) uniforms = $$props.uniforms;
-    		if ("fit" in $$props) fit = $$props.fit;
-    		if ("thumbTimeout" in $$props) thumbTimeout = $$props.thumbTimeout;
-    		if ("thumbLookup" in $$props) thumbLookup = $$props.thumbLookup;
-    		if ("sizeTimeout" in $$props) sizeTimeout = $$props.sizeTimeout;
-    		if ("prevMargin" in $$props) prevMargin = $$props.prevMargin;
-    		if ("inited" in $$props) inited = $$props.inited;
-    		if ("classes" in $$props) $$invalidate(19, classes = $$props.classes);
-    		if ("targets" in $$props) targets = $$props.targets;
-    		if ("arrowClass" in $$props) $$invalidate(20, arrowClass = $$props.arrowClass);
-    		if ("zoom" in $$props) $$invalidate(5, zoom = $$props.zoom);
-    		if ("lastXY" in $$props) lastXY = $$props.lastXY;
-    		if ("dragging" in $$props) $$invalidate(11, dragging = $$props.dragging);
-    		if ("keys" in $$props) keys = $$props.keys;
-    		if ("thumbnail" in $$props) $$invalidate(12, thumbnail = $$props.thumbnail);
-    		if ("_uniforms" in $$props) $$invalidate(6, _uniforms = $$props._uniforms);
-    		if ("calculate" in $$props) $$invalidate(13, calculate = $$props.calculate);
-    		if ("needsSync" in $$props) $$invalidate(14, needsSync = $$props.needsSync);
+    		if ("files" in $$props) $$invalidate(0, files = $$props.files);
+    		if ("project" in $$props) $$invalidate(1, project = $$props.project);
+    		if ("handlers" in $$props) $$invalidate(3, handlers = $$props.handlers);
+    		if ("classes" in $$props) $$invalidate(4, classes = $$props.classes);
+    		if ("needsSync" in $$props) $$invalidate(2, needsSync = $$props.needsSync);
     	};
 
     	if ($$props && "$$inject" in $$props) {
@@ -48948,122 +51526,31 @@ void main(void) {
     	}
 
     	$$self.$$.update = () => {
-    		if ($$self.$$.dirty[0] & /*project*/ 1) {
-    			$$invalidate(6, _uniforms = {
-    				hsla: options.backgrounds.find(b => b.name == project.config.background).colour,
-    				size: options.sizes.find(b => b.name == project.config.size).xy
-    			});
-    		}
-
-    		if ($$self.$$.dirty[0] & /*_uniforms*/ 64) {
-    			setUniforms(_uniforms);
-    		}
-
-    		if ($$self.$$.dirty[0] & /*_uniforms*/ 64) {
-    			$$invalidate(13, calculate = {
-    				width: mm2px(_uniforms.size[0]),
-    				height: mm2px(_uniforms.size[1])
-    			});
-    		}
-
-    		if ($$self.$$.dirty[0] & /*project*/ 1) {
-    			update(project.config);
-    		}
-
-    		if ($$self.$$.dirty[0] & /*files*/ 2) {
-    			setup(files);
-    		}
-
-    		if ($$self.$$.dirty[0] & /*files*/ 2) {
-    			$$invalidate(14, needsSync = files.handles.filter(h => !files.srcs[h.name]));
-    		}
-
-    		if ($$self.$$.dirty[0] & /*zoom*/ 32) {
-    			onZoom();
+    		if ($$self.$$.dirty & /*files*/ 1) {
+    			$$invalidate(2, needsSync = files.handles.filter(h => !files.srcs[h.name]));
     		}
     	};
 
     	return [
-    		project,
     		files,
-    		handlers,
-    		IDX,
-    		THUMBS,
-    		zoom,
-    		_uniforms,
-    		main,
-    		editor,
-    		solo,
-    		layers,
-    		dragging,
-    		thumbnail,
-    		calculate,
+    		project,
     		needsSync,
-    		pixi,
-    		onResize,
-    		togglePreview,
-    		addLayer,
+    		handlers,
     		classes,
-    		arrowClass,
-    		onFileDown,
-    		onFileUp,
-    		onMove,
-    		onWheel,
-    		onKeyDown,
-    		onKeyUp,
-    		slots,
     		click_handler,
     		click_handler_1,
-    		click_handler_2,
-    		canvas_binding,
-    		click_handler_3,
-    		click_handler_4,
-    		click_handler_5,
-    		click_handler_6,
-    		select0_change_handler,
-    		select1_change_handler,
-    		input0_input_handler,
-    		input1_input_handler,
-    		layer_group_binding,
-    		layer_solo_binding,
-    		layer_layer_binding,
-    		div15_binding,
-    		mousedown_handler,
-    		mouseup_handler,
-    		mouseleave_handler,
-    		click_handler_8,
-    		input2_change_input_handler,
-    		click_handler_9,
-    		mousedown_handler_1,
-    		mouseup_handler_1,
-    		main_1_binding,
-    		$$scope
+    		click_handler_2
     	];
     }
 
-    class Project extends SvelteComponentDev {
+    class Files extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-
-    		init$1(
-    			this,
-    			options,
-    			instance$1,
-    			create_fragment$1,
-    			safe_not_equal,
-    			{
-    				project: 0,
-    				files: 1,
-    				handlers: 2,
-    				IDX: 3,
-    				THUMBS: 4
-    			},
-    			[-1, -1, -1]
-    		);
+    		init$1(this, options, instance$1, create_fragment$1, safe_not_equal, { files: 0, project: 1 });
 
     		dispatch_dev("SvelteRegisterComponent", {
     			component: this,
-    			tagName: "Project",
+    			tagName: "Files",
     			options,
     			id: create_fragment$1.name
     		});
@@ -49071,65 +51558,29 @@ void main(void) {
     		const { ctx } = this.$$;
     		const props = options.props || {};
 
-    		if (/*project*/ ctx[0] === undefined && !("project" in props)) {
-    			console_1$1.warn("<Project> was created without expected prop 'project'");
+    		if (/*files*/ ctx[0] === undefined && !("files" in props)) {
+    			console_1$1.warn("<Files> was created without expected prop 'files'");
     		}
 
-    		if (/*files*/ ctx[1] === undefined && !("files" in props)) {
-    			console_1$1.warn("<Project> was created without expected prop 'files'");
+    		if (/*project*/ ctx[1] === undefined && !("project" in props)) {
+    			console_1$1.warn("<Files> was created without expected prop 'project'");
     		}
-
-    		if (/*handlers*/ ctx[2] === undefined && !("handlers" in props)) {
-    			console_1$1.warn("<Project> was created without expected prop 'handlers'");
-    		}
-
-    		if (/*IDX*/ ctx[3] === undefined && !("IDX" in props)) {
-    			console_1$1.warn("<Project> was created without expected prop 'IDX'");
-    		}
-
-    		if (/*THUMBS*/ ctx[4] === undefined && !("THUMBS" in props)) {
-    			console_1$1.warn("<Project> was created without expected prop 'THUMBS'");
-    		}
-    	}
-
-    	get project() {
-    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set project(value) {
-    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
     	get files() {
-    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    		throw new Error("<Files>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
     	set files(value) {
-    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    		throw new Error("<Files>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	get handlers() {
-    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	get project() {
+    		throw new Error("<Files>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
 
-    	set handlers(value) {
-    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get IDX() {
-    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set IDX(value) {
-    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	get THUMBS() {
-    		throw new Error("<Project>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
-    	}
-
-    	set THUMBS(value) {
-    		throw new Error("<Project>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	set project(value) {
+    		throw new Error("<Files>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
     	}
     }
 
@@ -49140,74 +51591,46 @@ void main(void) {
 
     function get_each_context(ctx, list, i) {
     	const child_ctx = ctx.slice();
-    	child_ctx[25] = list[i];
-    	child_ctx[27] = i;
+    	child_ctx[20] = list[i];
+    	child_ctx[22] = i;
     	return child_ctx;
     }
 
-    // (209:1) <Title>
-    function create_default_slot_1(ctx) {
-    	let t;
-
-    	const block = {
-    		c: function create() {
-    			t = text("Projects");
-    		},
-    		m: function mount(target, anchor) {
-    			insert_dev(target, t, anchor);
-    		},
-    		d: function destroy(detaching) {
-    			if (detaching) detach_dev(t);
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_default_slot_1.name,
-    		type: "slot",
-    		source: "(209:1) <Title>",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    // (218:2) {#each PROJECTS as project,idx}
+    // (151:5) {#each PROJECTS as p,i}
     function create_each_block(ctx) {
-    	let div;
-    	let img;
-    	let img_src_value;
-    	let t;
+    	let option;
+    	let t0;
+    	let t1;
+    	let t2_value = (/*p*/ ctx[20].title || "") + "";
+    	let t2;
+    	let option_name_value;
 
     	const block = {
     		c: function create() {
-    			div = element("div");
-    			img = element("img");
-    			t = space();
-    			attr_dev(img, "class", "b1-solid cross minh2em minw2em");
-    			if (img.src !== (img_src_value = /*THUMBS*/ ctx[1][/*IDX*/ ctx[2]])) attr_dev(img, "src", img_src_value);
-    			add_location(img, file, 221, 4, 4569);
-    			attr_dev(div, "class", "p1 bb1-solid flex row-center-center ");
-    			toggle_class(div, "pop", /*idx*/ ctx[27] == /*IDX*/ ctx[2]);
-    			toggle_class(div, "bt1-solid", /*idx*/ ctx[27] == 0);
-    			add_location(div, file, 218, 3, 4457);
+    			option = element("option");
+    			t0 = text(/*i*/ ctx[22]);
+    			t1 = space();
+    			t2 = text(t2_value);
+    			option.__value = /*i*/ ctx[22];
+    			option.value = option.__value;
+    			attr_dev(option, "name", option_name_value = /*p*/ ctx[20].title || "");
+    			add_location(option, file, 151, 6, 3183);
     		},
     		m: function mount(target, anchor) {
-    			insert_dev(target, div, anchor);
-    			append_dev(div, img);
-    			append_dev(div, t);
+    			insert_dev(target, option, anchor);
+    			append_dev(option, t0);
+    			append_dev(option, t1);
+    			append_dev(option, t2);
     		},
     		p: function update(ctx, dirty) {
-    			if (dirty & /*THUMBS, IDX*/ 6 && img.src !== (img_src_value = /*THUMBS*/ ctx[1][/*IDX*/ ctx[2]])) {
-    				attr_dev(img, "src", img_src_value);
-    			}
+    			if (dirty & /*PROJECTS*/ 1 && t2_value !== (t2_value = (/*p*/ ctx[20].title || "") + "")) set_data_dev(t2, t2_value);
 
-    			if (dirty & /*IDX*/ 4) {
-    				toggle_class(div, "pop", /*idx*/ ctx[27] == /*IDX*/ ctx[2]);
+    			if (dirty & /*PROJECTS*/ 1 && option_name_value !== (option_name_value = /*p*/ ctx[20].title || "")) {
+    				attr_dev(option, "name", option_name_value);
     			}
     		},
     		d: function destroy(detaching) {
-    			if (detaching) detach_dev(div);
+    			if (detaching) detach_dev(option);
     		}
     	};
 
@@ -49215,33 +51638,64 @@ void main(void) {
     		block,
     		id: create_each_block.name,
     		type: "each",
-    		source: "(218:2) {#each PROJECTS as project,idx}",
+    		source: "(151:5) {#each PROJECTS as p,i}",
     		ctx
     	});
 
     	return block;
     }
 
-    // (202:0) <Project   bind:IDX={IDX}  bind:THUMBS={THUMBS}  bind:project={PROJECTS[IDX]}   bind:files={files}   {handlers}>
-    function create_default_slot(ctx) {
-    	let title;
-    	let t0;
+    function create_fragment(ctx) {
     	let div0;
-    	let button;
-    	let t2;
+    	let files_1;
+    	let updating_files;
+    	let updating_project;
+    	let t0;
+    	let div5;
+    	let header;
+    	let div3;
     	let div1;
+    	let select0;
+    	let t1;
+    	let div2;
+    	let select1;
+    	let t2;
+    	let button0;
+    	let t4;
+    	let button1;
+    	let t6;
+    	let div4;
+    	let button2;
+    	let t8;
+    	let project;
+    	let updating_IDX;
+    	let updating_THUMBS;
+    	let updating_project_1;
     	let current;
     	let mounted;
     	let dispose;
 
-    	title = new Title({
-    			props: {
-    				$$slots: { default: [create_default_slot_1] },
-    				$$scope: { ctx }
-    			},
-    			$$inline: true
-    		});
+    	function files_1_files_binding(value) {
+    		/*files_1_files_binding*/ ctx[5](value);
+    	}
 
+    	function files_1_project_binding(value) {
+    		/*files_1_project_binding*/ ctx[6](value);
+    	}
+
+    	let files_1_props = {};
+
+    	if (/*files*/ ctx[3] !== void 0) {
+    		files_1_props.files = /*files*/ ctx[3];
+    	}
+
+    	if (/*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]] !== void 0) {
+    		files_1_props.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
+    	}
+
+    	files_1 = new Files({ props: files_1_props, $$inline: true });
+    	binding_callbacks.push(() => bind$1(files_1, "files", files_1_files_binding));
+    	binding_callbacks.push(() => bind$1(files_1, "project", files_1_project_binding));
     	let each_value = /*PROJECTS*/ ctx[0];
     	validate_each_argument(each_value);
     	let each_blocks = [];
@@ -49250,140 +51704,19 @@ void main(void) {
     		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
     	}
 
-    	const block = {
-    		c: function create() {
-    			create_component(title.$$.fragment);
-    			t0 = space();
-    			div0 = element("div");
-    			button = element("button");
-    			button.textContent = "New";
-    			t2 = space();
-    			div1 = element("div");
-
-    			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].c();
-    			}
-
-    			attr_dev(button, "class", "w100pc");
-    			add_location(button, file, 210, 2, 4320);
-    			attr_dev(div0, "class", "p1");
-    			add_location(div0, file, 209, 1, 4301);
-    			attr_dev(div1, "class", "checker");
-    			add_location(div1, file, 216, 1, 4398);
-    		},
-    		m: function mount(target, anchor) {
-    			mount_component(title, target, anchor);
-    			insert_dev(target, t0, anchor);
-    			insert_dev(target, div0, anchor);
-    			append_dev(div0, button);
-    			insert_dev(target, t2, anchor);
-    			insert_dev(target, div1, anchor);
-
-    			for (let i = 0; i < each_blocks.length; i += 1) {
-    				each_blocks[i].m(div1, null);
-    			}
-
-    			current = true;
-
-    			if (!mounted) {
-    				dispose = listen_dev(button, "click", click_handler, false, false, false);
-    				mounted = true;
-    			}
-    		},
-    		p: function update(ctx, dirty) {
-    			const title_changes = {};
-
-    			if (dirty & /*$$scope*/ 268435456) {
-    				title_changes.$$scope = { dirty, ctx };
-    			}
-
-    			title.$set(title_changes);
-
-    			if (dirty & /*IDX, THUMBS, PROJECTS*/ 7) {
-    				each_value = /*PROJECTS*/ ctx[0];
-    				validate_each_argument(each_value);
-    				let i;
-
-    				for (i = 0; i < each_value.length; i += 1) {
-    					const child_ctx = get_each_context(ctx, each_value, i);
-
-    					if (each_blocks[i]) {
-    						each_blocks[i].p(child_ctx, dirty);
-    					} else {
-    						each_blocks[i] = create_each_block(child_ctx);
-    						each_blocks[i].c();
-    						each_blocks[i].m(div1, null);
-    					}
-    				}
-
-    				for (; i < each_blocks.length; i += 1) {
-    					each_blocks[i].d(1);
-    				}
-
-    				each_blocks.length = each_value.length;
-    			}
-    		},
-    		i: function intro(local) {
-    			if (current) return;
-    			transition_in(title.$$.fragment, local);
-    			current = true;
-    		},
-    		o: function outro(local) {
-    			transition_out(title.$$.fragment, local);
-    			current = false;
-    		},
-    		d: function destroy(detaching) {
-    			destroy_component(title, detaching);
-    			if (detaching) detach_dev(t0);
-    			if (detaching) detach_dev(div0);
-    			if (detaching) detach_dev(t2);
-    			if (detaching) detach_dev(div1);
-    			destroy_each(each_blocks, detaching);
-    			mounted = false;
-    			dispose();
-    		}
-    	};
-
-    	dispatch_dev("SvelteRegisterBlock", {
-    		block,
-    		id: create_default_slot.name,
-    		type: "slot",
-    		source: "(202:0) <Project   bind:IDX={IDX}  bind:THUMBS={THUMBS}  bind:project={PROJECTS[IDX]}   bind:files={files}   {handlers}>",
-    		ctx
-    	});
-
-    	return block;
-    }
-
-    function create_fragment(ctx) {
-    	let project;
-    	let updating_IDX;
-    	let updating_THUMBS;
-    	let updating_project;
-    	let updating_files;
-    	let current;
-
     	function project_IDX_binding(value) {
-    		/*project_IDX_binding*/ ctx[5](value);
+    		/*project_IDX_binding*/ ctx[8](value);
     	}
 
     	function project_THUMBS_binding(value) {
-    		/*project_THUMBS_binding*/ ctx[6](value);
+    		/*project_THUMBS_binding*/ ctx[9](value);
     	}
 
     	function project_project_binding(value) {
-    		/*project_project_binding*/ ctx[7](value);
+    		/*project_project_binding*/ ctx[10](value);
     	}
 
-    	function project_files_binding(value) {
-    		/*project_files_binding*/ ctx[8](value);
-    	}
-
-    	let project_props = {
-    		handlers: /*handlers*/ ctx[4],
-    		$$slots: { default: [create_default_slot] },
-    		$$scope: { ctx }
-    	};
+    	let project_props = { files: /*files*/ ctx[3] };
 
     	if (/*IDX*/ ctx[2] !== void 0) {
     		project_props.IDX = /*IDX*/ ctx[2];
@@ -49397,33 +51730,159 @@ void main(void) {
     		project_props.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
     	}
 
-    	if (/*files*/ ctx[3] !== void 0) {
-    		project_props.files = /*files*/ ctx[3];
-    	}
-
     	project = new Project({ props: project_props, $$inline: true });
     	binding_callbacks.push(() => bind$1(project, "IDX", project_IDX_binding));
     	binding_callbacks.push(() => bind$1(project, "THUMBS", project_THUMBS_binding));
     	binding_callbacks.push(() => bind$1(project, "project", project_project_binding));
-    	binding_callbacks.push(() => bind$1(project, "files", project_files_binding));
 
     	const block = {
     		c: function create() {
+    			div0 = element("div");
+    			create_component(files_1.$$.fragment);
+    			t0 = space();
+    			div5 = element("div");
+    			header = element("header");
+    			div3 = element("div");
+    			div1 = element("div");
+    			select0 = element("select");
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			t1 = space();
+    			div2 = element("div");
+    			select1 = element("select");
+    			t2 = space();
+    			button0 = element("button");
+    			button0.textContent = "Select Images";
+    			t4 = space();
+    			button1 = element("button");
+    			button1.textContent = "Add Layer";
+    			t6 = space();
+    			div4 = element("div");
+    			button2 = element("button");
+    			button2.textContent = "Export";
+    			t8 = space();
     			create_component(project.$$.fragment);
+    			attr_dev(div0, "class", "fixed l0 t0 w100vw h100vh bg z-index9 none");
+    			add_location(div0, file, 140, 0, 2761);
+    			set_style(select0, "letter-spacing", "4em");
+    			if (/*IDX*/ ctx[2] === void 0) add_render_callback(() => /*select0_change_handler*/ ctx[7].call(select0));
+    			add_location(select0, file, 149, 4, 3094);
+    			attr_dev(div1, "class", "basis5em h100pc select");
+    			add_location(div1, file, 148, 3, 3053);
+    			set_style(select1, "letter-spacing", "4em");
+    			add_location(select1, file, 156, 4, 3332);
+    			attr_dev(div2, "class", "basis5em h100pc select");
+    			add_location(div2, file, 155, 3, 3291);
+    			attr_dev(button0, "class", "");
+    			add_location(button0, file, 159, 6, 3417);
+    			attr_dev(button1, "class", "");
+    			add_location(button1, file, 165, 6, 3567);
+    			attr_dev(div3, "class", " flex row-flex-start-center cmr1");
+    			add_location(div3, file, 146, 2, 3002);
+    			attr_dev(button2, "class", "pop");
+    			add_location(button2, file, 173, 3, 3761);
+    			attr_dev(div4, "class", " flex row-flex-end-center");
+    			add_location(div4, file, 172, 2, 3718);
+    			attr_dev(header, "class", "bg plr1 pb1 pt1 bb1-solid flex row-space-between-center");
+    			add_location(header, file, 145, 1, 2927);
+    			attr_dev(div5, "class", "wrapper flex column h100vh");
+    			add_location(div5, file, 144, 0, 2885);
     		},
     		l: function claim(nodes) {
     			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
     		},
     		m: function mount(target, anchor) {
-    			mount_component(project, target, anchor);
+    			insert_dev(target, div0, anchor);
+    			mount_component(files_1, div0, null);
+    			insert_dev(target, t0, anchor);
+    			insert_dev(target, div5, anchor);
+    			append_dev(div5, header);
+    			append_dev(header, div3);
+    			append_dev(div3, div1);
+    			append_dev(div1, select0);
+
+    			for (let i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(select0, null);
+    			}
+
+    			select_option(select0, /*IDX*/ ctx[2]);
+    			append_dev(div3, t1);
+    			append_dev(div3, div2);
+    			append_dev(div2, select1);
+    			select_option(select1, "Presets");
+    			append_dev(div3, t2);
+    			append_dev(div3, button0);
+    			append_dev(div3, t4);
+    			append_dev(div3, button1);
+    			append_dev(header, t6);
+    			append_dev(header, div4);
+    			append_dev(div4, button2);
+    			append_dev(div5, t8);
+    			mount_component(project, div5, null);
     			current = true;
+
+    			if (!mounted) {
+    				dispose = [
+    					listen_dev(select0, "change", /*select0_change_handler*/ ctx[7]),
+    					listen_dev(button0, "click", click_handler, false, false, false),
+    					listen_dev(button0, "click", /*addLayer*/ ctx[4], false, false, false),
+    					listen_dev(button1, "click", click_handler_1, false, false, false),
+    					listen_dev(button1, "click", /*addLayer*/ ctx[4], false, false, false)
+    				];
+
+    				mounted = true;
+    			}
     		},
     		p: function update(ctx, [dirty]) {
-    			const project_changes = {};
+    			const files_1_changes = {};
 
-    			if (dirty & /*$$scope, PROJECTS, IDX, THUMBS*/ 268435463) {
-    				project_changes.$$scope = { dirty, ctx };
+    			if (!updating_files && dirty & /*files*/ 8) {
+    				updating_files = true;
+    				files_1_changes.files = /*files*/ ctx[3];
+    				add_flush_callback(() => updating_files = false);
     			}
+
+    			if (!updating_project && dirty & /*PROJECTS, IDX*/ 5) {
+    				updating_project = true;
+    				files_1_changes.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
+    				add_flush_callback(() => updating_project = false);
+    			}
+
+    			files_1.$set(files_1_changes);
+
+    			if (dirty & /*PROJECTS*/ 1) {
+    				each_value = /*PROJECTS*/ ctx[0];
+    				validate_each_argument(each_value);
+    				let i;
+
+    				for (i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(child_ctx, dirty);
+    					} else {
+    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(select0, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+
+    				each_blocks.length = each_value.length;
+    			}
+
+    			if (dirty & /*IDX*/ 4) {
+    				select_option(select0, /*IDX*/ ctx[2]);
+    			}
+
+    			const project_changes = {};
+    			if (dirty & /*files*/ 8) project_changes.files = /*files*/ ctx[3];
 
     			if (!updating_IDX && dirty & /*IDX*/ 4) {
     				updating_IDX = true;
@@ -49437,31 +51896,34 @@ void main(void) {
     				add_flush_callback(() => updating_THUMBS = false);
     			}
 
-    			if (!updating_project && dirty & /*PROJECTS, IDX*/ 5) {
-    				updating_project = true;
+    			if (!updating_project_1 && dirty & /*PROJECTS, IDX*/ 5) {
+    				updating_project_1 = true;
     				project_changes.project = /*PROJECTS*/ ctx[0][/*IDX*/ ctx[2]];
-    				add_flush_callback(() => updating_project = false);
-    			}
-
-    			if (!updating_files && dirty & /*files*/ 8) {
-    				updating_files = true;
-    				project_changes.files = /*files*/ ctx[3];
-    				add_flush_callback(() => updating_files = false);
+    				add_flush_callback(() => updating_project_1 = false);
     			}
 
     			project.$set(project_changes);
     		},
     		i: function intro(local) {
     			if (current) return;
+    			transition_in(files_1.$$.fragment, local);
     			transition_in(project.$$.fragment, local);
     			current = true;
     		},
     		o: function outro(local) {
+    			transition_out(files_1.$$.fragment, local);
     			transition_out(project.$$.fragment, local);
     			current = false;
     		},
     		d: function destroy(detaching) {
-    			destroy_component(project, detaching);
+    			if (detaching) detach_dev(div0);
+    			destroy_component(files_1);
+    			if (detaching) detach_dev(t0);
+    			if (detaching) detach_dev(div5);
+    			destroy_each(each_blocks, detaching);
+    			destroy_component(project);
+    			mounted = false;
+    			run_all(dispose);
     		}
     	};
 
@@ -49477,12 +51939,16 @@ void main(void) {
     }
 
     const KEY = "RISOGRAPHINATOR";
-    const click_handler = e => e;
+    const click_handler = e => e.target.blur();
+    const click_handler_1 = e => e.target.blur();
 
     function instance($$self, $$props, $$invalidate) {
     	let { $$slots: slots = {}, $$scope } = $$props;
     	validate_slots("App", slots, []);
-    	onMount(setup);
+
+    	onMount(async e => {
+    		await loadDb();
+    	});
 
     	let intro = {
     		layers: [{}],
@@ -49493,7 +51959,7 @@ void main(void) {
     			margin: 10
     		},
     		multiple: false,
-    		files: ["wheel"], //[ 'autr', 'test', 'alt']
+    		files: ["large"], //[ 'autr', 'test', 'alt']
     		
     	};
 
@@ -49501,11 +51967,6 @@ void main(void) {
     	let PROJECTS = [intro];
     	let THUMBS = [];
     	let IDX = 0;
-
-    	async function setup() {
-    		await loadDb();
-    		await requestAll();
-    	}
 
     	let files = {
     		handles: [
@@ -49528,6 +51989,11 @@ void main(void) {
     				name: "wheel",
     				url: "sources/wheel.jpg",
     				static: true
+    			},
+    			{
+    				name: "large",
+    				url: "sources/large.jpg",
+    				static: true
     			}
     		],
     		srcs: {}
@@ -49536,51 +52002,6 @@ void main(void) {
     	const FILES_KEY = `${KEY}_FILES`;
     	const PROJECTS_KEY = `${KEY}_PROJECTS`;
     	const THUMBS_KEY = `${KEY}_THUMBS`;
-
-    	function selectImage(handle) {
-    		let idx = PROJECTS[IDX].files.indexOf(handle.name);
-
-    		if (!PROJECTS[IDX].multiple) {
-    			$$invalidate(0, PROJECTS[IDX].trigger = true, PROJECTS);
-    			$$invalidate(0, PROJECTS[IDX].files = [handle.name], PROJECTS);
-    		} else {
-    			if (idx == -1) {
-    				let cp = PROJECTS[IDX].files;
-    				$$invalidate(0, PROJECTS[IDX].files = [], PROJECTS);
-    				cp.push(handle.name);
-    				$$invalidate(0, PROJECTS[IDX].files = cp, PROJECTS);
-    			} else {
-    				let cp = PROJECTS[IDX].files;
-    				cp.splice(idx, 1);
-    				$$invalidate(0, PROJECTS[IDX].files = cp, PROJECTS);
-    			}
-    		}
-    	}
-
-    	async function requestFile(handle) {
-    		if (handle.static) {
-    			$$invalidate(3, files.srcs[handle.name] = handle, files);
-    		} else {
-    			let opts = { mode: "read" };
-    			let permission = await handle.queryPermission(opts);
-    			if (permission != "granted") permission = await handle.requestPermission(opts);
-
-    			if (permission == "granted") {
-    				const file = await handle.getFile();
-
-    				$$invalidate(
-    					3,
-    					files.srcs[handle.name] = {
-    						name: handle.name,
-    						url: URL.createObjectURL(file)
-    					},
-    					files
-    				);
-    			} else {
-    				window.alert(`Could not load ${handle.name}!`);
-    			}
-    		}
-    	}
 
     	async function loadDb() {
     		const neuFiles = await get(FILES_KEY) || [];
@@ -49619,67 +52040,43 @@ void main(void) {
     					};
     				});
 
-    				console.log(`[App] saves ${PROJECTS.length} projects to db`);
-    				await set(PROJECTS_KEY, cleaned);
+    				console.log(`[App] saved ${PROJECTS.length} projects to db`);
+    				await set$1(PROJECTS_KEY, cleaned);
     			},
     			200
     		);
     	}
 
-    	async function requestAll() {
-    		for (const handle of files.handles) requestFile(handle);
+    	async function addLayer() {
+    		console.log("[Project] 🍰  adding new layer");
+    		let cp = PROJECTS[IDX].layers;
+    		$$invalidate(0, PROJECTS[IDX].layers = [], PROJECTS);
+    		cp.push({ flag: true });
+    		$$invalidate(0, PROJECTS[IDX].layers = cp, PROJECTS);
     	}
-
-    	async function accessFiles(e) {
-    		let neu = await window.showOpenFilePicker({
-    			types: [
-    				{
-    					description: "Images",
-    					accept: {
-    						"image/*": [".png", ".gif", ".jpeg", ".jpg"]
-    					}
-    				}
-    			],
-    			excludeAcceptAllOption: true,
-    			multiple: true
-    		});
-
-    		$$invalidate(3, files.handles = files.handles.concat(neu), files);
-    		await set(FILES_KEY, files.handles.filter(h => !h.static));
-    		await requestAll();
-    	}
-
-    	async function removeHandle(handle) {
-    		if (!window.confirm(`Remove ${handle.name} from bin?`)) return;
-    		let cp = files.handles;
-    		$$invalidate(3, files.handles = [], files);
-    		const idx = cp.indexOf(handle);
-    		if (idx != -1) cp.splice(idx, 1);
-    		$$invalidate(3, files.handles = cp, files);
-    		await set(FILES_KEY, files.handles.filter(h => !h.static));
-    	}
-
-    	async function clearAllHandles(handle) {
-    		if (!window.confirm(`Remove all files from bin?`)) return;
-    		$$invalidate(3, files.handles = files.handles.filter(h => h.static), files);
-    		await set(FILES_KEY, []);
-    	}
-
-    	let handlers = {
-    		loadDb,
-    		accessFiles,
-    		requestAll,
-    		selectImage,
-    		removeHandle,
-    		requestFile,
-    		clearAllHandles
-    	};
 
     	const writable_props = [];
 
     	Object.keys($$props).forEach(key => {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1.warn(`<App> was created with unknown prop '${key}'`);
     	});
+
+    	function files_1_files_binding(value) {
+    		files = value;
+    		$$invalidate(3, files);
+    	}
+
+    	function files_1_project_binding(value) {
+    		if ($$self.$$.not_equal(PROJECTS[IDX], value)) {
+    			PROJECTS[IDX] = value;
+    			$$invalidate(0, PROJECTS);
+    		}
+    	}
+
+    	function select0_change_handler() {
+    		IDX = select_value(this);
+    		$$invalidate(2, IDX);
+    	}
 
     	function project_IDX_binding(value) {
     		IDX = value;
@@ -49698,40 +52095,29 @@ void main(void) {
     		}
     	}
 
-    	function project_files_binding(value) {
-    		files = value;
-    		$$invalidate(3, files);
-    	}
-
     	$$self.$capture_state = () => ({
     		onMount,
     		Project,
     		Title,
     		options,
     		get,
-    		set,
+    		set: set$1,
+    		Files,
     		intro,
     		FILES,
     		PROJECTS,
     		THUMBS,
     		IDX,
-    		setup,
     		files,
     		KEY,
     		FILES_KEY,
     		PROJECTS_KEY,
     		THUMBS_KEY,
-    		selectImage,
-    		requestFile,
     		loadDb,
     		projectsUpdated,
     		saveTimeout,
     		saveDb,
-    		requestAll,
-    		accessFiles,
-    		removeHandle,
-    		clearAllHandles,
-    		handlers
+    		addLayer
     	});
 
     	$$self.$inject_state = $$props => {
@@ -49742,7 +52128,6 @@ void main(void) {
     		if ("IDX" in $$props) $$invalidate(2, IDX = $$props.IDX);
     		if ("files" in $$props) $$invalidate(3, files = $$props.files);
     		if ("saveTimeout" in $$props) saveTimeout = $$props.saveTimeout;
-    		if ("handlers" in $$props) $$invalidate(4, handlers = $$props.handlers);
     	};
 
     	if ($$props && "$$inject" in $$props) {
@@ -49760,11 +52145,13 @@ void main(void) {
     		THUMBS,
     		IDX,
     		files,
-    		handlers,
+    		addLayer,
+    		files_1_files_binding,
+    		files_1_project_binding,
+    		select0_change_handler,
     		project_IDX_binding,
     		project_THUMBS_binding,
-    		project_project_binding,
-    		project_files_binding
+    		project_project_binding
     	];
     }
 

@@ -8,6 +8,7 @@ specifiers:
   color-string: ^1.5.5
   ezekit: file:../ezekit
   idb-keyval: ^5.0.6
+  panzoom: ^9.4.2
   pixi.js: ^6.0.4
   rollup: ^2.3.4
   rollup-plugin-css-only: ^3.1.0
@@ -16,6 +17,7 @@ specifiers:
   rollup-plugin-terser: ^7.0.0
   sirv-cli: ^1.0.0
   svelte: ^3.0.0
+  svelte-native-drag-drop: link:../svelte-native-drag-drop
 
 dependencies:
   '@pixi/picture': 3.0.1
@@ -23,6 +25,7 @@ dependencies:
   color-string: 1.5.5
   ezekit: link:../ezekit
   idb-keyval: 5.0.6
+  panzoom: 9.4.2
   pixi.js: 6.0.4
   sirv-cli: 1.0.12
 
@@ -35,6 +38,7 @@ devDependencies:
   rollup-plugin-svelte: 7.1.0_rollup@2.52.2+svelte@3.38.3
   rollup-plugin-terser: 7.0.2_rollup@2.52.2
   svelte: 3.38.3
+  svelte-native-drag-drop: link:../svelte-native-drag-drop
 
 packages:
 
@@ -453,6 +457,12 @@ packages:
       '@types/node': 15.12.4
     dev: true
 
+  /amator/1.1.0:
+    resolution: {integrity: sha1-CMa2C8k67Cthu/wMTWd9MDI8wPE=}
+    dependencies:
+      bezier-easing: 2.1.0
+    dev: false
+
   /ansi-styles/3.2.1:
     resolution: {integrity: sha512-VT0ZI6kZRdTh8YyJw3SMbYm/u+NqfsAxEpWO0Pf9sq8/e94WxxOpPKx9FR1FlyCtOVDNOQ+8ntlqFxiRc+r5qA==}
     engines: {node: '>=4'}
@@ -471,6 +481,10 @@ packages:
   /balanced-match/1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
     dev: true
+
+  /bezier-easing/2.1.0:
+    resolution: {integrity: sha1-wE3+i5JtbsrKGBPWn/F5t8ICXYY=}
+    dev: false
 
   /binary-extensions/2.2.0:
     resolution: {integrity: sha512-jDctJ/IVQbZoJykoeHbhXpOlNBqGNcwXJKJog42E5HDPUwQTSdjCHdihjj0DlnheQ7blbT6dHOafNAiS8ooQKA==}
@@ -794,6 +808,10 @@ packages:
     engines: {node: '>=4'}
     dev: false
 
+  /ngraph.events/1.2.1:
+    resolution: {integrity: sha512-D4C+nXH/RFxioGXQdHu8ELDtC6EaCiNsZtih0IvyGN81OZSUby4jXoJ5+RNWasfsd0FnKxxpAROyUMzw64QNsw==}
+    dev: false
+
   /normalize-path/3.0.0:
     resolution: {integrity: sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==}
     engines: {node: '>=0.10.0'}
@@ -813,6 +831,14 @@ packages:
   /opts/2.0.2:
     resolution: {integrity: sha512-k41FwbcLnlgnFh69f4qdUfvDQ+5vaSDnVPFI/y5XuhKRq97EnVVneO9F1ESVCdiVu4fCS2L8usX3mU331hB7pg==}
     dev: true
+
+  /panzoom/9.4.2:
+    resolution: {integrity: sha512-sQLr0t6EmNFXpZHag0HQVtOKqF9xjF7iZdgWg3Ss1o7uh2QZLvcrz7S0Cl8M0d2TkPZ69JfPJdknXN3I0e/2aQ==}
+    dependencies:
+      amator: 1.1.0
+      ngraph.events: 1.2.1
+      wheel: 1.0.0
+    dev: false
 
   /parse-uri/1.0.3:
     resolution: {integrity: sha512-upMnGxNcm+45So85HoguwZTVZI9u11i36DdxJfGF2HYWS2eh3TIx7+/tTi7qrEq15qzGkVhsKjesau+kCk48pA==}
@@ -1100,6 +1126,10 @@ packages:
     dependencies:
       punycode: 1.3.2
       querystring: 0.2.0
+    dev: false
+
+  /wheel/1.0.0:
+    resolution: {integrity: sha512-XiCMHibOiqalCQ+BaNSwRoZ9FDTAvOsXxGHXChBugewDj7HC8VBIER71dEOiRH1fSdLbRCQzngKTSiZ06ZQzeA==}
     dev: false
 
   /wrappy/1.0.2:
