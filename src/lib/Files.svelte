@@ -1,5 +1,6 @@
 <script>
     import { onMount } from 'svelte'
+    import { library } from './_stores.js'
 
     export let files
     export let project
@@ -103,67 +104,90 @@
         miniButtons: `p0 rel w3em h3em bg pointer z-index4 bt0-solid br0-solid`,
         lanes: `flex column br1-solid overflow-auto no-basis grow`
     }
+
+
+    let CANDIDATES = []
+
+    $: (lib => {
+        if ($library) {
+            console.log('SET CANDIDATES')
+        }
+    })($library)
+
 </script>
 
 
 <!-- FILES -->
 
 
-<section class={classes.lanes}>
+<section class="flex column checker h100vh w100vw">
     <!-- <Title>Files</Title> -->
-    <div class="p1">
-        <button 
-            disabled={needsSync}
-            on:click={handlers.requestAll} 
-            class="w100pc">
-            Sync files
-        </button>
-        <button 
-            on:click={handlers.accessFiles} 
-            class="w100pc mt1">
-            Add files
-        </button>
-        <button 
-            on:click={handlers.clearAllHandles} 
-            class="w100pc mt1">
-            Clear all
-        </button>
-    </div>
-    <div class="checker">
-        {#each files.handles as handle, i}
-            <div 
-                class:bt1-solid={i==0}
-                class:pop={project.files.indexOf(handle.name)!=-1}
-                class="rel bb1-solid file p1">
-                <div class="overlay abs t1 l1 bt1-solid br1-solid flex grow row-flex-end-flex-start z-index2">
-                    <button 
-                        on:click={ e => handlers.requestFile( handle ) }
-                        class={classes.miniButtons}>
-                        ⟳
-                    </button>
-                    <button 
-                        on:click={ e => handlers.removeHandle( handle ) } 
-                        class={classes.miniButtons}>
-                        ✕
-                    </button>
-                </div>
-                <div class="b1-solid flex" on:click={e => handlers.selectImage(handle)}>
-                    {#if files.srcs[handle.name]}
-                            <img 
-                                style={`opacity:${project.files.indexOf(handle.name)!=-1 ? '1;' : '0.8;filter: grayscale(100%);'}`}
-                                class="" 
-                                src={files.srcs[handle.name].url} 
-                                alt={handle.name} />
-                    {:else}
-                        <div 
-                            class=" minh8em flex row-center-center">
-                            {handle.name}
-                        </div>
-                    {/if}
-                </div>
+    <div class="flex row-space-between-center p1">
+        <div class="flex row-flex-start-center cmr1">
+            <button 
+                on:click={handlers.accessFiles}>
+                Add Files
+            </button>
+            <button 
+                disabled={needsSync}
+                on:click={handlers.requestAll}>
+                Sync Files
+            </button>
+            <button 
+                on:click={handlers.clearAllHandles}>
+                Clear All
+            </button>
+        </div>
+        <div class="flex row-flex-end-center cml1">
 
-            </div>
-        {/each}
+            <button on:click={e => library.set(false)}>
+                Cancel
+            </button>
+            <button >
+                Save
+            </button>
+        </div>
+    </div>
+    <div class="flex grow overflow-auto">
+        <div class="flex row-stretch-flex-start wrap">
+            {#each files.handles as handle, i}
+                <div 
+                    class:bt1-solid={i==0}
+                    class:pop={project.files.indexOf(handle.name)!=-1}
+                    class="flex column basis0em grow minw16em p1 rel">
+                    <header class="pop b1-solid p1">
+                        BLAH
+                    </header>
+                    <div class="overlay abs t1 l1 bt1-solid br1-solid flex grow row-flex-end-flex-start z-index2">
+                        <button 
+                            on:click={ e => handlers.requestFile( handle ) }
+                            class={classes.miniButtons}>
+                            ⟳
+                        </button>
+                        <button 
+                            on:click={ e => handlers.removeHandle( handle ) } 
+                            class={classes.miniButtons}>
+                            ✕
+                        </button>
+                    </div>
+                    <div class="b1-solid flex" on:click={e => handlers.selectImage(handle)}>
+                        {#if files.srcs[handle.name]}
+                                <img 
+                                    style={`opacity:${project.files.indexOf(handle.name)!=-1 ? '1;' : '0.8;filter: grayscale(100%);'}`}
+                                    class="" 
+                                    src={files.srcs[handle.name].url} 
+                                    alt={handle.name} />
+                        {:else}
+                            <div 
+                                class=" minh8em flex row-center-center">
+                                {handle.name}
+                            </div>
+                        {/if}
+                    </div>
+
+                </div>
+            {/each}
+        </div>
     </div>
         
     {#if files.handles.length == 0 }

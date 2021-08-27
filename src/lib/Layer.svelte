@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte'
 	import gui from './_gui.js'
 	import Palette from './Palette.svelte'
+	import { transform } from './_stores.js'
 
 	export let layer = {}
 	export let index = 0
@@ -25,6 +26,12 @@
 
 	$: setDefaults(layer)
 
+
+	$: ( trans => {
+		layer.zoom = $transform.scale
+		layer.x = $transform.x
+		layer.y = $transform.y
+	})($transform)
 
 	let id
 
@@ -72,6 +79,9 @@ uniform vec3 colours[${colours.length}];
 uniform bool solo;
 uniform float seed;
 ${gui.header}
+uniform float zoom;
+uniform float x;
+uniform float y;
 varying vec2 vTextureCoord;
 uniform sampler2D uSampler;`
 
@@ -146,13 +156,13 @@ void main(void) {
 
 	power = clamp( map(power + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 ), 0.0, 1.0);
 
-	// float noiz = map( snoise(vec2(hsv.r * 0.1, hsv.g * 0.1)), 0.0, 1.0, opacity - 1.0, opacity);
-
 	if (solo) {
 		gl_FragColor = vec4(ink,1.0) * power * opacity;
 	} else {
 		gl_FragColor = vec4(ink,1.0) * power * opacity;
 	}
+
+
 
 }`
 

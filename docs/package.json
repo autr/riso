@@ -1,0 +1,10 @@
+{
+    "main": "app.js",
+    "devDependencies": {
+        "electron": "^15.0.0-alpha.6",
+        "menubar": "^9.0.5"
+    },
+    "scripts": {
+        "dev": "electron ./index.js"
+    }
+}

@@ -11,7 +11,7 @@
 	import Title from './Title.svelte'
 	import Canvas from './Canvas.svelte'
 
-	import { antilag } from './_stores.js'
+	import { dragging, transform, zoom } from './_stores.js'
 
 	let main, app, stage, loader, mode
 	let solo = null
@@ -167,7 +167,7 @@
 
 	/* UPDATE - when project config changes...*/
 
-	let updateTimeout
+	let updateTimeout, pixelsTimeout
 	let lastLayerLength
 
 	$: update(project.config)
@@ -228,19 +228,31 @@
 
 				/* draw lores version */
 
-
-				// let loresEl = editorEl.querySelector('#lores')
-				// console.log(editorEl, loresEl)
-				// loresEl.width = project.info.width / 2
-				// loresEl.height = project.info.height / 2
 				
-				// let pix = await pixi.app.renderer.plugins.extract.image()
-				// loresEl.getContext('2d').putImageData(, loresEl.width, loresEl.height)
 
 
 			}, 100)
 
+
+			// clearTimeout(pixelsTimeout)
+			// pixelsTimeout = setTimeout( async e => {
+			// 	let max = 1800
+			// 	zoomSize = {
+			// 		width: max ,
+			// 		height: (max / project.info.width) * project.info.height
+			// 	}
+			// 	let pix = await pixi.app.renderer.plugins.extract.image()
+			// 	zoomEl.getContext('2d').drawImage(
+			// 		pix, 
+			// 		0, 
+			// 		0, 
+			// 		zoomSize.width, 
+			// 		zoomSize.height)
+			// }, 200)
+
 		}
+
+
 	}
 
 
@@ -362,10 +374,35 @@
 
 
 
+	// let zoomEl
+	// let zoomSize = {}
+
+
+	$: ( async trans => {
+
+		if (!pixi.app.renderer || !pixi.app?.view?.parentElement) return
+
+		let { width, height } = pixi.app.renderer
+		let { offsetWidth, offsetHeight } = pixi.app.view.parentElement
+		if ( width != offsetWidth || height != offsetHeight ) {
+			console.log(`[Project] 📏  resizing canvas to fit parent...`)
+			await pixi.app.renderer.resize(offsetWidth, offsetHeight)
+		}
+		pixi.app.stage.scale.set( $transform.scale )
+		pixi.app.stage.x = $transform.x
+		pixi.app.stage.y = $transform.y
+
+	})($transform)
 
 </script>
-
-
+<!-- 
+<div class="fixed maxw16em fixed t0 l0 z-index99 b2-solid">
+	<canvas 
+		width={zoomSize.width} 
+		height={zoomSize.height} 
+		class="w100pc" 
+		bind:this={ zoomEl } />
+</div> -->
 <div 
 	style
 	bind:this={main} class="flex row-stretch-stretch bg overflow-hidden grow">

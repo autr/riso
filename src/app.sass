@@ -12,6 +12,9 @@
 	background-size: $size * 2 $size * 2
 	background-position: 0 0, $size $size
 
+=pix
+	background-image: url('/pix.png')
+	background-repeat: repeat
 
 html, body 
 	img
@@ -27,7 +30,8 @@ html, body
 			.overlay
 				display: flex
 	input, .checker, input[type=range]
-		+checker(4px, var(--bg), var(--bg-sink))
+		// +checker(4px, var(--bg), var(--bg-sink))
+		+pix
 		&::-webkit-slider-thumb
 			background-color: var(--bg-pop)
 			// margin-top: -1px
@@ -36,8 +40,9 @@ html, body
 			// margin-right: -1px
 	button, .select
 		+bg( var(--bg-pop) )
-	#zoom
-		+checker(4px, var(--bg), var(--bg-sink))
+	#canvases
+		// +checker(4px, var(--bg), var(--bg-sink))
+		+pix
 		*
 			image-rendering: pixelated
 	.inset

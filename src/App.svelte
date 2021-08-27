@@ -5,7 +5,7 @@
 	import options from './lib/_options.js'
 	import { get, set } from 'idb-keyval'
 	import Files from './lib/Files.svelte'
-
+	import { library } from './lib/_stores.js'
 
 	onMount( async e => {
 		await loadDb()
@@ -116,7 +116,6 @@
         PROJECTS[IDX].layers = cp
     }
 
-    let isSelectingFiles = false
 
 
 </script>
@@ -140,7 +139,7 @@
 		{/each}
 	</div> -->
 
-<div class="fixed l0 t0 w100vw h100vh bg z-index9" class:none={!isSelectingFiles} >
+<div class="fixed l0 t0 w100vw h100vh bg z-index9 overflow-auto" class:none={!$library} >
 	<Files bind:files={files} bind:project={PROJECTS[IDX]} />
 </div>
 
@@ -160,7 +159,7 @@
 				</select>
 			</div>
 		    <button 
-		        on:click={addLayer}>
+		        on:click={e => ($library = !$library)}>
 		        Select Images
 		    </button>
 		    <button 
@@ -182,4 +181,12 @@
 		bind:project={PROJECTS[IDX]} 
 		files={files}>
 	</Project>
+	<footer class="bt1-solid bg flex row-space-between-center plr1 ptb0-5">	
+		<div>
+			Hello world
+		</div>
+		<div>
+			Something
+		</div>
+	</footer>
 </div>

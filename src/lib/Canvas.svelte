@@ -1,7 +1,7 @@
 <script>
     import panzoom from 'panzoom'
     import { onMount } from 'svelte'
-    import { antilag } from './_stores.js'
+    import { dragging, transform, zoom } from './_stores.js'
 
     export let project
 
@@ -9,16 +9,17 @@
     export let editorEl
     export let edge = 100
     let zoomer
-    let transform = {}
-
+    let zoomEl
+    let TIMEOUT
     onMount( async e => {
-        window.zoomer = zoomer = panzoom( editorEl, {
-            maxZoom: 2,
+        window.zoomer = zoomer = panzoom( zoomEl, {
+            maxZoom: 20,
             minZoom: 0.02
         } )
 
         zoomer.on('transform', e => {
-            transform = zoomer.getTransform()
+            transform.set( zoomer.getTransform() )
+
         })
     })
 
@@ -51,12 +52,10 @@
         zoomer.moveTo( x, y)
     }
 
-    let grabbing = false
 
     function togglePreview( b ) {
         console.log('[Canvas] 👁  toggle preview')
-        grabbing = b
-        antilag.set(b)
+        dragging.set(b)
         // mode = b
         // if (mode) {
         //     // rectd.auto( fit, raw )
@@ -85,21 +84,27 @@
 <section 
     on:mousedown={ e => togglePreview( true ) }
     on:mouseup={ e => togglePreview( false ) }
-    class:grab={!grabbing}
-    class:grabbing={grabbing}
+    class:grab={!$dragging}
+    class:grabbing={$dragging}
+    id="canvases"
     class="rel basis70pc pointer grow flex row-center-flex-start maxh100vh overflow-hidden">
     <div
         id="zoom"
+        bind:this={zoomEl}
+        class="block fill z-index99" >
+    </div>
+    <div
+        id="renderer"
         class="flex fill" >
         <span 
             class="measure-height abs l0 bt1-solid bb1-solid w1em flex row-flex-start-center p0-5" 
-            style={`height:${project.info.height * transform.scale}px;transform: translate(0,${parseInt(transform.y)}px)`}>
+            style={`height:${project.info.height * $transform.scale}px;$transform: translate(0,${parseInt($transform.y)}px)`}>
             {project.info.height}
         </span>
         <span 
             class="measure-width abs t0 bl2-solid br2-solid bt1-solid flex row-center-center h0em p0-2" 
-            style={`width:${project.info.width * transform.scale}px;transform: translate(${parseInt(transform.x)}px,0)`}>
-            {project.info.width} {$antilag}
+            style={`width:${project.info.width * $transform.scale}px;$transform: translate(${parseInt($transform.x)}px,0)`}>
+            {project.info.width} {$dragging}
         </span>
         <div class="w100pc h100pc" bind:this={editorEl}>
             <!-- <canvas id="lores" class="fill" /> -->

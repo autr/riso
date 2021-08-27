@@ -57501,22 +57501,18 @@ html .file:hover .overlay, body .file:hover .overlay {
   display: flex; }
 
 html input, html .checker, html input[type=range], body input, body .checker, body input[type=range] {
-  background-color: var(--bg);
-  background-image: linear-gradient(45deg, var(--bg-sink) 25%, transparent 25%, transparent 75%, var(--bg-sink) 75%, var(--bg-sink) 100%), linear-gradient(45deg, var(--bg-sink) 25%, transparent 25%, transparent 75%, var(--bg-sink) 75%, var(--bg-sink) 100%);
-  background-size: 8px 8px;
-  background-position: 0 0, 4px 4px; }
+  background-image: url("/pix.png");
+  background-repeat: repeat; }
   html input::-webkit-slider-thumb, html .checker::-webkit-slider-thumb, html input[type=range]::-webkit-slider-thumb, body input::-webkit-slider-thumb, body .checker::-webkit-slider-thumb, body input[type=range]::-webkit-slider-thumb {
     background-color: var(--bg-pop); }
 
 html button, html .select, body button, body .select {
   background-color: var(--bg-pop); }
 
-html #zoom, body #zoom {
-  background-color: var(--bg);
-  background-image: linear-gradient(45deg, var(--bg-sink) 25%, transparent 25%, transparent 75%, var(--bg-sink) 75%, var(--bg-sink) 100%), linear-gradient(45deg, var(--bg-sink) 25%, transparent 25%, transparent 75%, var(--bg-sink) 75%, var(--bg-sink) 100%);
-  background-size: 8px 8px;
-  background-position: 0 0, 4px 4px; }
-  html #zoom *, body #zoom * {
+html #canvases, body #canvases {
+  background-image: url("/pix.png");
+  background-repeat: repeat; }
+  html #canvases *, body #canvases * {
     image-rendering: pixelated; }
 
 html .palette-range, body .palette-range {
