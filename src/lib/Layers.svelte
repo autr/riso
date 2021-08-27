@@ -67,16 +67,18 @@
             class:something={$selected.type == 'layer' && $selected.which == idx}
             on:click={ e => onSelect(idx) }
             bind:this={elements[idx]}>
-            <header class="pop flex row-space-between-center">
+            <header class="pop flex row-space-between-center rel">
+                <span 
+                    class="fill grabbable" 
+                    bind:this={handles[idx]} />
                 <div class="flex row-flex-start-center">
                     <div 
-                        class="p1-5 move grab"
-                        style="line-height:2px;max-width:10px"
-                        bind:this={handles[idx]}>
+                        class="p1-5 move"
+                        style="line-height:2px;max-width:10px">
                         ⁞⁞⁞
                     </div>
                 </div>
-                <div class="flex row-flex-start-center">
+                <div class="flex row-flex-start-center z-index2  z-index2">
 
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"

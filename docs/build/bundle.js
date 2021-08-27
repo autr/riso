@@ -44813,9 +44813,12 @@ vec3 rgb2hsv(vec3 rgb) {
     		
     		if (!group) return reject()
     		check(group);
+
+    		handle.addEventListener('mousedown', enable);
+    		handle.addEventListener( 'dragstart', enable );
     		element.addEventListener('dragend', disable);
     		element.addEventListener('mouseup', disable);
-    		handle.addEventListener('mousedown', enable);
+
     		element.setAttribute('data-group', group);
     		handle.setAttribute( 'data-group', group);
     		
@@ -44844,6 +44847,7 @@ vec3 rgb2hsv(vec3 rgb) {
 
     				for (const [handle, element] of Object.entries( d[group].handles)) {
     					handle.removeEventListener( 'mousedown', enable );
+    					handle.removeEventListener( 'dragstart', enable );
     					element.removeEventListener( 'dragend', disable );
     					element.removeEventListener( 'mouseup', disable );
     				}
@@ -46776,36 +46780,38 @@ void main(void) {
     function create_if_block$2(ctx) {
     	let div8;
     	let header;
+    	let span0;
+    	let idx = /*idx*/ ctx[24];
+    	let t0;
     	let div1;
     	let div0;
-    	let idx = /*idx*/ ctx[24];
-    	let t1;
+    	let t2;
     	let div6;
     	let div2;
-    	let t3;
+    	let t4;
     	let div3;
-    	let t5;
-    	let div4;
-    	let span0;
     	let t6;
-    	let div5;
+    	let div4;
     	let span1;
     	let t7;
+    	let div5;
+    	let span2;
+    	let t8;
     	let aside;
     	let div7;
     	let palette;
     	let updating_layer;
-    	let t8;
+    	let t9;
     	let layer;
     	let updating_group;
     	let updating_solo;
     	let updating_layer_1;
-    	let t9;
+    	let t10;
     	let current;
     	let mounted;
     	let dispose;
-    	const assign_div0 = () => /*div0_binding*/ ctx[11](div0, idx);
-    	const unassign_div0 = () => /*div0_binding*/ ctx[11](null, idx);
+    	const assign_span0 = () => /*span0_binding*/ ctx[11](span0, idx);
+    	const unassign_span0 = () => /*span0_binding*/ ctx[11](null, idx);
 
     	function click_handler(...args) {
     		return /*click_handler*/ ctx[12](/*idx*/ ctx[24], ...args);
@@ -46884,88 +46890,94 @@ void main(void) {
     		c: function create() {
     			div8 = element("div");
     			header = element("header");
+    			span0 = element("span");
+    			t0 = space();
     			div1 = element("div");
     			div0 = element("div");
     			div0.textContent = "⁞⁞⁞";
-    			t1 = space();
+    			t2 = space();
     			div6 = element("div");
     			div2 = element("div");
     			div2.textContent = "M";
-    			t3 = space();
+    			t4 = space();
     			div3 = element("div");
     			div3.textContent = "S";
-    			t5 = space();
-    			div4 = element("div");
-    			span0 = element("span");
     			t6 = space();
-    			div5 = element("div");
+    			div4 = element("div");
     			span1 = element("span");
     			t7 = space();
+    			div5 = element("div");
+    			span2 = element("span");
+    			t8 = space();
     			aside = element("aside");
     			div7 = element("div");
     			create_component(palette.$$.fragment);
-    			t8 = space();
-    			create_component(layer.$$.fragment);
     			t9 = space();
-    			attr_dev(div0, "class", "p1-5 move grab");
+    			create_component(layer.$$.fragment);
+    			t10 = space();
+    			attr_dev(span0, "class", "fill grabbable");
+    			add_location(span0, file$5, 70, 16, 1791);
+    			attr_dev(div0, "class", "p1-5 move");
     			set_style(div0, "line-height", "2px");
     			set_style(div0, "max-width", "10px");
-    			add_location(div0, file$5, 71, 20, 1848);
+    			add_location(div0, file$5, 74, 20, 1967);
     			attr_dev(div1, "class", "flex row-flex-start-center");
-    			add_location(div1, file$5, 70, 16, 1787);
+    			add_location(div1, file$5, 73, 16, 1906);
     			attr_dev(div2, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
     			toggle_class(div2, "error", /*layers*/ ctx[0][/*idx*/ ctx[24]].muted && /*solo*/ ctx[1] != /*idx*/ ctx[24]);
     			toggle_class(div2, "filled", /*layers*/ ctx[0][/*idx*/ ctx[24]].muted && /*solo*/ ctx[1] != /*idx*/ ctx[24]);
-    			add_location(div2, file$5, 80, 20, 2170);
+    			add_location(div2, file$5, 82, 20, 2254);
     			attr_dev(div3, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
     			toggle_class(div3, "filled", /*solo*/ ctx[1] == /*idx*/ ctx[24]);
     			toggle_class(div3, "alert", /*solo*/ ctx[1] == /*idx*/ ctx[24]);
     			toggle_class(div3, "b1-solid", /*solo*/ ctx[1] == /*idx*/ ctx[24]);
-    			add_location(div3, file$5, 85, 20, 2517);
-    			attr_dev(span0, "class", "cross w10px h10px flex block");
-    			add_location(span0, file$5, 94, 24, 3028);
+    			add_location(div3, file$5, 87, 20, 2601);
+    			attr_dev(span1, "class", "cross w10px h10px flex block");
+    			add_location(span1, file$5, 96, 24, 3112);
     			attr_dev(div4, "class", "flex h2em w2em row-center-center mr0-5 pointer radius2em");
-    			add_location(div4, file$5, 91, 20, 2850);
-    			attr_dev(span1, "class", "arrow");
-    			toggle_class(span1, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[24]].collapsed);
-    			add_location(span1, file$5, 99, 24, 3287);
+    			add_location(div4, file$5, 93, 20, 2934);
+    			attr_dev(span2, "class", "arrow");
+    			toggle_class(span2, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[24]].collapsed);
+    			add_location(span2, file$5, 101, 24, 3371);
     			attr_dev(div5, "class", "grow flex row-flex-end-center pointer p1-5");
-    			add_location(div5, file$5, 96, 20, 3125);
-    			attr_dev(div6, "class", "flex row-flex-start-center");
-    			add_location(div6, file$5, 78, 16, 2108);
-    			attr_dev(header, "class", "pop flex row-space-between-center");
+    			add_location(div5, file$5, 98, 20, 3209);
+    			attr_dev(div6, "class", "flex row-flex-start-center z-index2  z-index2");
+    			add_location(div6, file$5, 80, 16, 2173);
+    			attr_dev(header, "class", "pop flex row-space-between-center rel");
     			add_location(header, file$5, 69, 12, 1720);
     			attr_dev(div7, "class", "bb1-solid bt1-solid h1em flex row-reverse w100pc");
-    			add_location(div7, file$5, 112, 16, 3573);
+    			add_location(div7, file$5, 114, 16, 3657);
     			attr_dev(aside, "class", "");
-    			add_location(aside, file$5, 110, 12, 3523);
+    			add_location(aside, file$5, 112, 12, 3607);
     			toggle_class(div8, "something", /*$selected*/ ctx[5].type == "layer" && /*$selected*/ ctx[5].which == /*idx*/ ctx[24]);
     			add_location(div8, file$5, 65, 8, 1537);
     		},
     		m: function mount(target, anchor) {
     			insert_dev(target, div8, anchor);
     			append_dev(div8, header);
+    			append_dev(header, span0);
+    			assign_span0();
+    			append_dev(header, t0);
     			append_dev(header, div1);
     			append_dev(div1, div0);
-    			assign_div0();
-    			append_dev(header, t1);
+    			append_dev(header, t2);
     			append_dev(header, div6);
     			append_dev(div6, div2);
-    			append_dev(div6, t3);
+    			append_dev(div6, t4);
     			append_dev(div6, div3);
-    			append_dev(div6, t5);
-    			append_dev(div6, div4);
-    			append_dev(div4, span0);
     			append_dev(div6, t6);
+    			append_dev(div6, div4);
+    			append_dev(div4, span1);
+    			append_dev(div6, t7);
     			append_dev(div6, div5);
-    			append_dev(div5, span1);
-    			append_dev(div8, t7);
+    			append_dev(div5, span2);
+    			append_dev(div8, t8);
     			append_dev(div8, aside);
     			append_dev(aside, div7);
     			mount_component(palette, div7, null);
-    			append_dev(div8, t8);
-    			mount_component(layer, div8, null);
     			append_dev(div8, t9);
+    			mount_component(layer, div8, null);
+    			append_dev(div8, t10);
     			assign_div8();
     			current = true;
 
@@ -46985,9 +46997,9 @@ void main(void) {
     			ctx = new_ctx;
 
     			if (idx !== /*idx*/ ctx[24]) {
-    				unassign_div0();
+    				unassign_span0();
     				idx = /*idx*/ ctx[24];
-    				assign_div0();
+    				assign_span0();
     			}
 
     			if (dirty & /*layers, solo*/ 3) {
@@ -47011,7 +47023,7 @@ void main(void) {
     			}
 
     			if (dirty & /*layers*/ 1) {
-    				toggle_class(span1, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[24]].collapsed);
+    				toggle_class(span2, "rotate90", /*layers*/ ctx[0][/*idx*/ ctx[24]].collapsed);
     			}
 
     			const palette_changes = {};
@@ -47072,7 +47084,7 @@ void main(void) {
     		},
     		d: function destroy(detaching) {
     			if (detaching) detach_dev(div8);
-    			unassign_div0();
+    			unassign_span0();
     			destroy_component(palette);
     			destroy_component(layer);
     			unassign_div8();
@@ -47293,7 +47305,7 @@ void main(void) {
     		if (!~writable_props.indexOf(key) && key.slice(0, 2) !== "$$") console_1$4.warn(`<Layers> was created with unknown prop '${key}'`);
     	});
 
-    	function div0_binding($$value, idx) {
+    	function span0_binding($$value, idx) {
     		binding_callbacks[$$value ? "unshift" : "push"](() => {
     			handles[idx] = $$value;
     			$$invalidate(3, handles);
@@ -47408,7 +47420,7 @@ void main(void) {
     		onSelect,
     		onRemove,
     		lastLength,
-    		div0_binding,
+    		span0_binding,
     		click_handler,
     		click_handler_1,
     		click_handler_2,
