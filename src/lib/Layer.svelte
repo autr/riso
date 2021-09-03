@@ -7,7 +7,7 @@
 	import Palette from './Palette.svelte'
 	import Switch from './Switch.svelte'
 	import Colours from './Colours.svelte'
-	import { transform, solo } from './_stores.js'
+	import { transform, solo, original } from './_stores.js'
 
 	export let layer = {}
 	export let index = 0
@@ -27,6 +27,14 @@
 	function setDefaults( layer_ ) {
 		for ( const g of gui.config) if (!layer[g.name]) layer[g.name] = g.default
 	}
+
+
+    $: (_og => {
+        try {
+        	inkGroup.filters[0].enabled = !_og
+        } catch(err) {}
+    })($original)
+
 
 	$: setDefaults(layer)
 

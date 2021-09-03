@@ -23,7 +23,7 @@
 			columns: 2
 		},
 		multiple: false,
-		fileNames: ['large'] //[ 'autr', 'test', 'alt']
+		fileNames: ['ColorWheel'] //[ 'autr', 'test', 'alt']
 	}
 
 
@@ -36,28 +36,78 @@
 	let filesBin = {
 		items: [
 			{
-				name: 'test',
-				url: 'sources/swiss.png',
+				name: 'ColorWheel',
+				url: 'sources/ColorWheel.jpg',
 				static: true
 			},
 			{
-				name: 'autr',
-				url: 'sources/001.png',
+				name: 'Photographs',
+				url: 'sources/Photographs.png',
 				static: true
 			},
 			{
-				name: 'alt',
-				url: 'sources/002.png',
+				name: 'GS_00001',
+				url: 'sources/GS_00001.jpg',
 				static: true
 			},
 			{
-				name: 'wheel',
-				url: 'sources/wheel.jpg',
+				name: 'GS_00002',
+				url: 'sources/GS_00002.png',
 				static: true
 			},
 			{
-				name: 'large',
-				url: 'sources/large.jpg',
+				name: 'GS_00003',
+				url: 'sources/GS_00003.png',
+				static: true
+			},
+			{
+				name: 'GS_00004',
+				url: 'sources/GS_00004.png',
+				static: true
+			},
+			{
+				name: 'GS_00005',
+				url: 'sources/GS_00005.png',
+				static: true
+			},
+			{
+				name: 'GS_00006',
+				url: 'sources/GS_00006.png',
+				static: true
+			},
+			{
+				name: 'GS_00007',
+				url: 'sources/GS_00007.png',
+				static: true
+			},
+			{
+				name: 'GS_00008',
+				url: 'sources/GS_00008.png',
+				static: true
+			},
+			{
+				name: 'GS_00009',
+				url: 'sources/GS_00009.png',
+				static: true
+			},
+			{
+				name: 'GS_00010',
+				url: 'sources/GS_00010.png',
+				static: true
+			},
+			{
+				name: 'GS_00011',
+				url: 'sources/GS_00011.png',
+				static: true
+			},
+			{
+				name: 'GS_00012',
+				url: 'sources/GS_00012.png',
+				static: true
+			},
+			{
+				name: 'GS_00013',
+				url: 'sources/GS_00013.png',
 				static: true
 			}
 		],

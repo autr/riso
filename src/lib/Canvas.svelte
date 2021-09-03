@@ -1,7 +1,7 @@
 <script>
     import panzoom from 'panzoom'
     import { onMount } from 'svelte'
-    import { dragging, transform, zoom, moving, inited } from './_stores.js'
+    import { dragging, transform, zoom, moving, inited, original } from './_stores.js'
     import rectd from './_rectd.js'
 
     export let project
@@ -57,7 +57,9 @@
 
     function togglePreview( b ) {
         console.log('[Canvas] 👁  toggle preview')
-        dragging.set(b)
+
+        original.set( b )
+        // dragging.set(b)
         // mode = b
         // if (mode) {
         //     // rectd.auto( fit, raw )
