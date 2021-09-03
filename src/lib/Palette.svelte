@@ -4,11 +4,15 @@
 	import { onMount } from 'svelte'
 	import gui from './_gui.js'
 	import glLib from './_gl.js'
-	import colours from './_colours.js'
+	import colours_raw from './_colours.js'
 
 	export let layer
 	export let target
 	export let vertical = false
+
+	let colours = colours_raw()
+
+	$: COLOR = colours?.[layer.colour]
 
 	let el
 	onMount( setup )
@@ -94,5 +98,5 @@ void main(void) {
 
 	}
 </script>
-<div class="palette-ink rel basis0pc flex grow palette" style={`background-color: rgb(${colours?.[layer.colour]?.rgb})`} />
+<div class="palette-ink rel basis0pc flex grow palette" style={`background-color: rgb(${COLOR?.rgb})`} />
 <div class="palette-range rel basis0pc flex grow palette br1-solid"  bind:this={el} />

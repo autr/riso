@@ -1,7 +1,8 @@
 <script>
     import panzoom from 'panzoom'
     import { onMount } from 'svelte'
-    import { dragging, transform, zoom } from './_stores.js'
+    import { dragging, transform, zoom, moving, inited } from './_stores.js'
+    import rectd from './_rectd.js'
 
     export let project
 
@@ -19,8 +20,9 @@
 
         zoomer.on('transform', e => {
             transform.set( zoomer.getTransform() )
-
         })
+
+        $inited.canvas = true
     })
 
     let lastWidthHeight
@@ -96,19 +98,42 @@
     <div
         id="renderer"
         class="flex fill" >
-        <span 
-            class="measure-height abs l0 bt1-solid bb1-solid w1em flex row-flex-start-center p0-5" 
-            style={`height:${project.info.height * $transform.scale}px;$transform: translate(0,${parseInt($transform.y)}px)`}>
-            {project.info.height}
+        <span class="abs t0 l1 h100pc w1em ">
+            <span 
+                class=" measure-height fill flex column-center-center" 
+                style={`height:${project.info.height * $transform.scale}px;transform: translate(0px,${parseInt($transform.y)}px)`}>
+                <span class="no-basis p0-2 filled radius1em" />
+                <span class="no-basis filled grow" style="width:1px" />
+                <span class="no-basis plr1 ptb1 hide rotate90 nowrap">{project.info.height}</span>
+                <span class="no-basis filled grow" style="width:1px" />
+                <span class="no-basis p0-2 filled radius1em" />
+            </span>
         </span>
         <span 
-            class="measure-width abs t0 bl2-solid br2-solid bt1-solid flex row-center-center h0em p0-2" 
-            style={`width:${project.info.width * $transform.scale}px;$transform: translate(${parseInt($transform.x)}px,0)`}>
-            {project.info.width} {$dragging}
+            class="abs t1 l1 w100pc h1em ">
+            <span 
+                class=" measure-width fill flex row-center-center" 
+                style={`margin-left:-1em;width:${project.info.width * $transform.scale}px;transform: translate(${parseInt($transform.x)}px,0px)`}>
+                <span class="no-basis p0-2 filled radius1em" />
+                <span class="no-basis filled grow" style="height:1px" />
+                <span class="no-basis plr1 hide">{project.info.width}</span>
+                <span class="no-basis filled grow" style="height:1px" />
+                <span class="no-basis p0-2 filled radius1em" />
+            </span>
         </span>
-        <div class="w100pc h100pc" bind:this={editorEl}>
-            <!-- <canvas id="lores" class="fill" /> -->
-        </div>
+        <!-- <span class="w1em h1em bg br1-solid bb1-solid l0 t0 abs" /> -->
+        <div class="w100pc h100pc" bind:this={editorEl} />
+
+        <!-- <span class="fill br1-solid bb1-solid" style={`
+            margin-left:1px;
+            width:${(project.info.width * $transform.scale) + $transform.x}px;
+            height:${(project.info.height * $transform.scale) + $transform.y}px;
+        `} />
+        <span class="fill br1-solid bb1-solid" style={`
+            margin-top:1px;
+            width:${$transform.x}px;
+            height:${$transform.y}px;
+        `} /> -->
     </div>
     <div class="abs t0 r2 p1 flex row w3em">
 

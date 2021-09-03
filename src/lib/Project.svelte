@@ -10,20 +10,22 @@
 	import Palette from './Palette.svelte'
 	import Title from './Title.svelte'
 	import Canvas from './Canvas.svelte'
+	import Layouts from './Layouts.svelte'
+	import Export from './Export.svelte'
 
-	import { dragging, transform, zoom } from './_stores.js'
+	import { dragging, transform, zoom, exporting, processing, solo, inited, trigger } from './_stores.js'
 
 	let main, app, stage, loader, mode
-	let solo = null
 
 	window.PIXI = PIXI
 	PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
 
-	let layers = window.layers = {
-		background: new PIXI.Graphics(),
-		container: new PIXI.Container(),
-		groups: [],
-		processed: new PIXI.Container()
+	let quik = window.quik = {
+		allContainer: new PIXI.Container(),
+		paperBackground: new PIXI.Graphics(),
+		inkLayerGroups: [],
+		inkLayerContainer: new PIXI.Container(),
+		sprites: {}
 	}
 
 	let pixi = window.pixi = {
@@ -37,20 +39,11 @@
 		loader: new PIXI.Loader()
 	}
 
-	// let thumb = new PIXI.Application({
-	// 	antialias: false,
-	// 	transparent: true,
-	// 	resolution: 1,
-	// 	forceCanvas: true,
-	// 	preserveDrawingBuffer: true
-	// })
 
-	onMount( async e => {
-		await init()
-	})
+	onMount( init )
 
 	export let project
-	export let files
+	export let filesBin
 	export let IDX
 	export let THUMBS
 
@@ -64,16 +57,17 @@
 	let uniforms = {}
 	$: (async project_ => {
 
-		uniforms.solo = solo != null
+		uniforms.solo = $solo != null
 
 		let str = JSON.stringify( project.config )
 		if (str == lastConfig) return
 		lastConfig = str
 
-		console.log('[Project] 🛠  project config updated')
 
 		uniforms.hsla = options.backgrounds.find( b => b.name == project.config.background ).colour
 		uniforms.size = options.sizes.find( b => b.name == project.config.size ).xy
+
+		console.log('[Project] 🐝  setting uniforms...', uniforms, uniforms.hsla.join(','))
 
 		if (!project.info) project.info = {}
 
@@ -95,8 +89,8 @@
 
 		editorEl.appendChild(pixi.app.view)
 
-		layers.background.drawRect(0,0,project.info.width,project.info.height)
-		layers.background.filters = [ new PIXI.Filter(null, `
+		quik.paperBackground.drawRect(0,0,project.info.width,project.info.height)
+		quik.paperBackground.filters = [ new PIXI.Filter(null, `
 			${glLib}
 			varying vec2 vTextureCoord;
 			uniform bool solo;
@@ -112,70 +106,69 @@
 
 			}`, 
 		uniforms)]
-		pixi.app.stage.addChild( layers.container )
-		layers.container.addChild( layers.background )
-		layers.container.addChild( layers.processed )
+		pixi.app.stage.addChild( quik.allContainer )
+		quik.allContainer.addChild( quik.paperBackground )
+		quik.allContainer.addChild( quik.inkLayerContainer )
 
 		console.log(`[Project] 🎉  run update?`)
-
-
 
 	}
 
 
 	let lastFiles
 
-	async function setup( files ) {
+	async function setup( filesBin ) {
 
-		let str = JSON.stringify(files)
+		let str = JSON.stringify(filesBin)
 		if (lastFiles == str) return
 		lastFiles = str
 
-		console.log('[Project] 💿  setup, pixi.loader is resetting', files)
+		console.log('[Project] 💿  pixi.loader is resetting due to new files', filesBin)
 
-		if (!files?.srcs) {
-			console.log(`[Project] 💿 ❌  no files.srcs`)
+		if (!filesBin?.srcs) {
+			console.log(`[Project] 💿 ❌  no filesBin.srcs`)
 			return
 		}
 
-		let list = project.files.filter( name => files.srcs[name] )
-		if (list.length != project.files.length) {
-			console.log(`[Project] 💿 ❌  list doesn't match project.files`, {list, srcs: project.files })
+		let list = project.fileNames.filter( name => filesBin.srcs[name] )
+		if (list.length != project.fileNames.length) {
+			console.log(`[Project] 💿 ❌  list doesn't match project.fileNames`, {list, srcs: project.fileNames })
 			return
 		}
 
 		await pixi.loader.reset()
-		for (const name of project.files) {
-			let o = files.srcs[name]
+		for (const name of project.fileNames) {
+			let o = filesBin.srcs[name]
 			if (!pixi.loader.resources[o.url]) pixi.loader.add( o.url, { crossOrigin: 'anonymous' })
 		}
 
 		await setPositions()
 
 		pixi.loader.load(async e => {
-			console.log('[Project] 💿 ✅  pixi.loader loaded files')
+			console.log('[Project] 💿 ✅  pixi.loader loaded filesBin')
 			await drawImages()
 			// await renderThumbnail()
 		})
-		inited = true
+		$inited.project = true
 		console.log('[Project] 💿  running initial update...')
 		await update( project.config )
+
 	}
 
-	$: setup( files )
+	$: setup( filesBin )
 
 
 	/* UPDATE - when project config changes...*/
 
 	let updateTimeout, pixelsTimeout
-	let lastLayerLength
+	let lastLayerLength, lastFilesStr, lastMargin, lastLayout
 
 	$: update(project.config)
 
 	async function update( config ) {
 
 
-		if (pixi?.app?.renderer && inited ) {
+		if (pixi?.app?.renderer && $inited.project ) {
 
 			const { width, height } = project.info
 
@@ -190,65 +183,48 @@
 				// console.log('[Project] 🪡  update')
 				console.log('[Project] 💫  update triggered...')
 
-				if (!project.multiple && project.files.length > 1) {
-					if (!window.confirm(`Remove ${project.files.length - 1} images from project?`)) return
-					project.files = project.files.splice(1,project.files.length)
-				}
-				const neuSize = width != layers.background.width || height != layers.background.height
-				const neuMargin = project.config.margin != prevMargin
-				const isCanvasChanged = neuSize || neuMargin
-				const isNewFiles = project.files.length != Object.keys(pixi.loader.resources).length
+				/* if canvas size or margin changes... */
+
+				const neuSize = width != quik.paperBackground.width || height != quik.paperBackground.height
+				const neuMargin = project.config.margin != lastMargin
+				const neuLayout = project.config.layout != lastLayout
+				lastMargin = project.config.margin
+				lastLayout = project.config.layout
+				const isCanvasChanged = neuSize || neuMargin || neuLayout
+
+				/* if project files change... */
+
+				let filesStr = JSON.stringify(project.fileNames)
+				const isNewFilenames = filesStr != lastFilesStr
+				lastFilesStr = filesStr
+
+				/* if there is a new layer... */
+
 				const isNewLayer = project.layers.length != lastLayerLength
 				lastLayerLength = project.layers.length
+
+				/* if external trigger... */
+
 				const isTrigger = project.trigger
-				let something = false
 
 
 				// console.log( { isCanvasChanged, isNewLayer, isNewFiles, isTrigger } )
 
-				if (isNewFiles || isTrigger) {
-					console.log('[Project] 💫  new files, running setup...')
-					await setup( files )
-					something = true
+				if ( isTrigger ) {
+					console.log('[Project] 💫  trigger setup...')
+					await setup( filesBin )
 					project.trigger = false
 				} 
 
 				
-				if ( isCanvasChanged || isNewLayer ) {
+				if ( isCanvasChanged || isNewLayer || isNewFilenames ) {
 					console.log('[Project] 💫  canvas is changed, running setPositions and drawImages...')
 					await setPositions()
 					await drawImages()
-					something = true
 				}
 
 
-				// await drawImages()
-				// if (!something) console.log(`[Project] 🪡💤  nothing happened`)
-				// await renderThumbnail()
-
-				/* draw lores version */
-
-				
-
-
 			}, 100)
-
-
-			// clearTimeout(pixelsTimeout)
-			// pixelsTimeout = setTimeout( async e => {
-			// 	let max = 1800
-			// 	zoomSize = {
-			// 		width: max ,
-			// 		height: (max / project.info.width) * project.info.height
-			// 	}
-			// 	let pix = await pixi.app.renderer.plugins.extract.image()
-			// 	zoomEl.getContext('2d').drawImage(
-			// 		pix, 
-			// 		0, 
-			// 		0, 
-			// 		zoomSize.width, 
-			// 		zoomSize.height)
-			// }, 200)
 
 		}
 
@@ -257,7 +233,6 @@
 
 
 
-	let prevMargin
 
 	async function removeChildren( obj ) {
 
@@ -269,70 +244,114 @@
 
 	async function drawImages() {
 
-		const { width, height } = project.info
-		console.log(`[Project] 🖼  drawing images ${width} ${height}`)
+		console.log(`[Project] 🖼  drawing images into layers...`)
 
-		const len = Object.keys(pixi.loader.resources).length
-		const size = rectd.neu( 0, 0, width, height )
-		const inner = rectd.shrinkBy( size, mm2px( project.config.margin ) )
-		prevMargin = project.config.margin
-		let splits = rectd.splitUp( inner, len )
+		quik.sprites = {}
 
 		for (let idx = 0; idx < project.layers.length; idx++) {
 
-			if (!layers.groups[idx]) layers.groups[idx] = new PIXI.Container()
-			await removeChildren( layers.groups[idx] )
+			if (!quik.inkLayerGroups[idx]) {
+
+				quik.inkLayerGroups[idx] = new PIXI.Container()
+				console.log(`[Project] 🌶  added new layer group at ${idx}`)
+			}
+
+			console.log(`[Project] 🗑  resetting inkLayerGroups ${idx}...`)
+
+			await removeChildren( quik.inkLayerGroups[idx] )
+
+
 
 			let i = 0
-			for (const [name, resource] of Object.entries(pixi.loader.resources) ) {
 
-				let sprite = new PIXI.Sprite( resource.texture )
-				let image = rectd.neu( 0, 0, resource.data.width, resource.data.height )
+			for (const [url, resource] of Object.entries(pixi.loader.resources) ) {
+
+				let fileItem = filesBin.items.find( f => f.url == url )
+				let { name } = fileItem
+				let rectCanvas = rectd.neu( 0, 0, project.info.width, project.info.height )
+				rectCanvas = rectd.shrinkBy( rectCanvas, mm2px( project.config.margin ) )
+				let pixiSprite = new PIXI.Sprite( resource.texture )
+
+				let rowsCols = layoutOptions[project.config.layout]
+				if (!rowsCols[0] || !rowsCols[1]) console.error(`[Project] no rows and cols?`, rowsCols)
+				let cells = rectd.divideUp( rectCanvas, rowsCols[0], rowsCols[1] )
+
+				if ( i < cells.length) {
+
+					/* get cell rectangles...*/
+
+					let rectOuterCell = cells[i]
+					let rectFittedCell = rectd.fitInto( pixiSprite, rectOuterCell, 0.5 )
+					let rectFittedToCanvas = rectd.fitInto( pixiSprite, rectCanvas, 0.5 )
+
+					/* resize sprite...*/
+
+					rectd.autoSetObject( rectFittedToCanvas, pixiSprite )
+					rectd.centerTo( pixiSprite, rectOuterCell)
+
+					/* create cell mask...*/
+
+					const { x, y, width, height } = rectOuterCell
+					let pixiMask = new PIXI.Graphics()
+
+					if (i <= 3) pixiMask.drawRect( x, y, width, height )
+					if (i > 3) pixiMask.drawRect( i * 320, 2000, 300, 1000 )
+
+					/* mask must be added to object to also scale with it */
+
+					let pixiScaler = new PIXI.Container()
+					rectd.autoSetObject( rectCanvas, pixiScaler )
+					pixiScaler.mask = pixiMask
+					await pixiScaler.addChild( pixiMask )
+					await pixiScaler.addChild( pixiSprite )
 
 
-				sprite.width = width
-				sprite.height = height
 
-				let fit = rectd.fitInto( image, inner )
-				rectd.auto( fit, sprite )
+					await quik.inkLayerGroups[idx].addChild( pixiScaler )
 
-				if (splits.length > 1) {
-					let mask = new PIXI.Graphics()
-					mask.drawRect(splits[i].x,splits[i].y,splits[i].width,splits[i].height)
-					sprite.mask = mask
+					if (!quik.sprites[ name ]) quik.sprites[name] = []
+					quik.sprites[name].push( pixiSprite )
+
+					/* set information for external use... */
+
+					project.layouts[name].values = {
+						x: project?.layouts[name]?.values?.x || 0,
+						xRange: pixiSprite.width - rectOuterCell.width,
+						xOG: pixiSprite.x,
+						scale: project?.layouts[name]?.values?.scale || 0,
+						scaleOG: (pixiSprite.scale.x + pixiSprite.scale.y)/2,
+						y: project?.layouts[name]?.values?.y || 0,
+						yRange: pixiSprite.height - rectOuterCell.height,
+						yOG: pixiSprite.y
+					}
+
+					$trigger.offset = true
+
 				}
 
-				console.log(`[Project] 🖼  added sprite ${name} ${sprite.width} ${sprite.height}`)
-
-				await layers.groups[idx].addChild( sprite )
 				i += 1
 			}
 
-			layers.processed.addChild( layers.groups[idx] )
+			quik.inkLayerContainer.addChild( quik.inkLayerGroups[idx] )
 
 		}
 
 
 		console.log(`[Project] 🖼 ✅  ${Object.keys(pixi.loader.resources).length} images drawn in ${project.layers.length} layers`)
 
+		$inited.drawn = true
+
 
 
 	}
 
-	let inited = false
 
 	async function setPositions() {
 
 		const { width, height } = project.info
 
-		layers.background.width = width
-		layers.background.height = height
-
-		// layers.container.x = editorEl.offsetWidth / 2
-		// layers.container.y = editorEl.offsetHeight / 2
-
-		// layers.container.pivot.x = width/2
-		// layers.container.pivot.y = height/2
+		quik.paperBackground.width = width
+		quik.paperBackground.height = height
 
 		console.log(`[Project] 📐  positions set ${width} ${height}`)
 	}
@@ -350,15 +369,15 @@
 
 
 	function move(from, to) {
-		let cp = project.files
-		project.files = []
+		let cp = project.fileNames
+		project.fileNames = []
 		let i = cp.splice(from, 1)[0]
 		cp.splice(to, 0, i)
-		project.files = cp
+		project.fileNames = cp
 	}
 	function onFileDown( idx ) {
 		let to = idx + 1
-		if (to >= project.files.length) return
+		if (to >= project.fileNames.length) return
 		move( idx, to )
 
 	}
@@ -368,47 +387,63 @@
 		move( idx, to )
 	}
 	function onFileDelete( idx ) {
-		project.files = [...project.files.slice(0,idx), ...project.files.slice(idx+1,project.files.length)]
+		project.fileNames = [...project.fileNames.slice(0,idx), ...project.fileNames.slice(idx+1,project.fileNames.length)]
 	}
-
-
-
-
-	// let zoomEl
-	// let zoomSize = {}
 
 
 	$: ( async trans => {
 
-		if (!pixi.app.renderer || !pixi.app?.view?.parentElement) return
+		if (!pixi.app.renderer || !pixi.app?.view?.parentElement || $processing ) return
 
 		let { width, height } = pixi.app.renderer
 		let { offsetWidth, offsetHeight } = pixi.app.view.parentElement
 		if ( width != offsetWidth || height != offsetHeight ) {
-			console.log(`[Project] 📏  resizing canvas to fit parent...`)
+			console.log(`[Project] 📏  resizing canvas to fit parent ${offsetWidth} ${offsetHeight}`)
 			await pixi.app.renderer.resize(offsetWidth, offsetHeight)
 		}
-		pixi.app.stage.scale.set( $transform.scale )
-		pixi.app.stage.x = $transform.x
-		pixi.app.stage.y = $transform.y
+
+
+
+		let current = { x: pixi.app.stage.x, y: pixi.app.stage.y, scale: pixi.app.stage.scale.x }
+		let a = JSON.stringify( current )
+		let b = JSON.stringify( $transform )
+		if (a != b) {
+
+			pixi.app.stage.scale.set( $transform.scale )
+			pixi.app.stage.x = $transform.x
+			pixi.app.stage.y = $transform.y
+
+			// console.log(`[Project] 📏  stage set to ${pixi.app.stage.x} ${pixi.app.stage.y} ${pixi.app.stage.scale.x}`)
+		}
 
 	})($transform)
 
+
+	let layoutOptions = {
+		'Single Print': [1,1],
+		'Test Print (2x2)': [2,2],
+		'Test Print (2x3)': [2,3],
+		'Test Print (3x3)': [3,3],
+		'Test Print (3x4)': [3,4],
+		'Test Print (4x4)': [4,4]
+	}
+	let layoutValue = Object.keys(layoutOptions)[0]
+
 </script>
-<!-- 
-<div class="fixed maxw16em fixed t0 l0 z-index99 b2-solid">
-	<canvas 
-		width={zoomSize.width} 
-		height={zoomSize.height} 
-		class="w100pc" 
-		bind:this={ zoomEl } />
-</div> -->
+
+
+<Export 
+	{pixi}
+	{quik}
+	bind:project={project} />
+
+
 <div 
 	style
 	bind:this={main} class="flex row-stretch-stretch bg overflow-hidden grow">
 
 
-	<nav class="basis30pc minw52em maxw62em flex column-stretch-stretch grow">
+	<nav class="basis30pc minw46em maxw52em flex column-stretch-stretch grow">
 
 		<div 
 			class="flex row grow overflow-hidden">
@@ -422,57 +457,12 @@
 
 
 
-
 			<section class={classes.lanes + ' basis0pc'}>
 
 				<!-- LAYOUT -->
 
 
-				<Title>Layout</Title>
 				<div class="p1 flex column cmb1 bb1-solid">
-					<div class="flex row">
-						<div 
-							on:click={e => project.multiple = false}
-							class="br0-solid flex row-flex-start-center mr1 ">
-							<span 
-								class="b1-solid rel checker w2em h2em block mr1">
-								<span class:cross={!project.multiple} class="fill" />
-							</span>
-							Single
-						</div>
-						<div 
-							on:click={e => project.multiple = true}
-							class="br0-solid flex row-flex-start-center mr1 ">
-							<span 
-								class="b1-solid rel checker w2em h2em block mr1">
-								<span class:cross={project.multiple} class="fill" />
-							</span>
-							Multiple
-						</div>
-					</div>
-
-					<aside>
-						{#if !project.files || project.files.length == 0} 
-							<div class="button b1-solid error">No image(s) selected</div>
-						{/if}
-						{#each project.files as file, idx}
-							<div class="flex row-stretch-stretch b1-solid" style="margin-top:-1px">
-								<span class="h3em flex column-flex-start-center plr1 grow">{file}</span>
-								<button 
-									on:click={ e => onFileUp(idx) }
-									class="{arrowClass} arrow rotate180 br1-solid" />
-								<button 
-									on:click={ e => onFileDown(idx) }
-									class="{arrowClass} arrow bl1-solid " />
-								<!-- <button 
-									on:click={ e => onFileDelete(idx) }
-									class="{arrowClass} bl1-solid">
-									<span class="cross block p0-4" />
-								</button> -->
-							</div>
-						{/each}
-					</aside>
-
 					<div class="flex rel">
 						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
 							Paper
@@ -525,9 +515,52 @@
 							placeholder="Margin" 
 							bind:value={project.config.margin} />
 					</div>
+					<div class="flex rel">
+						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+							Rows
+						</span>
+						<input 
+							min={0}
+							max={ 1 }
+							step={1}
+							class="w100pc grow"
+							style="padding-left:5em"
+							type="number" 
+							placeholder="Margin" 
+							bind:value={project.config.rows} />
+					</div>
+					<div class="flex rel">
+						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+							Cols
+						</span>
+						<input 
+							min={0}
+							max={ 1 }
+							step={1}
+							class="w100pc grow"
+							style="padding-left:5em"
+							type="number" 
+							placeholder="Margin" 
+							bind:value={project.config.columns} />
+					</div>
+
+					<div class="flex rel">
+						<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+							Layout
+						</span>
+						<div class="select w100pc grow">
+							<select class="pl5 w100pc" bind:value={project.config.layout}>
+								{#each Object.keys(layoutOptions) as opt}
+									<option value={opt} name={opt}>{opt}</option>
+								{/each}
+							</select>
+						</div>
+					</div>
 
 
 				</div>
+
+				<Layouts bind:project={project} bind:sprites={quik.sprites} />
 				
 			</section>
 
@@ -542,8 +575,11 @@
 			<section id="layers" class={classes.lanes + ' basis20pc '}>
 
 				<!-- LAYERS -->
-				<div class="column-reverse justify-content-flex-end">
-					<Layers bind:groups={layers.groups} bind:layers={project.layers} bind:solo={solo} />
+				<div class="flex column-reverse justify-content-flex-end">
+					<Layers 
+						bind:inkLayerContainer={quik.inkLayerContainer}
+						bind:inkLayerGroups={quik.inkLayerGroups} 
+						bind:layers={project.layers} />
 				</div>
 
 			</section>

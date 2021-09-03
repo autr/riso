@@ -1,6 +1,32 @@
 @import './_theme'
 @import './../../sassis/src/sassis' 
- 
+@font-face
+	font-family: 'icons'
+	font-style: normal
+	font-weight: 400
+	src: url('/icons/MaterialIcons-Regular.eot')
+	src: local('icons'), local('MaterialIcons-Regular'), url('/icons/MaterialIcons-Regular.ttf') format('truetype')
+
+.icon
+	font-family: 'icons'
+	font-weight: normal
+	font-style: normal
+	font-size: 18px  /* Preferred icon size */
+	line-height: var(--font-size)
+	display: inline-block
+	text-transform: none
+	letter-spacing: normal
+	word-wrap: normal
+	white-space: nowrap
+	direction: ltr
+	-webkit-font-smoothing: antialiased
+	text-rendering: optimizeLegibility
+	-moz-osx-font-smoothing: grayscale
+	font-feature-settings: 'liga'
+	+rel
+	+top(0.25em)
+	+left(-0.15em)
+	+pr(0.1em)
 
 +sassis
 +shorthand
@@ -17,9 +43,13 @@
 	background-repeat: repeat
 
 html, body 
+
+
 	img
 		max-width: 100%
 		background: black
+		&.export
+			background: white
 	.palette canvas
 		width: 100%
 		max-width: 100%
@@ -32,6 +62,7 @@ html, body
 	input, .checker, input[type=range]
 		// +checker(4px, var(--bg), var(--bg-sink))
 		+pix
+		// +bg( var(--bg-sink) )
 		&::-webkit-slider-thumb
 			background-color: var(--bg-pop)
 			// margin-top: -1px
@@ -40,6 +71,12 @@ html, body
 			// margin-right: -1px
 	button, .select
 		+bg( var(--bg-pop) )
+
+	.swatch
+		&.metal
+			background: linear-gradient(140deg, rgba(0,0,0,0) 20%, rgba(255,255,255,0.1) 60%, rgba(0,0,0,0.1) 75%, rgba(255,255,255,0.2) 90%, rgba(0,0,0,0) 120%)
+	.checkered
+		+pix
 	#canvases
 		// +checker(4px, var(--bg), var(--bg-sink))
 		+pix

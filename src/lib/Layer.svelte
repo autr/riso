@@ -1,24 +1,28 @@
 <script>
 	import glLib from './_gl.js'
-	import colours from './_colours.js'
+	import _colours from './_colours.js'
 	import * as PIXI from 'pixi.js'
 	import { onMount } from 'svelte'
 	import gui from './_gui.js'
 	import Palette from './Palette.svelte'
-	import { transform } from './_stores.js'
+	import Switch from './Switch.svelte'
+	import Colours from './Colours.svelte'
+	import { transform, solo } from './_stores.js'
 
 	export let layer = {}
 	export let index = 0
-	export let solo = null
 	export let project = {}
 	export let pixi 
-	export let group
+	export let inkGroup
+
+	export let isPickingInk = false
+
+	let types = ['Picker', 'Cyan', 'Magenta', 'Yellow', 'Key', 'Red', 'Green', 'Blue']
+	let colours = _colours()
 
 	let class_ = ""
 	export { class_ as class }
 	let style_ = ""
-
-	let filter
 
 	function setDefaults( layer_ ) {
 		for ( const g of gui.config) if (!layer[g.name]) layer[g.name] = g.default
@@ -33,21 +37,43 @@
 		layer.y = $transform.y
 	})($transform)
 
-	let id
 
 	function setStringId( layer_ ) {
 
 		const pad = num => (Math.round(num).toString().padStart(3, '0'))
+
+		/* creates unique identifier */
+
+		let id
 		let i = layer.type || 0
+
+		/* layer number */
+
 		id = `L${index + 1}_`
+
+		/* ink name */
+
 		id += `${(colours[layer.colour]?.name || '').replaceAll(' ', '')}_`
-		id += `${types[i].toUpperCase()[0]}`
-		const {hue_point, hue_width, hue_falloff} = layer
-		if (i ==0) id += `${pad(hue_point*360)}${pad(hue_width*100)}${pad(hue_falloff*100)}`
+
+		/* spectrum type */
+
+		id += `${types[i]}`
+
+		/* color picker */
+
+		const { hue_point, hue_width, hue_falloff, hue_balance } = layer
+		if (i == 0) id += `${pad(hue_point*360)}${pad(hue_width*100)}${pad(hue_falloff*100)}${pad(hue_balance*100)}`
+
+		/* inverted */
+
 		id += `_I${layer.invert ? 1 : 0}_`
+
+		/* levels */
+
 		const {levels_low, levels_mid, levels_high, opacity} = layer
-		id += `L${pad(levels_low*100)}${pad(levels_mid*100)}${pad(levels_high*100)}_`
-		id += `O${pad(opacity*100)}`
+		id += `L${pad(levels_low*100)}${pad(levels_mid*100)}${pad(levels_high*100)}`
+
+		layer.id = id
 	}
 
 	$: setStringId( layer )
@@ -56,7 +82,6 @@
 	onMount( setup )
 
 
-	let type = 0
 
 	async function setup() {
 
@@ -67,11 +92,7 @@
 		if (layer.colour == undefined) layer.colour = parseInt(Math.random() * colours.length)
 
 		layer.seed = Math.random()
-		layer.colours = colours.map( c => {
-	    	return c.rgb.split(',').map( l => {
-	    		return parseFloat((parseFloat(l) / 255).toFixed(3))
-	    	})
-	    }).flat()
+		layer.colours = colours.map( c => c.values).flat()
 
 
 	    let header = `
@@ -138,7 +159,7 @@ void main(void) {
 	vec3 hsv = rgb2hsv( color );
 	vec3 ink = getInk();
 
-	if (solo) ink = vec3(1.0,0.0,0.0);
+	if (solo) ink = vec3(0.0,0.0,0.0);
 	float power = 0.0;
 
 	if (type == 0) {
@@ -167,47 +188,40 @@ void main(void) {
 }`
 
 		let fragment = window.fragment = `${glLib}\n${header}\n${program}`
-
-
-		filter = new PIXI.Filter(null, fragment, layer)
-
+		let filter = new PIXI.Filter(null, fragment, layer)
 		let noise = new PIXI.filters.NoiseFilter(1.0)
-		group.filters = [ filter ]
+		inkGroup.filters = [ filter ]
 
 	}
 
 
-	function select(i) {
-		layer.colour = i
-		overlay = false
+	function onSelect(e) {
+
+		layer.colour = e.detail
+		isPickingInk = false
 	}
 
-	let overlay = false
-
-	let types = ['Picker', 'Cyan', 'Magenta', 'Yellow', 'Key', 'Red', 'Green', 'Blue']
-
-	let TEST
 
 
 	function onMute( muted_, solo_ ) {
-		if (group) {
+		if (inkGroup) {
 
 			if (solo_ != null) {
 				console.log(`[Layer:${index}] 👁  solo set`)
-				group.visible = solo_ == index
-			} else if (group.visible != !muted_) {
-				group.visible = !muted_
-				console.log(`[Layer:${index}] 🔊  muted is set ${group.visible}`)
+				inkGroup.visible = solo_ == index
+			} else if (inkGroup.visible != !muted_) {
+				inkGroup.visible = !muted_
+				console.log(`[Layer:${index}] 🔊  muted is set ${inkGroup.visible}`)
 			}
 			
 		}
 	}
 
 
-	$: onMute( layer.muted, solo )
+	$: onMute( layer.muted, $solo )
 
 	function move(from, to) {
-		let cp = project.files
+		let cp = project.fileNames
 		project.layers = []
 		let i = cp.splice(from, 1)[0]
 		cp.splice(to, 0, i)
@@ -215,7 +229,7 @@ void main(void) {
 	}
 	function onLayerDown( idx ) {
 		let to = idx + 1
-		if (to >= project.files.length) return
+		if (to >= project.fileNames.length) return
 		move( idx, to )
 
 	}
@@ -230,51 +244,32 @@ void main(void) {
 
 </script>
 
-<!-- <div bind:this={TEST} /> -->
+<!-- COLOURS OVERLAY -->
 
+<Colours overlay={isPickingInk} on:select={onSelect} />
 <div 
 	class="flex column bb1-solid {class_}" >
 	<div class="mb0-5 p1">
 
+
 		<div class="flex row-stretch-stretch grow w100pc">
-			<div class="basis5em h100pc select">
-				<select class="br0-solid" bind:value={layer.type} style="letter-spacing: 4em">
+			<div class="basis30pc grow h100pc select"> 
+				<select class="br0-solid" bind:value={layer.type}>
 					{#each types as t,i}
 						<option value={i} name={t}>{t}</option>
 					{/each}
 				</select>
 				<!-- ➡ ➜ → ➪ ↔ -->
 			</div>
-			<div class="flex no-basis h100pc grow ">
+			<div class="flex basis70pc h100pc grow ">
 				<span 
-					on:click={e => overlay = true}
+					on:click={e => isPickingInk = true}
 					class="select grow">
-					<span class="flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable">
-						{(colours[layer.colour]?.name || '').toLowerCase()}
+					<span class="flex ptb0-6 plr1 grow pr3 b1-solid focusable clickable capitalize">
+						{(colours[layer.colour]?.name || '')}
 					</span>
 				</span>
 
-				<!-- COLOURS OVERLAY -->
-
-				<div 
-					class="flex fixed l0 t0 h100vh w100vw h100pc b1-solid bg wrap overflow-auto z-index99"
-					class:none={ !overlay }>
-					{#each colours as c, i}
-						<div 
-							on:click={ e => select(i) }
-							style={`background-color:rgb(${c.rgb});margin-top:-1px;margin-left:-1px`}
-							class="b1-solid flex column pointer no-basis grow minw16em minh0em">
-							<span 
-								class="inverted flex column p1">
-								<span>{c.name}</span>
-								<span>{c.japanese || '-'}</span>
-							</span>
-						</div>
-					{/each}
-					{#each new Array(10) as ii,i}
-						<span class="flex column pointer no-basis grow minw16em clickable h0em" style="line-height:0px;max-height:0px" />
-					{/each}
-				</div>
 
 
 
@@ -283,7 +278,7 @@ void main(void) {
 		{#each gui.config as ui}
 			<div 
 				class="flex row-flex-end-center mt1 w100pc"
-				class:none={ !isNaN(ui.link) && ui.link != layer.type}>
+				class:none={ ( !isNaN(ui.link) && ui.link != layer.type ) || ui.name == 'opacity' }>
 
 				{#if ui.label}
 
@@ -296,15 +291,7 @@ void main(void) {
 				{/if}
 				{#if ui.type == 'bool'}
 
-
-					<div 
-						on:click={e => layer[ui.name] = !layer[ui.name]}
-						class="br0-solid flex row-flex-end-center">
-						<span 
-							class="b1-solid rel checker w2em h2em block">
-							<span class:cross={layer[ui.name]} class="fill" />
-						</span>
-					</div>
+					<Switch bind:value={layer[ui.name]} />
 				{:else if ui.type == 'float'}
 					<input 
 						class="no-basis grow maxw60pc w60pc minw60pc round ml2 radius1em"

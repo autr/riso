@@ -1,6 +1,6 @@
 :root {
   --container: 1024px;
-  --font-size: 13px;
+  --font-size: 12px;
   --borders: 1px;
   --stroke-width: 1px;
   --media-sm: 576px;
@@ -66,6 +66,34 @@
   --code-selector: hsl( 170, 95%, 70% );
   --code-keyboard: hsl( 260, 95%, 70% );
   --code-regex: hsl( 300, 95%, 70% ); }
+
+@font-face {
+  font-family: 'icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url("/icons/MaterialIcons-Regular.eot");
+  src: local("icons"), local("MaterialIcons-Regular"), url("/icons/MaterialIcons-Regular.ttf") format("truetype"); }
+
+.icon {
+  font-family: 'icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 18px;
+  line-height: var(--font-size);
+  display: inline-block;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+  position: relative;
+  top: 0.25em;
+  left: -0.15em;
+  padding-right: 0.1em; }
 
 /* core sassis */
 html {
@@ -269,7 +297,7 @@ input[type=range] {
   padding-top: 0px;
   padding-bottom: 0px; }
   .checkbox span, .radio span {
-    border-width: var(--stroke-width);
+    border-width: 1px;
     margin: var(--input-padding);
     margin-left: 0em;
     margin-top: 0em;
@@ -331,26 +359,6 @@ code[class*="language-"], pre[class*="language-"] {
 
 .token.entity {
   cursor: help; }
-
-.border {
-  border-width: var(--borders);
-  border-style: solid; }
-
-.bb {
-  border-bottom-width: var(--borders);
-  border-bottom-style: solid; }
-
-.bt {
-  border-top-width: var(--borders);
-  border-top-style: solid; }
-
-.br {
-  border-right-width: var(--borders);
-  border-right-style: solid; }
-
-.bl {
-  border-left-width: var(--borders);
-  border-left-style: solid; }
 
 /* backgrounds w. pop and sink */
 .clamp1 {
@@ -2273,12 +2281,6 @@ a.color-e, select.color-e, button.color-e, .button.color-e {
 
 .pointer {
   cursor: pointer; }
-
-.grab {
-  cursor: grab; }
-
-.grabbing {
-  cursor: grabbing; }
 
 .visible {
   opacity: 1; }
@@ -57489,6 +57491,8 @@ a.color-e, select.color-e, button.color-e, .button.color-e {
 html img, body img {
   max-width: 100%;
   background: black; }
+  html img.export, body img.export {
+    background: white; }
 
 html .palette canvas, body .palette canvas {
   width: 100%;
@@ -57508,6 +57512,13 @@ html input, html .checker, html input[type=range], body input, body .checker, bo
 
 html button, html .select, body button, body .select {
   background-color: var(--bg-pop); }
+
+html .swatch.metal, body .swatch.metal {
+  background: linear-gradient(140deg, rgba(0, 0, 0, 0) 20%, rgba(255, 255, 255, 0.1) 60%, rgba(0, 0, 0, 0.1) 75%, rgba(255, 255, 255, 0.2) 90%, rgba(0, 0, 0, 0) 120%); }
+
+html .checkered, body .checkered {
+  background-image: url("/pix.png");
+  background-repeat: repeat; }
 
 html #canvases, body #canvases {
   background-image: url("/pix.png");

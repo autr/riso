@@ -4,7 +4,7 @@
     import dragdrop from 'svelte-native-drag-drop'
     import Layer from './Layer.svelte'
     import Palette from './Palette.svelte'
-    import { selected } from './_stores.js'
+    import { selected, solo } from './_stores.js'
 
 
     // onMount( async () => {
@@ -13,25 +13,48 @@
     // onDestroy( async () => {
     // })
 
+    const moveInArray = (arr, from, to) => {
+        if (to >= arr.length) {
+            var k = to - arr.length + 1
+            while (k--) {
+                arr.push(undefined)
+            }
+        }
+        arr.splice(to, 0, arr.splice(from, 1)[0])
+        return arr
+    }
+
+    function onDrop(e) {
+        let source = elements.indexOf(e.source)
+        let destination = elements.indexOf(e.destination)
+        console.log( inkLayerGroups )
+        layers = moveInArray( layers, source, destination )
+        inkLayerContainer.children = moveInArray(inkLayerContainer.children, source, destination)
+        // inkLayerContainer
+
+    }
+
     let lastLength = -1
     $: ((layers_, els_) => {
         if (lastLength != elements.length) {
-            console.log(`[Layers] 🍰  resetting drag-drop handles`)
+            console.log(`[Layers] 🍰  resetting drag-drop handles for ${elements.length} elements and ${handles.length} handles`)
             lastLength = elements.length
             dragdrop.clear('layers')
             for (let i = 0; i < elements.length; i++) {
                 let el = elements[i]
                 let handle = handles[i]
                 dragdrop.addDragArea( 'layers', handle, el )
-                dragdrop.addDropArea( 'layers', el )
+                dragdrop.addDropArea( 'layers', el, {
+                    drop: onDrop
+                })
 
             }
         }
     })(layers, elements)
 
-    export let solo
     export let layers
-    export let groups
+    export let inkLayerGroups
+    export let inkLayerContainer
 
     let handles = []
     let elements = []
@@ -42,9 +65,12 @@
     }
 
     function onSolo( idx ) {
-        solo = solo == null ? idx : null
-        layers[idx].solo = solo == idx && solo != null
+        solo.set( $solo == idx ? null : idx )
     }
+
+    $: (_solo => {
+        for (let i = 0; i < layers.length; i++) layers[i].solo = $solo == i && $solo != null
+    })($solo)
 
     function onSelect( idx ) {
         selected.set({
@@ -54,14 +80,16 @@
     }
 
     function onRemove( idx ) {
-        groups[idx].parent.removeChild( groups[idx] )
+        inkLayerGroups[idx].parent.removeChild( inkLayerGroups[idx] )
         layers = layers.filter( (l,i) => (i != idx) )
     }
+
+    let isPicking = {}
 </script>
 
 
 
-{#each groups as group, idx}
+{#each inkLayerGroups as inkGroup, idx}
     {#if layers[idx]}
         <div 
             class:something={$selected.type == 'layer' && $selected.which == idx}
@@ -69,32 +97,33 @@
             bind:this={elements[idx]}>
             <header class="pop flex row-space-between-center rel">
                 <span 
-                    class="fill grabbable" 
+                    class="fill grabbable z-index1" 
                     bind:this={handles[idx]} />
-                <div class="flex row-flex-start-center">
+                <div class="flex row-flex-start-center  z-index0">
                     <div 
-                        class="p1-5 move"
-                        style="line-height:2px;max-width:10px">
-                        ⁞⁞⁞
+                        class="plr1 move grabbable">
+                        <span class="icon">drag_indicator</span>
                     </div>
+                    Layer {idx + 1}
                 </div>
                 <div class="flex row-flex-start-center z-index2  z-index2">
 
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
                         on:click={ e => layers[idx].muted = !layers[idx].muted }
-                        class:error={layers[idx].muted && solo != idx}
-                        class:filled={layers[idx].muted && solo != idx}>M</div>
+                        class:error={layers[idx].muted && $solo != idx}
+                        class:filled={layers[idx].muted && $solo != idx}>M</div>
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
-                        class:filled={solo == idx}
-                        class:alert={solo == idx}
-                        class:b1-solid={solo == idx}
+                        class:filled={$solo == idx}
+                        class:alert={$solo == idx}
+                        class:b1-solid={$solo == idx}
                         on:click={ e => onSolo( idx ) }>S</div>
                     <div 
                         class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
                         on:click={ e => onRemove( idx ) }>
-                        <span class="cross w10px h10px flex block" />    
+                        <!-- <span class="cross w10px h10px flex block" />    -->
+                        <span class="icon t0 l0">clear</span>   
                     </div>
                     <div 
                         class="grow flex row-flex-end-center pointer p1-5"
@@ -112,17 +141,19 @@
 
             <aside 
                 class="">
-                <div class="bb1-solid bt1-solid h1em flex row-reverse w100pc">
+                <div 
+                    on:click={ e => (isPicking[idx] = true) }
+                    class="bb1-solid bt1-solid h1em flex row-reverse w100pc pointer">
                     <Palette bind:layer={layers[idx]} />
                 </div>
             </aside>
 
             <Layer 
+                bind:isPickingInk={isPicking[idx]}
                 index={idx}
                 {pixi}
                 class={layers[idx].collapsed ? 'none' : ''}
-                bind:group={group}
-                bind:solo={solo}
+                bind:inkGroup={inkGroup}
                 bind:layer={layers[idx]} />
         </div>
     {/if}

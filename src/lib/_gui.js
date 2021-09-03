@@ -26,7 +26,7 @@ const config = [
 	{
 		name: 'hue_balance',
 		type: 'float',
-		default: 0.5,
+		default: 0,
 		label: 'Balance',
 		link: 0,
 		viz: 100
