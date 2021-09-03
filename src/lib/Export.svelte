@@ -16,6 +16,13 @@
 	const stamp = e => ((t2 - t1) / 1000) + 's'
 
 
+	let exportFormats = {
+		'PNG-8': 'image/png',
+		'PNG-24': 'image/png',
+		'JPEG': 'image/jpeg'
+	}
+
+
 	function createLayerOutput( layer ) {
 		return new Promise( (resolve,reject) => {
 
@@ -92,6 +99,8 @@
 		}
 	})($exporting, $inited.db, $inited.canvas)
 
+	let format = Object.keys(exportFormats)[0]
+
 </script>
 
 								<!--  -->
@@ -100,17 +109,25 @@
 
 	<div class="fill fixed checkered flex column z-index9">
 		<header class="flex row-space-between-center p1 bb1-solid bg">
-			<div>
+			<div class="cmr0-5">
 	            <button on:click={e => exporting.set(false)}>
 	                <span class="icon">arrow_back</span>
 	                Cancel
 	            </button>
-			</div>
-			<div>
 				<button>
 					<span class="icon">download</span>
 					Save All Zipped
 				</button>
+			</div>
+			<div>
+				<div class="basis5em h100pc select">
+	                <span class="icon abs l0 t0 mt0-6 ml0-5">image</span>
+					<select bind:value={format}  class="pl3">
+						{#each Object.keys(exportFormats) as format,i}
+							<option value={format} name={format}>{format}</option>
+						{/each}
+					</select>
+				</div>
 			</div>
 		</header>
 		<div class="grow checkered wrap overflow-auto flex row-stretch-flex-start row pl1 pt1">

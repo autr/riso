@@ -5,6 +5,7 @@
 	import gui from './_gui.js'
 	import glLib from './_gl.js'
 	import colours_raw from './_colours.js'
+	import { trigger } from './_stores.js'
 
 	export let layer
 	export let target
@@ -89,6 +90,7 @@ void main(void) {
 		if (type == 7) gl_FragColor = vec4(0.0,0.0,1.0,1.0);
 	}
 
+
 }`
 		// console.log('[Palette] setup')
 
@@ -97,6 +99,16 @@ void main(void) {
 		if (el) el.appendChild(app.view)
 
 	}
+
+	// $: ( async _trigger => {
+
+	// 	if ($trigger.palettes) {
+	// 		await setup()
+	// 		$trigger.palettes = false
+	// 	}
+	// })($trigger)
+
+	
 </script>
 <div class="palette-ink rel basis0pc flex grow palette" style={`background-color: rgb(${COLOR?.rgb})`} />
 <div class="palette-range rel basis0pc flex grow palette br1-solid"  bind:this={el} />

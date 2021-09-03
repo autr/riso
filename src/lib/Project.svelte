@@ -205,22 +205,17 @@
 
 				/* if external trigger... */
 
-				const isTrigger = project.trigger
-
-
-				// console.log( { isCanvasChanged, isNewLayer, isNewFiles, isTrigger } )
-
-				if ( isTrigger ) {
+				if ( $trigger.setup ) {
 					console.log('[Project] 💫  trigger setup...')
 					await setup( filesBin )
-					project.trigger = false
+			        $trigger.setup = false
 				} 
-
 				
-				if ( isCanvasChanged || isNewLayer || isNewFilenames ) {
+				if ( isCanvasChanged || isNewLayer || isNewFilenames || $trigger.redraw ) {
 					console.log('[Project] 💫  canvas is changed, running setPositions and drawImages...')
 					await setPositions()
 					await drawImages()
+			        $trigger.redraw = false
 				}
 
 

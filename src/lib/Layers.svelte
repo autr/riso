@@ -4,7 +4,7 @@
     import dragdrop from 'svelte-native-drag-drop'
     import Layer from './Layer.svelte'
     import Palette from './Palette.svelte'
-    import { selected, solo } from './_stores.js'
+    import { selected, solo, trigger } from './_stores.js'
 
 
     // onMount( async () => {
@@ -25,11 +25,17 @@
     }
 
     function onDrop(e) {
+        // $trigger.palettes = true
         let source = elements.indexOf(e.source)
         let destination = elements.indexOf(e.destination)
         console.log( inkLayerGroups )
         layers = moveInArray( layers, source, destination )
         inkLayerContainer.children = moveInArray(inkLayerContainer.children, source, destination)
+        $trigger.redraw = true
+        
+        // setTimeout( e => {
+        //     $trigger.palettes = false
+        // }, 1)
         // inkLayerContainer
 
     }

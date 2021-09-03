@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte'
-    import { library, inited } from './_stores.js'
+    import { library, inited, trigger } from './_stores.js'
     import utils from './_utils.js'
     import dragdrop from 'svelte-native-drag-drop'
     import rectd from './_rectd.js'
@@ -141,8 +141,11 @@
 
 
     function saveToProject() {
-        project.fileNames = Object.keys( CANDIDATES )
+        let fn = Object.keys( CANDIDATES ).filter( f => (CANDIDATES[f]) )
+        console.log(`[Files] 🐝  saving to project`, fn)
         library.set(false)
+        $trigger.redraw = true
+        project.fileNames = fn
     }
 
 

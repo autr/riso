@@ -164,7 +164,7 @@
 				})}
 			})
 
-			console.log(`[App] 💦  saved ${PROJECTS.length} projects to db`)
+			console.log(`[App] 💦  saved ${PROJECTS.length} projects to db`, cleaned[0])
 			await set( PROJECTS_KEY, cleaned )
 		}, 200)
 		
