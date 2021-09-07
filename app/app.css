@@ -71,8 +71,8 @@
   font-family: 'icons';
   font-style: normal;
   font-weight: 400;
-  src: url("/icons/MaterialIcons-Regular.eot");
-  src: local("icons"), local("MaterialIcons-Regular"), url("/icons/MaterialIcons-Regular.ttf") format("truetype"); }
+  src: url("icons/MaterialIcons-Regular.eot");
+  src: local("icons"), local("MaterialIcons-Regular"), url("icons/MaterialIcons-Regular.ttf") format("truetype"); }
 
 .icon {
   font-family: 'icons';
@@ -57488,6 +57488,14 @@ a.color-e, select.color-e, button.color-e, .button.color-e {
     flex-basis: 100%;
     max-width: 100%; } }
 
+html *, body * {
+  -webkit-user-select: none; }
+
+html #header, body #header {
+  -webkit-app-region: drag; }
+  html #header.electron, body #header.electron {
+    padding-left: 6em; }
+
 html img, body img {
   max-width: 100%;
   background: black; }
@@ -57505,7 +57513,7 @@ html .file:hover .overlay, body .file:hover .overlay {
   display: flex; }
 
 html input, html .checker, html input[type=range], body input, body .checker, body input[type=range] {
-  background-image: url("/pix.png");
+  background-image: url("pix.png");
   background-repeat: repeat; }
   html input::-webkit-slider-thumb, html .checker::-webkit-slider-thumb, html input[type=range]::-webkit-slider-thumb, body input::-webkit-slider-thumb, body .checker::-webkit-slider-thumb, body input[type=range]::-webkit-slider-thumb {
     background-color: var(--bg-pop); }
@@ -57517,11 +57525,11 @@ html .swatch.metal, body .swatch.metal {
   background: linear-gradient(140deg, rgba(0, 0, 0, 0) 20%, rgba(255, 255, 255, 0.1) 60%, rgba(0, 0, 0, 0.1) 75%, rgba(255, 255, 255, 0.2) 90%, rgba(0, 0, 0, 0) 120%); }
 
 html .checkered, body .checkered {
-  background-image: url("/pix.png");
+  background-image: url("pix.png");
   background-repeat: repeat; }
 
 html #canvases, body #canvases {
-  background-image: url("/pix.png");
+  background-image: url("pix.png");
   background-repeat: repeat; }
   html #canvases *, body #canvases * {
     image-rendering: pixelated; }

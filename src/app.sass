@@ -4,8 +4,8 @@
 	font-family: 'icons'
 	font-style: normal
 	font-weight: 400
-	src: url('/icons/MaterialIcons-Regular.eot')
-	src: local('icons'), local('MaterialIcons-Regular'), url('/icons/MaterialIcons-Regular.ttf') format('truetype')
+	src: url('icons/MaterialIcons-Regular.eot')
+	src: local('icons'), local('MaterialIcons-Regular'), url('icons/MaterialIcons-Regular.ttf') format('truetype')
 
 .icon
 	font-family: 'icons'
@@ -39,10 +39,19 @@
 	background-position: 0 0, $size $size
 
 =pix
-	background-image: url('/pix.png')
+	background-image: url('pix.png')
 	background-repeat: repeat
 
 html, body 
+
+	*
+		-webkit-user-select: none
+
+	#header
+		-webkit-app-region: drag
+		&.electron
+			// padding: 0.5em
+			padding-left: 6em
 
 
 	img

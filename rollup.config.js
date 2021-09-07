@@ -34,7 +34,7 @@ export default {
 		sourcemap: true,
 		format: 'iife',
 		name: 'app',
-		file: 'docs/build/bundle.js'
+		file: 'app/bundle.js'
 	},
 	plugins: [
 		svelte({
@@ -43,32 +43,15 @@ export default {
 				dev: !production
 			}
 		}),
-		// we'll extract any component CSS out into
-		// a separate file - better for performance
-		css({ output: 'bundle.css' }),
-
-		// If you have external dependencies installed from
-		// npm, you'll most likely need these plugins. In
-		// some cases you'll need additional configuration -
-		// consult the documentation for details:
-		// https://github.com/rollup/plugins/tree/master/packages/commonjs
+		// css({ output: 'bundle.css' }),
 		resolve({
 			preferBuiltins: false,
 			browser: true,
 			dedupe: ['svelte']
 		}),
 		commonjs(),
-
-		// In dev mode, call `npm run start` once
-		// the bundle has been generated
 		!production && serve(),
-
-		// Watch the `docs` directory and refresh the
-		// browser on changes when not in production
-		!production && livereload('docs'),
-
-		// If we're building for production (npm run build
-		// instead of npm run dev), minify
+		!production && livereload('app'),
 		production && terser()
 	],
 	watch: {

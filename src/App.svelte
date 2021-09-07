@@ -6,7 +6,10 @@
 	import { get, set } from 'idb-keyval'
 	import Files from './lib/Files.svelte'
 	import Colours from './lib/Colours.svelte'
-	import { library, inited, exporting } from './lib/_stores.js'
+	import { library, inited, exporting, electron } from './lib/_stores.js'
+
+	electron.set( navigator.userAgent.toLowerCase().indexOf('electron') != -1 )
+
 
 	onMount( async e => {
 		await loadDb()
@@ -210,12 +213,17 @@
 			{/each}
 		</div> -->
 
-	<div class="fixed l0 t0 w100vw h100vh bg z-index9 overflow-auto" class:none={!$library} >
+	<div 
+		class="fixed l0 t0 w100vw h100vh bg z-index9 overflow-auto" 
+		class:none={!$library} >
 		<Files bind:filesBin={filesBin} bind:project={PROJECTS[IDX]} />
 	</div>
 
 	<div class="wrapper flex column h100vh">
-		<header class="bg plr1 pb1 pt1 bb1-solid flex row-space-between-center">
+		<header 
+			id="header"
+			class:electron={$electron}
+			class="bg plr1 pb1 pt1 bb1-solid flex row-space-between-center">
 			<div class=" flex row-flex-start-center cmr1">
 
 				<!-- <div class="basis5em h100pc select">
@@ -268,13 +276,13 @@
 			bind:project={PROJECTS[IDX]} 
 			filesBin={filesBin}>
 		</Project>
-		<footer class="bt1-solid bg flex row-space-between-center plr1 ptb0-5">	
+		<!-- <footer class="bt1-solid bg flex row-space-between-center plr1 ptb0-5">	
 			<div>
 				Hello world
 			</div>
 			<div>
 				Something
 			</div>
-		</footer>
+		</footer> -->
 	</div>
 {/if}
