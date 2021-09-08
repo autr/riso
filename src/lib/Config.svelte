@@ -29,61 +29,35 @@
 		</select>
 	</div>
 </div>
-<div class="flex rel">
-	<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
-		DPI
-	</span>
-	<input 
-		min={150}
-		max={600}
-		step={50}
-		type="number" 
-		class="w100pc grow"
-		style="padding-left:5em"
-		placeholder="DPI" 
-		bind:value={project.config.dpi} />
-</div>
-<div class="flex rel">
-	<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
-		Margin
-	</span>
-	<input 
-		min={0}
-		max={ 1 }
-		step={1}
-		class="w100pc grow"
-		style="padding-left:5em"
-		type="number" 
-		placeholder="Margin" 
-		bind:value={project.config.margin} />
-</div>
-<div class="flex rel">
-	<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
-		Rows
-	</span>
-	<input 
-		min={0}
-		max={ 1 }
-		step={1}
-		class="w100pc grow"
-		style="padding-left:5em"
-		type="number" 
-		placeholder="Margin" 
-		bind:value={project.config.rows} />
-</div>
-<div class="flex rel">
-	<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
-		Cols
-	</span>
-	<input 
-		min={0}
-		max={ 1 }
-		step={1}
-		class="w100pc grow"
-		style="padding-left:5em"
-		type="number" 
-		placeholder="Margin" 
-		bind:value={project.config.columns} />
+<div class="flex row cno-basis">
+	<div class="flex rel grow basis5pc">
+		<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+			DPI
+		</span>
+		<input 
+			min={150}
+			max={600}
+			step={50}
+			type="number" 
+			class="w100pc grow"
+			style="padding-left:5em"
+			placeholder="DPI" 
+			bind:value={project.config.dpi} />
+	</div>
+	<span class="minw1em no-basis" />
+	<div class="flex rel grow no-basis">
+		<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+			Margin
+		</span>
+		<input 
+			min={7}
+			step={1}
+			class="w100pc grow"
+			style="padding-left:5em"
+			type="number" 
+			placeholder="Margin" 
+			bind:value={project.config.margin} />
+	</div>
 </div>
 
 <div class="flex rel">

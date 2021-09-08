@@ -22,7 +22,7 @@
 		<div class="f2 p1 pop bb1-solid flex row-space-between-center">
 			<div>
 				<span class="icon">web_asset_off</span>
-				Unsupported browser
+				Unsupported Browser
 			</div>
 			<span class="w1em h1em cross pointer" on:click={onIgnore} />
 		</div>

@@ -42,7 +42,7 @@
 			background: options.backgrounds[0].name,
 			size: options.sizes[1].name,
 			dpi: 300, 
-			margin: 10,
+			margin: 7,
 			rows: 2,
 			columns: 2
 		},
@@ -190,13 +190,15 @@
 				})}
 			})
 
-			console.log(`[App] 💦  saved ${PROJECTS.length} projects to db`, cleaned[0])
+			console.log(`[App] 💦  ${PROJECTS.length} project(s) saved`)
 			await db.set.projects( cleaned )
 		}, 200)
 		
 	}
 
 	async function clearDatabases() {
+
+        if (!window.confirm(`Remove all projects, palettes and file references. Are you sure?`)) return
 		let ks = Object.keys(db.set)
 		for (const k of ks) await db.set[k]( null )
 	}
@@ -264,10 +266,6 @@
 					<select value={'Presets'} style="letter-spacing: 4em">
 					</select>
 				</div> -->
-				<button on:click={clearDatabases}>
-	                <span class="icon">replay</span>
-					Clear Databases
-				</button>
 			    <button 
 			        on:click={e => ($library = !$library)}>
 	                <span class="icon">photo</span>
@@ -283,9 +281,13 @@
 			    </button>
 			</div>
 			<div class=" flex row-flex-end-center cml1">
-				<button class="pop">
+				<!-- <button class="pop">
 	                <span class="icon">visibility</span>
 					Preview
+				</button> -->
+				<button on:click={clearDatabases}>
+	                <span class="icon">replay</span>
+					Clear Databases
 				</button>
 				<button 
 					on:click={ e => exporting.set(true) }

@@ -8,6 +8,8 @@
 	import Switch from './Switch.svelte'
 	import Colours from './Colours.svelte'
 	import { transform, solo, original } from './_stores.js'
+    import options from './_options.js'
+    
 
 	export let layer = {}
 	export let index = 0
@@ -16,8 +18,6 @@
 	export let inkGroup
 
 	export let isPickingInk = false
-
-	let types = ['Picker', 'Cyan', 'Magenta', 'Yellow', 'Key', 'Red', 'Green', 'Blue']
 	let colours = _colours()
 
 	let class_ = ""
@@ -65,7 +65,7 @@
 
 		/* spectrum type */
 
-		id += `${types[i]}`
+		id += `${options.types[i]}`
 
 		/* color picker */
 
@@ -263,7 +263,7 @@ void main(void) {
 		<div class="flex row-stretch-stretch grow w100pc">
 			<div class="basis30pc grow h100pc select"> 
 				<select class="br0-solid" bind:value={layer.type}>
-					{#each types as t,i}
+					{#each options.types as t,i}
 						<option value={i} name={t}>{t}</option>
 					{/each}
 				</select>

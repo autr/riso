@@ -19,6 +19,7 @@ export default {
 		gen.bg( 'Bone white', `hsl(0, 0%, 98%)`, 0.1),
 		gen.bg( 'Warm white', `hsl(50, 90%, 97%)`, 0.1)
 	],
+	types: ['Picker', 'Cyan', 'Magenta', 'Yellow', 'Key', 'Red', 'Green', 'Blue'],
 	sizes: [
 		gen.size( 'DIN A4', 210, 297 ),
 		gen.size( 'DIN A3', 297, 420 ),

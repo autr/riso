@@ -1,11 +1,12 @@
 <script>
     import { onMount } from 'svelte'
-    import { library, inited, trigger, incompatible, warning } from './_stores.js'
+    import { library, inited, trigger, incompatible, warning, permissions } from './_stores.js'
     import utils from './_utils.js'
     import dragdrop from 'svelte-native-drag-drop'
     import rectd from './_rectd.js'
     import Switch from './Switch.svelte'
     import db from './_db.js'
+    import options from './_options.js'
 
     export let filesBin
     export let project
@@ -57,28 +58,40 @@
 
             if ($incompatible) return warning.set(true)
 
-            let opts = { mode: 'read' }
-            let permission = await item.queryPermission(opts)
-            console.log(`[Files] 🔐  ${item.name} permission: ${permission}`)
+            $permissions[item.name] = await item.queryPermission({ mode: 'read' })
+            console.log(`[Files] 🔐  ${item.name} current permission is ${$permissions[item.name]}`)
 
             try {
-                if (permission  != 'granted') permission = await item.requestPermission(opts)
+                if ($permissions[item.name]  != 'granted') {
+                    $permissions[item.name] = await item.requestPermission({ mode: 'read' })
+                }
                 const file = await item.getFile()
                 filesBin.srcs[item.name] = {
                     name: item.name,
                     url: URL.createObjectURL(file)
                 }
             } catch(err) {
-                console.log(`[Files] 🚨  ${item.name} needs permission: ${permission}`)
+                console.log(`[Files] 🚨  ${item.name} needs granted but has ${$permissions[item.name]}`)
             }
         }
     }
 
     async function onRequestAll() {
 
+        console.log(`[Files] 🔐  requesting all ${filesBin.items.length} files...`)
 
-        for( const item of filesBin.items) onRequestFile( item )
+        for( const item of filesBin.items) await onRequestFile( item )
+
+        let ungranted = Object.values( $permissions ).filter( p => p != 'granted').length
+        if (ungranted > 0) {
+            console.log(`[Files] 🚨  total ${ungranted} permissions needed`)
+        } else {
+            console.log(`[Files] ✅  permissions`)
+
+        }
     }
+
+    window.onRequestAll = onRequestAll
 
     async function onAccessFiles(e) {
 
@@ -126,10 +139,11 @@
 
     let lastLib = 9999
     $: (lib => {
-        if ($library && lastLib != $library) {
+        if (lastLib !== $library) {
+            lastLib = $library
+            if (!$library) return
             console.log(`[Files] ✨  setting candidates from project`)
             CANDIDATES = {}
-            lastLib = $library
             let count = 0
             for (const file of filesBin.items) {
                 let found = project.fileNames.find( name => name == file.name )
@@ -138,8 +152,7 @@
                     count += 1
                 }
             }
-
-            if (count > 1) allowMultiple = true
+            allowMultiple = Object.keys(options.layouts)[0] != project.config.layout
         }
     })($library)
 
@@ -148,6 +161,7 @@
         let fn = Object.keys( CANDIDATES ).filter( f => (CANDIDATES[f]) )
         console.log(`[Files] 🐝  saving to project`, fn)
         library.set(false)
+        $trigger.setup = true
         $trigger.redraw = true
         project.fileNames = fn
     }
@@ -206,6 +220,8 @@
     }
 
 
+    $: needsSync = Object.values( $permissions ).filter( p => p != 'granted').length
+
 </script>
 
 
@@ -239,9 +255,15 @@
                 Add Local Files
             </button>
             <button 
-                on:click={onRequestAll}>
-                <span class="icon">sync</span>
-                Sync Local Files
+                class:error={needsSync}
+                disabled={!needsSync}
+                on:click={onRequestAll}> 
+                {#if needsSync}
+                    <span class="icon">lock</span>
+                {:else}
+                    <span class="icon">lock_open</span>
+                {/if}
+                Enable File Access
             </button>
             <button 
                 on:click={onClearAllHandles}>
@@ -303,7 +325,16 @@
                                 class:disabled={ item.static }
                                 class="flex h2em w2em row-center-center pointer radius2em"
                                 on:click={ e => onRequestFile( item ) }>
-                                <span class="icon t0 l0">sync</span>
+
+                                {#if $permissions[item.name] != 'granted' && $permissions[item.name]}
+                                    <!-- <span class="b1-solid error radius2em h1em w1em p1 flex row-center-center rel"> -->
+                                        <span class="error ml0-1 icon t0 l0">lock</span>
+                                    <!-- </span> -->
+                                {:else}
+                                    <span 
+                                        class:disabled={true}
+                                        class="icon t0 l0">lock_open</span>
+                                {/if}
                             </div>
                             <div 
                                 class:disabled={ item.static }

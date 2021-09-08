@@ -43,7 +43,7 @@
   --line-height: 1.61803398875em;
   --color-success: hsl( 150, 95%, 70% );
   --color-info: hsl( 200, 95%, 70% );
-  --color-error: hsl( 340, 95%, 70% );
+  --color-error: hsl( 340, 95%, 68% );
   --color-alert: hsl( 50, 95%, 70% );
   --bg-a: hsl( 300, 20%, 10% );
   --bg-b: hsl( 300, 20%, 15% );

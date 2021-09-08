@@ -1,7 +1,7 @@
 <script>
     import panzoom from 'panzoom'
     import { onMount } from 'svelte'
-    import { dragging, transform, zoom, moving, inited, original } from './_stores.js'
+    import { dragging, transform, zoom, moving, inited, original, requests, trigger } from './_stores.js'
     import rectd from './_rectd.js'
 
     export let project
@@ -56,6 +56,8 @@
 
 
     function togglePreview( b ) {
+
+        if ($requests.length > 0) return
         console.log('[Canvas] 👁  toggle preview')
 
         original.set( b )
@@ -79,6 +81,13 @@
         keys[e.key] = false
     }
 
+    async function enableFileAccess() {
+        await window.onRequestAll()
+        $trigger.setup = true
+        $trigger.redraw = true
+        project.trigger = Math.random()
+    }
+
 </script>
 
 <svelte:window 
@@ -92,6 +101,27 @@
     class:grabbing={$dragging}
     id="canvases"
     class="rel basis70pc pointer grow flex row-center-flex-start maxh100vh overflow-hidden">
+
+    {#if $requests.length > 0}
+        <div class="fill flex row-center-center">
+            <aside class="flex minw16em maxw32em column bg b1-solid z-index99">
+                <div class="p1 pop f2 flex row-space-between-center">
+                    <div>
+                        <span class="icon">perm_media</span>
+                        Read Permissions
+                    </div>
+                    <span class="w1em h1em cross pointer" on:click={e => (requests.set([]))} />
+                </div>
+                <div class="p1 bt1-solid">Project needs read permissions for {$requests.join(', ')}</div>
+                <div class="p1">
+                    <button class="error w100pc" on:click={enableFileAccess}>
+                        <span class="icon">lock</span>
+                        Enable File Access
+                    </button>
+                </div>
+            </aside>
+        </div>
+    {/if}
     <div
         id="zoom"
         bind:this={zoomEl}

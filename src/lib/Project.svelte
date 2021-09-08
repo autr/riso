@@ -14,7 +14,7 @@
 	import Export from './Export.svelte'
 	import Config from './Config.svelte'
 
-	import { dragging, transform, zoom, exporting, processing, solo, inited, trigger } from './_stores.js'
+	import { dragging, transform, zoom, exporting, processing, solo, inited, trigger, permissions, requests } from './_stores.js'
 
 	let main, app, stage, loader, mode
 
@@ -111,52 +111,68 @@
 		quik.allContainer.addChild( quik.paperBackground )
 		quik.allContainer.addChild( quik.inkLayerContainer )
 
-		console.log(`[Project] 🎉  run update?`)
+		await setup()
 
 	}
 
 
 	let lastFiles
 
-	async function setup( filesBin ) {
+	async function setup( ) {
 
-		let str = JSON.stringify(filesBin)
-		if (lastFiles == str) return
+		console.log(`[Project] 🐣  running setup on: ${project.fileNames.join(',')}`)
+
+
+		let str = JSON.stringify(project.fileNames)
+		if (lastFiles == str && !project.trigger) return
 		lastFiles = str
+		project.trigger = null
 
-		console.log('[Project] 💿  pixi.loader is resetting due to new files', filesBin)
 
 		if (!filesBin?.srcs) {
-			console.log(`[Project] 💿 ❌  no filesBin.srcs`)
-			return
-		}
-
-		let list = project.fileNames.filter( name => filesBin.srcs[name] )
-		if (list.length != project.fileNames.length) {
-			console.log(`[Project] 💿 ❌  list doesn't match project.fileNames`, {list, srcs: project.fileNames })
+			console.log(`[Project] 🐣 ❌  no filesBin.srcs`)
 			return
 		}
 
 		await pixi.loader.reset()
+
+		requests.set([])
+
 		for (const name of project.fileNames) {
 			let o = filesBin.srcs[name]
-			if (!pixi.loader.resources[o.url]) pixi.loader.add( o.url, { crossOrigin: 'anonymous' })
+			let item = filesBin.items.find( f => f.name == name )
+
+			if (!o?.static) {
+				try { 
+					$permissions[name] = await item.queryPermission({ mode: 'read' }) 
+				} catch(err) {}
+			}
+
+			if ($permissions[name] != 'granted' && $permissions[name]) {
+				console.log(`[Project] 🐣 🚨  permissions needed for ${name} / ${$permissions[name]}`)
+				$requests = [ ...$requests, name ]
+			}
+
+
+			if (!pixi.loader.resources[o?.url] && o) pixi.loader.add( o?.url, { 
+				crossOrigin: 'anonymous',
+				loadType: 2 // <- means "image"
+			})
 		}
+
+		if ( $requests.length <= 0 ) console.log(`[Project] 🐣 ✅  all setup permissions got` )
 
 		await setPositions()
 
 		pixi.loader.load(async e => {
-			console.log('[Project] 💿 ✅  pixi.loader loaded filesBin')
+			console.log(`[Project] 🐣 ✅  loaded: ${Object.keys(pixi.loader.resources).join(',')}`, pixi.loader.resources )
 			await drawImages()
-			// await renderThumbnail()
 		})
 		$inited.project = true
-		console.log('[Project] 💿  running initial update...')
+		console.log('[Project] 🐣  now running initial update...')
 		await update( project.config )
 
 	}
-
-	$: setup( filesBin )
 
 
 	/* UPDATE - when project config changes...*/
@@ -206,13 +222,13 @@
 
 				/* if external trigger... */
 
-				if ( $trigger.setup ) {
+				if ( $trigger.setup || isNewFilenames ) {
 					console.log('[Project] 💫  trigger setup...')
-					await setup( filesBin )
+					await setup( )
 			        $trigger.setup = false
 				} 
 				
-				if ( isCanvasChanged || isNewLayer || isNewFilenames || $trigger.redraw ) {
+				if ( isCanvasChanged || isNewLayer || $trigger.redraw ) {
 					console.log('[Project] 💫  canvas is changed, running setPositions and drawImages...')
 					await setPositions()
 					await drawImages()
@@ -262,8 +278,9 @@
 
 			for (const [url, resource] of Object.entries(pixi.loader.resources) ) {
 
-				let fileItem = filesBin.items.find( f => f.url == url )
-				let { name } = fileItem
+
+				let name 
+				for (let [key, obj] of Object.entries(filesBin.srcs) ) name = obj.url == url ? key : name
 				let rectCanvas = rectd.neu( 0, 0, project.info.width, project.info.height )
 				rectCanvas = rectd.shrinkBy( rectCanvas, mm2px( project.config.margin ) )
 				let pixiSprite = new PIXI.Sprite( resource.texture )
@@ -333,7 +350,7 @@
 		}
 
 
-		console.log(`[Project] 🖼 ✅  ${Object.keys(pixi.loader.resources).length} images drawn in ${project.layers.length} layers`)
+		// console.log(`[Project] 🖼 ✅  ${Object.keys(pixi.loader.resources).length} images drawn in ${project.layers.length} layers`)
 
 		$inited.drawn = true
 
@@ -432,56 +449,52 @@
 
 
 	<nav class="basis30pc minw46em maxw52em flex column-stretch-stretch grow">
+		<!-- <div class="flex column"> -->
+			<!-- <div class="p1 pop bb1-solid br1-solid">
+				HELLO
+			</div> -->
+			<div class="flex row grow overflow-hidden">
 
-		<div 
-			class="flex row grow overflow-hidden">
-
-
-
-
-
-
-			<!-- PROJECTS (SLOT) -->	
+				<!-- PROJECTS (SLOT) -->	
 
 
 
-			<section class={classes.lanes + ' basis0pc'}>
+				<section class={classes.lanes + ' basis0pc'}>
 
-				<!-- LAYOUT -->
-
-
-				<div class="p1 flex column cmb1 bb1-solid">
+					<!-- LAYOUT -->
 
 
-					<Config bind:project={project} />
+					<div class="p1 flex column cmb1 bb1-solid">
 
 
-				</div>
-
-				<Layouts bind:project={project} bind:sprites={quik.sprites} />
-				
-			</section>
+						<Config bind:project={project} />
 
 
+					</div>
+
+					<Layouts bind:project={project} bind:sprites={quik.sprites} />
+					
+				</section>
 
 
-			<!-- LAYOUT / LAYERS -->
+				<!-- LAYOUT / LAYERS -->
 
 
 
 
-			<section id="layers" class={classes.lanes + ' basis20pc '}>
+				<section id="layers" class={classes.lanes + ' basis10pc '}>
 
-				<!-- LAYERS -->
-				<div class="flex column-reverse justify-content-flex-end">
-					<Layers 
-						bind:inkLayerContainer={quik.inkLayerContainer}
-						bind:inkLayerGroups={quik.inkLayerGroups} 
-						bind:layers={project.layers} />
-				</div>
+					<!-- LAYERS -->
+					<div class="flex column-reverse justify-content-flex-end">
+						<Layers 
+							bind:inkLayerContainer={quik.inkLayerContainer}
+							bind:inkLayerGroups={quik.inkLayerGroups} 
+							bind:layers={project.layers} />
+					</div>
 
-			</section>
-		</div>
+				</section>
+			</div>
+		<!-- </div> -->
 	</nav>
 	<Canvas bind:project={project} bind:editorEl={editorEl} />
 </div>
