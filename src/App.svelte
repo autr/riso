@@ -19,8 +19,6 @@
 	const IGNORE_KEY = `${KEY}_IGNORE`
 
 
-	
-
 	onMount( async e => {
 
 		let ignore = (await db.get.ignore())
@@ -176,17 +174,22 @@
 
 	let saveTimeout 
 
-	async function saveDBLocally() {
+	async function getCleanedProjects() {
 
-		let cleaned = [...PROJECTS].map( p => {
-
+		return [...PROJECTS].map( p => {
 			return { ...p, layers: p.layers.map( l => {
 				return {...l, filterGlobals: null, globals: null, uSampler: null}
 			})}
 		})
+	}
 
-		console.log(`[App] 💦  ${PROJECTS.length} project(s) saved`)
-		await db.set.projects( cleaned )
+	let lastSaved = null
+
+	async function saveDBLocally() {
+		let CLEANED = await getCleanedProjects()
+		await db.set.projects( CLEANED )
+		console.log(`[App] 💦  ${CLEANED.length} project(s) saved`)
+		lastSaved = new Date()
 	}
 
 	async function saveDb() {
@@ -253,10 +256,12 @@
     }
     async function copyProject( idx ) {
     	$inited.db = false
-    	let cp = JSON.parse( JSON.stringify( PROJECTS[idx] ) )
+    	let CLEANED = await getCleanedProjects()
+    	let cp = JSON.parse( JSON.stringify( CLEANED[idx] ) )
     	cp.name += ' Copy'
     	setTimeout( async e => {
-	    	PROJECTS.push( cp )
+	    	CLEANED.push( cp )
+	    	PROJECTS = CLEANED
 	    	await saveDBLocally()
 	    	await loadDb()
 	    	IDX = PROJECTS.length - 1
@@ -350,6 +355,10 @@
 	                <span class="icon">library_add</span>
 			        Add Layer
 			    </button>
+			    <!-- <div class="flex column">
+			    	<span>{PROJECTS?.[IDX]?.name || ''}</span>
+			    	<span>Autosaved: {lastSaved ? lastSaved.toLocaleTimeString() : '-'}</span>
+			    </div> -->
 			</div>
 			<div class=" flex row-flex-end-center cml1">
 				<!-- <button class="pop">
