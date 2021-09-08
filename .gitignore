@@ -2,6 +2,6 @@
 node_modules
 .DS_Store
 pnpm-lock.yaml
-# app/bundle*
-# app/app.css
+app/bundle*
+app/app.css
 web
