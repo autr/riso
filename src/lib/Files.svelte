@@ -109,9 +109,16 @@
         })
 
         filesBin.items = filesBin.items.concat(neu)
-        await db.set.files( filesBin.items.filter( h => !h.static ) )
+        await saveFiles()
         await onRequestAll()
     }
+
+    async function saveFiles() {
+
+        await db.set.files( filesBin.items.filter( h => !h.static ) )
+        console.log(`[Files] ✅  saved files`)
+    }
+
 
     async function removeHandle( item ) {
         if (!window.confirm(`Remove ${item.name} from bin?`)) return
@@ -120,7 +127,7 @@
         const idx = cp.indexOf(item)
         if (idx != -1) cp.splice( idx, 1 )
         filesBin.items = cp
-        await set( FILES_KEY, filesBin.items.filter( h => !h.static ) )
+        await saveFiles()
     }
     async function onClearAllHandles( item ) {
 
@@ -227,137 +234,142 @@
 
 <!-- FILES -->
 
+{#if $inited.db}
 
-<section class="flex column checker h100vh w100vw z-index99">
-    <!-- <Title>Files</Title> -->
-    <div class="flex row-space-between-center p1 pop bb1-solid">
-        <div class="flex row-flex-end-center cmr1">
+    <section class="flex column checker h100vh w100vw z-index99">
+        <!-- <Title>Files</Title> -->
+        <div class="flex row-space-between-center p1 pop bb1-solid">
+            <div class="flex row-flex-end-center cmr1">
 
-            <button on:click={e => library.set(false)}>
-                <span class="icon">arrow_back</span>
-                Cancel
-            </button>
-            <button 
-                disabled={totalCandidates <= 0}
-                on:click={saveToProject}>
-                <span class="icon">done</span>
-                Save to Project
-            </button>
-            <div>
-                { filesBin.items.length } image{ filesBin.items.length > 0 ? 's' : ''},
-                { totalCandidates } selected
+                <button on:click={e => library.set(false)}>
+                    <span class="icon">arrow_back</span>
+                    Cancel
+                </button>
+                <button 
+                    disabled={totalCandidates <= 0}
+                    on:click={saveToProject}>
+                    <span class="icon">done</span>
+                    Save to Project
+                </button>
+                <div class="flex column">
+                    <span class="">{project?.name}</span>
+                    <span class="">
+                        { filesBin.items.length } image{ filesBin.items.length > 0 ? 's' : ''} available,
+                        { totalCandidates } selected
+                    </span>
+                </div>
+            </div>
+            <div class="flex row-flex-start-center cml1">
+                <button 
+                    on:click={onAccessFiles}>
+                    <span class="icon">add</span>
+                    Add Local Files
+                </button>
+                <button 
+                    class:error={needsSync}
+                    disabled={!needsSync}
+                    on:click={onRequestAll}> 
+                    {#if needsSync}
+                        <span class="icon">lock</span>
+                    {:else}
+                        <span class="icon">lock_open</span>
+                    {/if}
+                    Enable File Access
+                </button>
+                <button 
+                    on:click={onClearAllHandles}>
+                    <span class="icon">clear</span>
+                    Clear All
+                </button>
             </div>
         </div>
-        <div class="flex row-flex-start-center cml1">
-            <button 
-                on:click={onAccessFiles}>
-                <span class="icon">add</span>
-                Add Local Files
-            </button>
-            <button 
-                class:error={needsSync}
-                disabled={!needsSync}
-                on:click={onRequestAll}> 
-                {#if needsSync}
-                    <span class="icon">lock</span>
-                {:else}
-                    <span class="icon">lock_open</span>
-                {/if}
-                Enable File Access
-            </button>
-            <button 
-                on:click={onClearAllHandles}>
-                <span class="icon">clear</span>
-                Clear All
-            </button>
-        </div>
-    </div>
-    <div class="flex grow overflow-auto">
-        <div class="flex row-stretch-flex-start wrap">
-            {#each filesBin.items as item, idx}
-                <div 
-                    class="b1-solid flex column basis0em grow minw16em m1 rel">
+        <div class="flex grow overflow-auto">
+            <div class="flex row-center-flex-start wrap">
+                {#each filesBin.items as item, idx}
+                    <div 
+                        class="b1-solid flex column basis0em grow minw16em m1 rel">
 
 
 
 
 
 
-                    <!-- BODY -->
+                        <!-- BODY -->
 
-                    <div class="flex pointer column" on:click={e => onSelectImage( item )}>
-                        {#if $inited.thumbs[item.name] }
-                                <img 
-                                    style={`opacity:${CANDIDATES[item.name] ? '1;' : '0.8;filter: grayscale(100%);'}`}
-                                    class="" 
-                                    src={thumbs[item.name]} 
-                                    alt={item.name} />
-                        {:else}
-                            <div 
-                                class="cross minh12em flex row-center-center">
-                                {item.name}
+                        <div class="flex pointer column" on:click={e => onSelectImage( item )}>
+                            {#if $inited.thumbs[item.name] }
+                                    <img 
+                                        style={`opacity:${CANDIDATES[item.name] ? '1;' : '0.8;filter: grayscale(100%);'}`}
+                                        class="" 
+                                        src={thumbs[item.name]} 
+                                        alt={item.name} />
+                            {:else}
+                                <div 
+                                    class="cross minh12em flex row-center-center">
+                                    {item.name}
+                                </div>
+                            {/if}
+
+                        </div>
+
+
+                        <!-- footer -->
+
+
+
+                        <footer 
+                            class="bt1-solid pop flex row-space-between-center rel z-index99 pl1 pr0-5 ptb0-6 ">
+                            <span 
+                                class="fill" />
+                            <div class="flex row-flex-start-center">
+                                <!-- <div 
+                                    class="move grabbable">
+                                    <span class="icon">drag_indicator</span>
+                                </div> -->
+                                <div>
+                                    {item.name}
+                                </div>
                             </div>
-                        {/if}
+                            <div class="flex row-flex-start-center z-index2  z-index2">
+
+                                <div 
+                                    class:disabled={ item.static }
+                                    class="flex h2em w2em row-center-center pointer radius2em"
+                                    on:click={ e => onRequestFile( item ) }>
+
+                                    {#if $permissions[item.name] != 'granted' && $permissions[item.name]}
+                                        <!-- <span class="b1-solid error radius2em h1em w1em p1 flex row-center-center rel"> -->
+                                            <span class="error ml0-1 icon t0 l0">lock</span>
+                                        <!-- </span> -->
+                                    {:else}
+                                        <span 
+                                            class:disabled={true}
+                                            class="icon t0 l0">lock_open</span>
+                                    {/if}
+                                </div>
+                                <div 
+                                    class:disabled={ item.static }
+                                    class="flex h2em w2em row-center-center pointer radius2em"
+                                    on:click={ e => onRemove( item ) }>
+                                    <!-- <span class="cross w10px h10px flex block" />   -->
+                                    <span class="icon t0 l0">clear</span>  
+                                </div>
+
+
+                            </div>
+                        </footer>
+
 
                     </div>
-
-
-                    <!-- footer -->
-
-
-
-                    <footer 
-                        class="bt1-solid pop flex row-space-between-center rel z-index99 pl1 pr0-5 ptb0-6 ">
-                        <span 
-                            class="fill" />
-                        <div class="flex row-flex-start-center">
-                            <!-- <div 
-                                class="move grabbable">
-                                <span class="icon">drag_indicator</span>
-                            </div> -->
-                            <div>
-                                {item.name}
-                            </div>
-                        </div>
-                        <div class="flex row-flex-start-center z-index2  z-index2">
-
-                            <div 
-                                class:disabled={ item.static }
-                                class="flex h2em w2em row-center-center pointer radius2em"
-                                on:click={ e => onRequestFile( item ) }>
-
-                                {#if $permissions[item.name] != 'granted' && $permissions[item.name]}
-                                    <!-- <span class="b1-solid error radius2em h1em w1em p1 flex row-center-center rel"> -->
-                                        <span class="error ml0-1 icon t0 l0">lock</span>
-                                    <!-- </span> -->
-                                {:else}
-                                    <span 
-                                        class:disabled={true}
-                                        class="icon t0 l0">lock_open</span>
-                                {/if}
-                            </div>
-                            <div 
-                                class:disabled={ item.static }
-                                class="flex h2em w2em row-center-center pointer radius2em"
-                                on:click={ e => onRemove( item ) }>
-                                <!-- <span class="cross w10px h10px flex block" />   -->
-                                <span class="icon t0 l0">clear</span>  
-                            </div>
-
-
-                        </div>
-                    </footer>
-
-
-                </div>
-            {/each}
-            {#each (new Array(10)) as idx, i}
-                <div class="flex column basis0em grow minw16em mlr1 rel" />
-            {/each}
+                {/each}
+                {#each (new Array(10)) as idx, i}
+                    <div class="flex column basis0em grow minw16em mlr1 rel" />
+                {/each}
+            </div>
         </div>
-    </div>
-        
-    {#if filesBin.items.length == 0 }
-        <div class="p1">No filesBin</div>
-    {/if}
-</section>
+            
+        {#if filesBin.items.length == 0 }
+            <div class="p1">No filesBin</div>
+        {/if}
+    </section>
+{/if}

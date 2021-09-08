@@ -94,6 +94,7 @@
 	async function setup() {
 
 	    
+	    if (layer.compound == null) layer.compound = false
 	    if (layer.solo == null) layer.solo = false
 	    if (layer.muted == undefined) layer.muted = false
 		if (layer.type == undefined) layer.type = 0
@@ -106,6 +107,7 @@
 	    let header = `
 uniform vec3 colours[${colours.length}];
 uniform bool solo;
+uniform bool compound;
 uniform float seed;
 ${gui.header}
 uniform float zoom;
@@ -167,7 +169,7 @@ void main(void) {
 	vec3 hsv = rgb2hsv( color );
 	vec3 ink = getInk();
 
-	if (solo) ink = vec3(0.0,0.0,0.0);
+	if (solo || compound) ink = vec3(0.0,0.0,0.0);
 	float power = 0.0;
 
 	if (type == 0) {
@@ -185,7 +187,7 @@ void main(void) {
 
 	power = clamp( map(power + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 ), 0.0, 1.0);
 
-	if (solo) {
+	if (solo || compound) {
 		gl_FragColor = vec4(ink,1.0) * power * opacity;
 	} else {
 		gl_FragColor = vec4(ink,1.0) * power * opacity;

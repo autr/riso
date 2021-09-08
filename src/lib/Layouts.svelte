@@ -13,7 +13,7 @@
 	let lastXY = {}
 
 	$: (_project => {
-		for (const name of project.fileNames) {
+		for (const name of project?.fileNames || []) {
 			if (!project.layouts) project.layouts = {}
 			if (!project.layouts[name]) project.layouts[name] = {}
 

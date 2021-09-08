@@ -155,7 +155,7 @@
 		console.log(`[App] ⏱  loaded ${neuFiles.length} file references from db`)
 
 
-		PROJECTS = (await db.get.projects()).filter( p => (p))
+		PROJECTS = (await db.get.projects() || []).filter( p => (p))
 		if (PROJECTS.length == 0) {
 			console.log(`[App] 🚨  no database, loading preset project`)
 			PROJECTS.push( intro )
@@ -176,23 +176,25 @@
 
 	let saveTimeout 
 
+	async function saveDBLocally() {
+
+		let cleaned = [...PROJECTS].map( p => {
+
+			return { ...p, layers: p.layers.map( l => {
+				return {...l, filterGlobals: null, globals: null, uSampler: null}
+			})}
+		})
+
+		console.log(`[App] 💦  ${PROJECTS.length} project(s) saved`)
+		await db.set.projects( cleaned )
+	}
+
 	async function saveDb() {
 		if (saveTimeout) {
 			clearTimeout(saveTimeout)
 			saveTimeout = null
 		}
-		saveTimeout = setTimeout( async e => {
-
-			let cleaned = [...PROJECTS].map( p => {
-
-				return { ...p, layers: p.layers.map( l => {
-					return {...l, filterGlobals: null, globals: null, uSampler: null}
-				})}
-			})
-
-			console.log(`[App] 💦  ${PROJECTS.length} project(s) saved`)
-			await db.set.projects( cleaned )
-		}, 200)
+		saveTimeout = setTimeout( saveDBLocally, 200)
 		
 	}
 
@@ -204,14 +206,62 @@
 	}
 
     async function addLayer() {
-        console.log('[Project] 🍰  adding new layer')
+        console.log('[App] 🍰  adding new layer')
         let cp = PROJECTS[IDX].layers
         PROJECTS[IDX].layers = []
         cp.push( { flag: true } )
         PROJECTS[IDX].layers = cp
     }
 
+    let showProjects = false
 
+    async function setProject( idx ) {
+
+    	$inited.db = false
+    	setTimeout( async e => {
+	    	await loadDb()
+	    	IDX = idx
+	        console.log(`[App] 🚚  loaded project at ${IDX}`)
+	        setTimeout( e => (showProjects = false), 200)
+    	}, 1)
+    }
+
+    async function newProject() {
+    	$inited.db = false
+    	setTimeout( async e => {
+	    	PROJECTS.push( intro )
+	    	await saveDBLocally()
+	    	await loadDb()
+	    	IDX = PROJECTS.length - 1
+	        console.log(`[App] 🥳  created new project at ${IDX}`)
+	        setTimeout( e => (showProjects = false), 200)
+    	}, 1)
+    }
+
+    async function removeProject( idx ) {
+
+    	$inited.db = false
+    	setTimeout( async e => {
+	    	PROJECTS = PROJECTS.filter( (p,i) => i != idx )
+	    	await saveDBLocally()
+	    	await loadDb()
+	    	if (IDX >= PROJECTS.length) IDX -= 1
+	        console.log(`[App] 🗑  removed project at ${idx}`)
+    	}, 1)
+
+    }
+    async function copyProject( idx ) {
+    	$inited.db = false
+    	let cp = JSON.parse( JSON.stringify( PROJECTS[idx] ) )
+    	cp.name += ' Copy'
+    	setTimeout( async e => {
+	    	PROJECTS.push( cp )
+	    	await saveDBLocally()
+	    	await loadDb()
+	    	IDX = PROJECTS.length - 1
+	        console.log(`[App] 👯‍♀️  copied project at ${idx}`)
+    	}, 1)
+    }
 
 </script>
 
@@ -219,26 +269,6 @@
 
 <Incompatible />
 
-<!-- <Colours overlay={true} /> -->
-{#if $inited.db}
-	<!-- 
-		<Title>Projects</Title>
-		<div class="p1">
-			<button 
-				on:click={e => e} 
-				class="w100pc">
-				New
-			</button>
-		</div>
-		<div class="checker">
-			{#each PROJECTS as project,idx}
-				<div 
-					class:pop={idx == IDX}
-					class="p1 bb1-solid flex row-center-center " class:bt1-solid={idx==0}>
-					<img class="b1-solid cross minh2em minw2em" src={THUMBS[IDX]} />
-				</div>
-			{/each}
-		</div> -->
 
 	<div 
 		class="fixed l0 t0 w100vw h100vh bg z-index9 overflow-auto" 
@@ -246,26 +276,66 @@
 		<Files bind:filesBin={filesBin} bind:project={PROJECTS[IDX]} />
 	</div>
 
-	<div class="wrapper flex column h100vh">
+	<div class="wrapper flex column h100vh checkered">
 		<header 
 			id="header"
 			class:electron={$electron}
 			class="bg plr1 pb1 pt1 bb1-solid flex row-space-between-center">
 			<div class=" flex row-flex-start-center cmr1">
+				<span 
+					class:none={!showProjects}
+					on:click={ e => (showProjects = false) }
+					class="w100pc h100pc l0 t0 fixed z-index98 unclickable" />
+				<div class="rel">
+					<button class="text-left align-left unclickable" on:click={e => (showProjects = !showProjects)}>
+						<span class="icon">folder_open</span>
+						Load Project
+						<span class="chevron ml2 mb0-3" />
+					</button>
 
-				<!-- <div class="basis5em h100pc select">
-	                <span class="icon">folder_open</span>
-					<select bind:value={IDX} style="letter-spacing: 4em">
-						{#each PROJECTS as p,i}
-							<option value={i} name={p.title || ''}>{i} {p.title || ''}</option>
+					<div 
+						style="margin-top:-1px;top:100%"
+						class="abs z-index99 unclickable l0 minw24em pop b1-solid flex column-stretch-flex-start" 
+						class:none={!showProjects}>
+
+						{#each PROJECTS as p, idx}
+							<div 
+								on:click={e => setProject(idx)}
+								class="unclickable  plr1 ptb0-7 bg bb1-solid flex row-space-between-center"
+								class:pop={idx != IDX}>
+								<span>
+									<!-- {#if idx == IDX}
+										<span class="icon">radio_button_checked</span>
+									{:else}
+										<span class="icon">radio_button_unchecked</span>
+									{/if} -->
+									<span>{p.name}</span>
+								</span>
+								<span class="flex row-flex-end-center cml1 ml1">
+
+				                    <div 
+				                        class="flex h2em w2em row-center-center pointer f0 radius2em"
+				                        on:click={ e => copyProject( idx ) }>
+				                        <span class="icon t0 l0">copy_all</span>   
+				                    </div>
+				                    <div 
+				                        class="flex h2em w2em row-center-center pointer radius2em"
+				                        on:click={ e => removeProject( idx ) }>
+				                        <span class="icon t0 l0">clear</span>   
+				                    </div>
+								</span>
+							</div>
 						{/each}
-					</select>
+
+						<div 
+							on:click={newProject}
+							class=" plr1 ptb1 text-center pop ">
+							<span class="icon">add</span>
+							<span>Create New Project</span>
+						</div>
+					</div>
 				</div>
-				<div class="basis5em h100pc select">
-	                <span class="icon">palette</span>
-					<select value={'Presets'} style="letter-spacing: 4em">
-					</select>
-				</div> -->
+
 			    <button 
 			        on:click={e => ($library = !$library)}>
 	                <span class="icon">photo</span>
@@ -273,7 +343,7 @@
 			    </button>
 			    <button 
 			        class=""
-			        disabled={PROJECTS[IDX].layers.length >= 5}
+			        disabled={PROJECTS?.[IDX]?.layers?.length >= 5}
 			        on:click={e => (e.target.blur())} 
 			        on:click={addLayer}>
 	                <span class="icon">library_add</span>
@@ -297,12 +367,14 @@
 				</button>
 			</div>
 		</header>
-		<Project 
-			bind:IDX={IDX}
-			bind:THUMBS={THUMBS}
-			bind:project={PROJECTS[IDX]} 
-			filesBin={filesBin}>
-		</Project>
+		{#if $inited.db && PROJECTS[IDX]}
+			<Project 
+				bind:IDX={IDX}
+				bind:THUMBS={THUMBS}
+				bind:project={PROJECTS[IDX]} 
+				filesBin={filesBin}>
+			</Project>
+		{/if}
 		<!-- <footer class="bt1-solid bg flex row-space-between-center plr1 ptb0-5">	
 			<div>
 				Hello world
@@ -312,4 +384,3 @@
 			</div>
 		</footer> -->
 	</div>
-{/if}

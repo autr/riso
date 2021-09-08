@@ -24,27 +24,6 @@
         return arr
     }
 
-    function onDrop(e) {
-        // $trigger.palettes = true
-        let source = elements.indexOf(e.source)
-        let destination = elements.indexOf(e.destination)
-
-        if (source == destination) return
-
-        console.log(`[Layers] 🌸  drag dropped from ${source} to ${destination}`)
-
-        let cp = layers
-        layers = []
-        cp = moveInArray( cp, source, destination )
-        inkLayerContainer.children = moveInArray( inkLayerContainer.children, source, destination)
-        inkLayerGroups = moveInArray( inkLayerGroups, source, destination)
-    
-        console.log(`[Layers] 🌸  resetting layers with 1ms delay...`)
-        layers = cp 
-        setTimeout( e => resetDragDrop(), 1)
-
-
-    }
 
     function resetDragDrop() {
 
@@ -81,6 +60,11 @@
         layers[idx].collapsed = !layers[idx].collapsed
     }
 
+    function onDblCollapse( ) {
+        for (let i = 0; i < layers.length; i++) layers[i].collapsed = true
+        
+    }
+
     function onSolo( idx ) {
         solo.set( $solo == idx ? null : idx )
     }
@@ -96,9 +80,36 @@
         })
     }
 
+
     function onRemove( idx ) {
+        let cp = layers.filter( (l,i) => (i != idx) )
+        layers = []
         inkLayerGroups[idx].parent.removeChild( inkLayerGroups[idx] )
-        layers = layers.filter( (l,i) => (i != idx) )
+        inkLayerContainer.children = inkLayerContainer.children.filter( (l,i) => (i != idx) )
+        setTimeout( e => (layers = cp), 1)
+        
+    }
+
+    function onDrop(e) {
+        // $trigger.palettes = true
+        let source = elements.indexOf(e.source)
+        let destination = elements.indexOf(e.destination)
+
+        if (source == destination) return
+
+        console.log(`[Layers] 🌸  drag dropped from ${source} to ${destination}`)
+
+        let cp = layers
+        layers = []
+        cp = moveInArray( cp, source, destination )
+        inkLayerContainer.children = moveInArray( inkLayerContainer.children, source, destination)
+        inkLayerGroups = moveInArray( inkLayerGroups, source, destination)
+    
+        console.log(`[Layers] 🌸  resetting layers with 1ms delay...`)
+        layers = cp 
+        setTimeout( e => resetDragDrop(), 1)
+
+
     }
 
     let isPicking = {}
@@ -144,6 +155,7 @@
                     </div>
                     <div 
                         class="grow flex row-flex-end-center pointer p1-5"
+                        on:dblclick={onDblCollapse}
                         on:click={e => onCollapse(idx)}>
                         <span 
                             class:rotate90={layers[idx].collapsed}

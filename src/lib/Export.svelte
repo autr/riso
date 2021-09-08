@@ -26,7 +26,7 @@
 	}
 
 
-	function createLayerOutput( ) {
+	function createLayerOutput( ms ) {
 		return new Promise( (resolve,reject) => {
 
 			setTimeout( async e => {
@@ -37,7 +37,7 @@
 				t2 = Date.now()
 				console.log(`[Export] 🍄  exported as ${format} in ${stamp()}`)
 				resolve( pix )
-			}, 100)
+			}, ms || 100)
 		})
 	}
 
@@ -45,10 +45,22 @@
 	let thumbs = {}
 	let ready = {}
 
+	let compounds = {}
+
 	$: (async (_exporting, _initedDb, _initedCanvas) => {
 		if ($exporting != lastMode && _initedDb && _initedCanvas) {
 			lastMode = $exporting
-			if ($exporting) await exportAll()
+			if ($exporting) {
+
+				for (const layer of project.layers) {
+					if (!compounds[layer.colour]) compounds[layer.colour] = []
+					compounds[layer.colour].push( layer )
+				}
+				Object.keys(compounds).forEach( k => {
+					compounds[k] = compounds[k].length > 1 ? compounds[k] : null
+				})
+				await exportAll()
+			}
 		}
 	})($exporting, $inited.db, $inited.canvas)
 
@@ -88,11 +100,39 @@
 					console.log(`[Export] 🍄  setting solo ${idx}`)
 					solo.set( idx )
 
-					let pix = await createLayerOutput( layer )
+					let pix = await createLayerOutput( )
 					output[idx] = pix
 					thumbs[idx] = await utils.createThumbnail( pix, rectd.create(0,0,width*0.1,height*0.1))
 					ready[idx] = true
 					idx += 1
+				}
+
+				idx = 0
+				const compoundKeys = Object.keys(compounds)
+
+				for (const key of compoundKeys ) {
+
+					const com = compounds[key]
+					if (com) {
+
+						let k = 'compound' + key
+						console.log(`[Export] 🌿  creating compound ${k}`, com)
+
+						solo.set( null )
+						project.compound = true
+						for (let layer of com) layer.compound = true
+
+						let pix = await createLayerOutput( 400 )
+						output[k] = pix
+						thumbs[k] = await utils.createThumbnail( pix, rectd.create(0,0,width*0.1,height*0.1))
+						ready[k] = true
+
+						for (let layer of com) layer.compound = false
+
+						project.compound = false
+						solo.set(false)
+						idx += 1
+					}
 				}
 
 			}
@@ -153,6 +193,7 @@
 
 
 	$: textOutput = (_project => {
+		if (!project) return
 		return `
 Rendered: ${new Date()}
 From: ${Object.entries(detect()).map( pair => {
@@ -192,8 +233,9 @@ Levels High: ${l.levels_high}
 	                <span class="icon">arrow_back</span>
 	                Cancel
 	            </button>
-	            <div class="f2">
-	            	{project.name || 'Project'}
+	            <div class="f1 flex column">
+	            	<span class="">{project.name}</span>
+	            	<span class="">{project.layers.length} ink layers, {Object.keys(compounds).filter( k => compounds[k]).length} compound layers
 	            </div>
 			</div>
 			<div class="cml1 flex row-flex-end-stretch">
@@ -221,39 +263,106 @@ Levels High: ${l.levels_high}
 		</header>
 		<div class="grow checkered wrap overflow-auto flex row-center-flex-start row pl1 pt1">
 
-			<div class="flex column b1-solid minw20em no-basis mr1 mb1">
-				<header class="bb1-solid bg flex row-space-between-center pop">
-					<div class="flex row-flex-start-center ptb0-2 plr1">
-						<span class="flex w2em h2em b1-solid radius2em mr1 flex column-center-center overflow-hidden">
-							
-							<span class="icon mb0-5 ml0-4 rel">sort</span>
-						</span>
-						<span>Information</span>
-					</div>
-					<a 
-						class="bl1-solid pl1 ptb0-7 pr0-7 " 
-						href={`data:${textOutput}`} 
-						download={'Info.txt'}>
-						<span 
-							class="icon">download</span>
-					</a>
-				</header>
-				<div 
-					class="flex" 
-					target="_blank"
-					href={output.preview} >
-					<div 
-						style="padding-top: {(project.info.height/project.info.width)*100}%"
-						class="flex row-center-center bg grow rel">
-						<div class="fill flex column overflow-auto pop">
-							<pre class="p1 monospace">{textOutput}</pre>
-						</div>
-					</div>
-				</div>
-				<!-- <footer class="p1 b1-solid pop">
-				</footer> -->
 
-			</div>
+			<!-- LAYERS -->
+
+			{#each project.layers as layer, idx }
+				<div class="flex column b1-solid minw20em no-basis mr1 mb1">
+					<header class="bb1-solid bg flex row-space-between-center pop">
+						<div class="flex row-flex-start-center ptb0-2 plr1">
+							<span 
+								style={`background-color:rgb(${colours?.[layer.colour]?.rgb})`}
+								class="flex w2em h2em b1-solid radius2em mr1" />
+							<span>Layer {idx + 1}</span>
+						</div>
+						<a 
+							class="bl1-solid pl1 ptb0-7 pr0-7 " 
+							href={output[idx]} 
+							disabled={!ready[idx]}
+							download={layer.id + '.' + format.toLowerCase()}>
+							<span 
+								class:disabled={!ready[idx]}
+								class="icon">download</span>
+						</a>
+					</header>
+					<div 
+						class="flex" 
+						target="_blank"
+						href={output[idx]} >
+						{#if ready[idx]}
+							<img class="export" src={thumbs[idx]} download={layer.id + '.' +  + format.toLowerCase()} />
+						{:else}
+							<div 
+								style="padding-top: {(project.info.height/project.info.width)*100}%"
+								class="flex row-center-center bg grow rel">
+								<span class="fill flex row-center-center">
+									<span>
+										<span class="icon">schedule</span>
+										Rendering
+									</span>
+								</span>
+							</div>
+						{/if}
+					</div>
+					<!-- <footer class="p1 b1-solid pop">
+					</footer> -->
+
+				</div>
+			{/each}
+
+
+			<!-- COMPOUND -->
+
+
+			{#each Object.entries(compounds) as [colour, layer], idx }
+				{#if layer}
+					<div class="flex column b1-solid minw20em no-basis mr1 mb1">
+						<header class="bb1-solid bg flex row-space-between-center pop">
+							<div class="flex row-flex-start-center ptb0-2 plr1">
+								<span 
+									style={`background-color:rgb(${colours?.[colour]?.rgb})`}
+									class="flex w2em h2em b1-solid radius2em mr1" />
+								<span>Compound {idx + 1}</span>
+							</div>
+							<a 
+								class="bl1-solid pl1 ptb0-7 pr0-7 " 
+								href={output['compound'+colour]} 
+								disabled={!ready['compound'+colour]}
+								download={`Compound ${colours?.[colour]?.name}.${format.toLowerCase()}`}>
+								<span 
+									class:disabled={!ready[idx]}
+									class="icon">download</span>
+							</a>
+						</header>
+						<div 
+							class="flex" 
+							target="_blank"
+							href={output['compound'+colour]} >
+							{#if ready['compound'+colour]}
+								<img class="export" src={thumbs['compound'+colour]} download={`Compound ${colours?.[colour]?.name}.${format.toLowerCase()}`} />
+							{:else}
+								<div 
+									style="padding-top: {(project.info.height/project.info.width)*100}%"
+									class="flex row-center-center bg grow rel">
+									<span class="fill flex row-center-center">
+										<span>
+											<span class="icon">schedule</span>
+											Rendering
+										</span>
+									</span>
+								</div>
+							{/if}
+						</div>
+						<!-- <footer class="p1 b1-solid pop">
+						</footer> -->
+
+					</div>
+				{/if}
+			{/each}
+
+
+
+			<!-- PREVIEW -->
 
 			<div class="flex column b1-solid minw20em no-basis mr1 mb1">
 				<header class="bb1-solid bg flex row-space-between-center pop">
@@ -302,50 +411,42 @@ Levels High: ${l.levels_high}
 			</div>
 
 
+			<!-- INFORMATION -->
 
-			{#each project.layers as layer, idx }
-				<div class="flex column b1-solid minw20em no-basis mr1 mb1">
-					<header class="bb1-solid bg flex row-space-between-center pop">
-						<div class="flex row-flex-start-center ptb0-2 plr1">
-							<span 
-								style={`background-color:rgb(${colours?.[layer.colour]?.rgb})`}
-								class="flex w2em h2em b1-solid radius2em mr1" />
-							<span>Layer {idx + 1}</span>
-						</div>
-						<a 
-							class="bl1-solid pl1 ptb0-7 pr0-7 " 
-							href={output[idx]} 
-							disabled={!ready[idx]}
-							download={layer.id + '.' + format.toLowerCase()}>
-							<span 
-								class:disabled={!ready[idx]}
-								class="icon">download</span>
-						</a>
-					</header>
-					<div 
-						class="flex" 
-						target="_blank"
-						href={output[idx]} >
-						{#if ready[idx]}
-							<img class="export" src={thumbs[idx]} download={layer.id + '.' +  + format.toLowerCase()} />
-						{:else}
-							<div 
-								style="padding-top: {(project.info.height/project.info.width)*100}%"
-								class="flex row-center-center bg grow rel">
-								<span class="fill flex row-center-center">
-									<span>
-										<span class="icon">schedule</span>
-										Rendering
-									</span>
-								</span>
-							</div>
-						{/if}
+			<div class="flex column b1-solid minw20em no-basis mr1 mb1">
+				<header class="bb1-solid bg flex row-space-between-center pop">
+					<div class="flex row-flex-start-center ptb0-2 plr1">
+						<span class="flex w2em h2em b1-solid radius2em mr1 flex column-center-center overflow-hidden">
+							
+							<span class="icon mb0-5 ml0-4 rel">sort</span>
+						</span>
+						<span>Information</span>
 					</div>
-					<!-- <footer class="p1 b1-solid pop">
-					</footer> -->
-
+					<a 
+						class="bl1-solid pl1 ptb0-7 pr0-7 " 
+						href={`data:${textOutput}`} 
+						download={'Info.txt'}>
+						<span 
+							class="icon">download</span>
+					</a>
+				</header>
+				<div 
+					class="flex" 
+					target="_blank"
+					href={output.preview} >
+					<div 
+						style="padding-top: {(project.info.height/project.info.width)*100}%"
+						class="flex row-center-center bg grow rel">
+						<div class="fill flex column overflow-auto pop p1 ">
+							<pre class="monospace">{textOutput}</pre>
+						</div>
+					</div>
 				</div>
-			{/each}
+				<!-- <footer class="p1 b1-solid pop">
+				</footer> -->
+
+			</div>
+
 		</div>
 	</div>
 

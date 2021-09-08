@@ -14,10 +14,10 @@ const gen = {
 
 export default {
 	backgrounds: [
-		gen.bg( 'Ultra black', `hsl(0, 0%, 5%)`, 0.5),
-		gen.bg( 'Blue black', `hsl(200, 60%, 10%)`, 0.5),
-		gen.bg( 'Bone white', `hsl(0, 0%, 98%)`, 0.1),
-		gen.bg( 'Warm white', `hsl(50, 90%, 97%)`, 0.1)
+		gen.bg( 'Ultra Black', `hsl(0, 0%, 5%)`, 0.5),
+		gen.bg( 'Blue Black', `hsl(200, 60%, 10%)`, 0.5),
+		gen.bg( 'Bone White', `hsl(0, 0%, 98%)`, 0.1),
+		gen.bg( 'Warm White', `hsl(50, 90%, 97%)`, 0.1)
 	],
 	types: ['Picker', 'Cyan', 'Magenta', 'Yellow', 'Key', 'Red', 'Green', 'Blue'],
 	sizes: [

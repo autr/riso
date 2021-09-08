@@ -57,8 +57,12 @@
 	let lastConfig 
 	let uniforms = {}
 	$: (async project_ => {
-
+		if (!project) return
+		if (!project.name) project.name = 'Untitled Project'
 		uniforms.solo = $solo != null
+		uniforms.compound = project.compound || false
+
+		if (project.compound) console.log('COMPOUND!?!?!?!?', project.compound)
 
 		let str = JSON.stringify( project.config )
 		if (str == lastConfig) return
@@ -95,6 +99,7 @@
 			${glLib}
 			varying vec2 vTextureCoord;
 			uniform bool solo;
+			uniform bool compound;
 			uniform sampler2D uSampler;
 			uniform vec4 hsla;
 
@@ -102,7 +107,7 @@
 
 				vec3 bg3 = vec3(hsla.x / 360.0, hsla.y / 100.0, hsla.z / 100.0);
 				vec4 bg4 = vec4( hsl2rgb( bg3 ), 1.0 );
-				if (solo) bg4 = vec4(0.0,0.0,0.0,0.0);
+				if (solo || compound) bg4 = vec4(1.0,1.0,1.0,1.0);
 				gl_FragColor = bg4;
 
 			}`, 
@@ -180,10 +185,11 @@
 	let updateTimeout, pixelsTimeout
 	let lastLayerLength, lastFilesStr, lastMargin, lastLayout
 
-	$: update(project.config)
+	$: update(project?.config)
 
 	async function update( config ) {
 
+		if (!config) return
 
 		if (pixi?.app?.renderer && $inited.project ) {
 
@@ -256,6 +262,7 @@
 
 	async function drawImages() {
 
+		if (!project) return
 		console.log(`[Project] 🖼  drawing images into layers...`)
 
 		quik.sprites = {}
@@ -285,7 +292,7 @@
 				rectCanvas = rectd.shrinkBy( rectCanvas, mm2px( project.config.margin ) )
 				let pixiSprite = new PIXI.Sprite( resource.texture )
 
-				let rowsCols = options.layouts[project.config.layout]
+				let rowsCols = options.layouts[project.config.layout || 0]
 				if (!rowsCols[0] || !rowsCols[1]) console.error(`[Project] no rows and cols?`, rowsCols)
 				let cells = rectd.divideUp( rectCanvas, rowsCols[0], rowsCols[1] )
 
@@ -437,65 +444,66 @@
 </script>
 
 
-<Export 
-	{pixi}
-	{quik}
-	bind:project={project} />
+{#if $inited.db}
+	<Export 
+		{pixi}
+		{quik}
+		bind:project={project} />
 
 
-<div 
-	style
-	bind:this={main} class="flex row-stretch-stretch bg overflow-hidden grow">
+	<div 
+		style
+		bind:this={main} class="flex row-stretch-stretch bg overflow-hidden grow">
 
 
-	<nav class="basis30pc minw46em maxw52em flex column-stretch-stretch grow">
-		<!-- <div class="flex column"> -->
-			<!-- <div class="p1 pop bb1-solid br1-solid">
-				HELLO
-			</div> -->
-			<div class="flex row grow overflow-hidden">
+		<nav class="basis30pc minw46em maxw52em flex column-stretch-stretch grow">
+			<!-- <div class="flex column"> -->
+				<!-- <div class="p1 pop bb1-solid br1-solid">
+					HELLO
+				</div> -->
+				<div class="flex row grow overflow-hidden">
 
-				<!-- PROJECTS (SLOT) -->	
-
-
-
-				<section class={classes.lanes + ' basis0pc'}>
-
-					<!-- LAYOUT -->
-
-
-					<div class="p1 flex column cmb1 bb1-solid">
-
-
-						<Config bind:project={project} />
-
-
-					</div>
-
-					<Layouts bind:project={project} bind:sprites={quik.sprites} />
-					
-				</section>
-
-
-				<!-- LAYOUT / LAYERS -->
+					<!-- PROJECTS (SLOT) -->	
 
 
 
+					<section class={classes.lanes + ' basis0pc'}>
 
-				<section id="layers" class={classes.lanes + ' basis10pc '}>
+						<!-- LAYOUT -->
 
-					<!-- LAYERS -->
-					<div class="flex column-reverse justify-content-flex-end">
-						<Layers 
-							bind:inkLayerContainer={quik.inkLayerContainer}
-							bind:inkLayerGroups={quik.inkLayerGroups} 
-							bind:layers={project.layers} />
-					</div>
 
-				</section>
-			</div>
-		<!-- </div> -->
-	</nav>
-	<Canvas bind:project={project} bind:editorEl={editorEl} />
-</div>
+						<div class="flex column bb1-solid cmb1 p1">
 
+							<Config bind:project={project} />
+
+
+						</div>
+
+						<Layouts bind:project={project} bind:sprites={quik.sprites} />
+						
+					</section>
+
+
+					<!-- LAYOUT / LAYERS -->
+
+
+
+
+					<section id="layers" class={classes.lanes + ' basis10pc '}>
+
+						<!-- LAYERS -->
+						<div class="flex column-reverse justify-content-flex-end">
+							<Layers 
+								bind:inkLayerContainer={quik.inkLayerContainer}
+								bind:inkLayerGroups={quik.inkLayerGroups} 
+								bind:layers={project.layers} />
+						</div>
+
+					</section>
+				</div>
+			<!-- </div> -->
+		</nav>
+		<Canvas bind:project={project} bind:editorEl={editorEl} />
+	</div>
+
+{/if}
