@@ -10,33 +10,39 @@
 	type="text" 
 	class="w100pc" />
 
+<div class="flex rel grow">
+	<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
+		Paper
+	</span>
+	<div class="select w100pc grow">
+		<select class="pl5 w100pc align-right" bind:value={project.config.background}>
+			{#each options.backgrounds as bg}
+				<option value={bg.name} name={bg.name}>{bg.name}</option>
+			{/each}
+		</select>
+	</div>
+</div>
 <div class="flex row">
-	<button class="w4em plr0 flex row-center-center br0-solid">
-		<span class="icon mb0-4 ml0-4">crop_portrait</span>
+	<button 
+		on:click={ e => project.config.landscape = !project.config.landscape}
+		class="w4em plr0 flex row-center-center br0-solid">
+		{#if !project.config.landscape}
+			<span class="icon mb0-4 ml0-4">crop_portrait</span>
+		{:else}
+			<span class="icon mb0-4 ml0-4">crop_landscape</span>
+		{/if}
 	</button>
 	<div class="flex rel grow">
 		<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
-			Paper
+			Size
 		</span>
 		<div class="select w100pc grow">
-			<select class="pl5 w100pc align-right" bind:value={project.config.background}>
-				{#each options.backgrounds as bg}
-					<option value={bg.name} name={bg.name}>{bg.name}</option>
+			<select class="pl5 w100pc" bind:value={project.config.size}>
+				{#each options.sizes as sz}
+					<option value={sz.name} name={sz.name}>{sz.name}</option>
 				{/each}
 			</select>
 		</div>
-	</div>
-</div>
-<div class="flex rel">
-	<span class="h3em flex row-center-center abs l1 t0 z-index2 fade">
-		Size
-	</span>
-	<div class="select w100pc grow">
-		<select class="pl5 w100pc" bind:value={project.config.size}>
-			{#each options.sizes as sz}
-				<option value={sz.name} name={sz.name}>{sz.name}</option>
-			{/each}
-		</select>
 	</div>
 </div>
 <div class="flex row cno-basis">

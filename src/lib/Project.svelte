@@ -71,6 +71,7 @@
 
 		uniforms.hsla = options.backgrounds.find( b => b.name == project.config.background ).colour
 		uniforms.size = options.sizes.find( b => b.name == project.config.size ).xy
+		if (project.config.landscape) uniforms.size = [uniforms.size[1], uniforms.size[0]]
 
 		console.log('[Project] 🐝  setting uniforms...', uniforms, uniforms.hsla.join(','))
 

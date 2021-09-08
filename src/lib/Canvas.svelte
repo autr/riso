@@ -3,6 +3,7 @@
     import { onMount } from 'svelte'
     import { dragging, transform, zoom, moving, inited, original, requests, trigger } from './_stores.js'
     import rectd from './_rectd.js'
+    import options from './_options.js'
 
     export let project
 
@@ -24,6 +25,9 @@
 
         $inited.canvas = true
     })
+
+    $: WIDTH = options.sizes.find( b => b.name == project.config.size ).xy[0]
+    $: HEIGHT = options.sizes.find( b => b.name == project.config.size ).xy[1]
 
     let lastWidthHeight
     $: ( p_ => {
@@ -134,11 +138,13 @@
             <span 
                 class=" measure-height fill flex column-center-center" 
                 style={`height:${project.info.height * $transform.scale}px;transform: translate(0px,${parseInt($transform.y)}px)`}>
-                <span class="no-basis p0-2 filled radius1em" />
+                <span class="no-basis p0-2 b1-solid radius1em" />
                 <span class="no-basis filled grow" style="width:1px" />
-                <span class="no-basis plr1 ptb1 hide rotate90 nowrap">{project.info.height}</span>
+                <pre class="no-basis plr1 ptb4 hide rotate90">
+                    {HEIGHT}mm / {project.info.height}px
+                </pre>
                 <span class="no-basis filled grow" style="width:1px" />
-                <span class="no-basis p0-2 filled radius1em" />
+                <span class="no-basis p0-2 b1-solid radius1em" />
             </span>
         </span>
         <span 
@@ -146,11 +152,13 @@
             <span 
                 class=" measure-width fill flex row-center-center" 
                 style={`margin-left:-1em;width:${project.info.width * $transform.scale}px;transform: translate(${parseInt($transform.x)}px,0px)`}>
-                <span class="no-basis p0-2 filled radius1em" />
+                <span class="no-basis p0-2 b1-solid radius1em" />
                 <span class="no-basis filled grow" style="height:1px" />
-                <span class="no-basis plr1 hide">{project.info.width}</span>
+                <pre class="no-basis plr1 hide">
+                    {WIDTH}mm / {project.info.width}px
+                </pre>
                 <span class="no-basis filled grow" style="height:1px" />
-                <span class="no-basis p0-2 filled radius1em" />
+                <span class="no-basis p0-2 b1-solid radius1em" />
             </span>
         </span>
         <!-- <span class="w1em h1em bg br1-solid bb1-solid l0 t0 abs" /> -->
