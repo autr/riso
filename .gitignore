@@ -5,3 +5,4 @@ pnpm-lock.yaml
 app/bundle*
 app/app.css
 web
+app/pnpm-lock.yaml

@@ -8,11 +8,14 @@
     "sass-dev": "node-sass src/app.sass app/app.css -w",
     "dev": "rollup -c -w & pnpm run sass-dev",
     "electron": "cd app && pnpm run dev",
-    "start": "sirv app --no-clear"
+    "start": "sirv app --no-clear",
+    "minify": "cp -Rv app/ web/ && rm web/bundle.js.map && rm -rf web/node_modules && minify web/bundle.js && minify web/app.css"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^17.0.0",
     "@rollup/plugin-node-resolve": "^11.0.0",
+    "minify": "^7.0.2",
+    "minify-dir": "^1.0.6",
     "rollup": "^2.3.4",
     "rollup-plugin-css-only": "^3.1.0",
     "rollup-plugin-livereload": "^2.0.0",
