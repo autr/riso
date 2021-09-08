@@ -3,7 +3,7 @@ import { writable,readable } from 'svelte/store'
 
 let _browser = { ...detect(), brave: navigator.brave }
 let compatible = ['chrome','edge','opera']
-let ok = compatible.indexOf(_browser.name) == -1
+let ok = compatible.indexOf(_browser.name) != -1
 let brave = (_browser.name == 'chrome' && _browser.brave)
 
 export const selected = writable(0)

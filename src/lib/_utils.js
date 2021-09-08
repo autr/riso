@@ -41,6 +41,7 @@ export default {
                 ctx.drawImage(img, fit.x,fit.y,fit.width,fit.height)
                 resolve(canvas.toDataURL('image/png'))
             }
+            img.onerror = err => (reject({error:err}))
             img.src = url
 
         })

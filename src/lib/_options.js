@@ -23,5 +23,13 @@ export default {
 		gen.size( 'DIN A4', 210, 297 ),
 		gen.size( 'DIN A3', 297, 420 ),
 		gen.size( 'DIN A2', 420, 594 )
-	]
+	],
+	layouts: {
+		'Single Print': [1,1],
+		'Test Print (2x2)': [2,2],
+		'Test Print (2x3)': [2,3],
+		'Test Print (3x3)': [3,3],
+		'Test Print (3x4)': [3,4],
+		'Test Print (4x4)': [4,4]
+	}
 }

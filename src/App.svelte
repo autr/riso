@@ -23,10 +23,10 @@
 
 	onMount( async e => {
 
-		console.log(`[App] 🖥   using browser ${$browser.name} ${$browser.version} ${$browser.os}` )
-
 		let ignore = (await db.get.ignore())
 		if (ignore) console.log(`[App] 🚨   ignoring incompatibility warning` )
+		console.log(`[App] 🖥   using browser ${$browser.name} ${$browser.version} ${$browser.os}`, {ignore, incompatible: $incompatible} )
+
 		if ($incompatible && !ignore) {
 			console.log(`[App] ❌  incompatible browser!`)
 			warning.set( true )

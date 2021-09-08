@@ -3,7 +3,7 @@ import { get, set } from 'idb-keyval'
 function init() {
 
 	let o = { get: {}, set: {} }
-	let stores = ['files','projects','ignore']
+	let stores = ['files','projects','ignore','thumbs']
 
 	for (let n of stores) {
 		let k = 'RISO_' + n.toUpperCase()

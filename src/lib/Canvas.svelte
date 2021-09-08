@@ -95,7 +95,7 @@
     <div
         id="zoom"
         bind:this={zoomEl}
-        class="block fill z-index99" >
+        class="block fill z-index66" >
     </div>
     <div
         id="renderer"

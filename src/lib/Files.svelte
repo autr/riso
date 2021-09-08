@@ -5,11 +5,11 @@
     import dragdrop from 'svelte-native-drag-drop'
     import rectd from './_rectd.js'
     import Switch from './Switch.svelte'
+    import db from './_db.js'
 
     export let filesBin
     export let project
 
-    $: needsSync = filesBin.items.filter( h => !filesBin.srcs[h.name] )
 
     onMount( async e => {
         console.log(`[Files] 🗄  requesting filesBin...`)
@@ -51,24 +51,25 @@
 
 
     async function onRequestFile( item ) {
-
         if (item.static) {
             filesBin.srcs[item.name] = item
         } else {
 
             if ($incompatible) return warning.set(true)
 
-            let opts = {mode: 'read'}
+            let opts = { mode: 'read' }
             let permission = await item.queryPermission(opts)
-            if (permission  != 'granted') permission = await item.requestPermission(opts)
-            if (permission == 'granted') {
+            console.log(`[Files] 🔐  ${item.name} permission: ${permission}`)
+
+            try {
+                if (permission  != 'granted') permission = await item.requestPermission(opts)
                 const file = await item.getFile()
                 filesBin.srcs[item.name] = {
                     name: item.name,
                     url: URL.createObjectURL(file)
                 }
-            } else {
-                window.alert(`Could not load ${item.name}!`)
+            } catch(err) {
+                console.log(`[Files] 🚨  ${item.name} needs permission: ${permission}`)
             }
         }
     }
@@ -95,7 +96,7 @@
         })
 
         filesBin.items = filesBin.items.concat(neu)
-        await set( FILES_KEY, filesBin.items.filter( h => !h.static ) )
+        await db.set.files( filesBin.items.filter( h => !h.static ) )
         await onRequestAll()
     }
 
@@ -152,43 +153,52 @@
     }
 
 
-    let handles = []
-    let elements = []
 
 
     let lastFiles
+    let thumbs
 
     $: (async (filesBin_) => {
-        let str = JSON.stringify( filesBin.items )
+        let str = JSON.stringify( filesBin.srcs )
         if (str != lastFiles) {
             lastFiles = str
-            console.log(`[Files] 🗂  resetting drag-drop handles`)
-            dragdrop.clear('filesBin')
-            for (let i = 0; i < elements.length; i++) {
-                let el = elements[i]
-                let handle = handles[i]
-                dragdrop.addDragArea( 'filesBin', handle, el )
-                dragdrop.addDropArea( 'filesBin', el )
+
+            if (!$inited.thumbs) $inited.thumbs = {}
+            thumbs = (await db.get.thumbs()) || {}
+            Object.keys( thumbs ).forEach( k => ($inited.thumbs[k] = true ))
+
+            let toSave = 0
+
+            for (const item of filesBin.items) {
+                if (!thumbs[item.name]) {
+
+                    try {
+                        $inited.thumbs[item.name] = false
+                        let thumb = rectd.neu( 0, 0, 320, 320 )
+                        let png = await utils.createThumbnail( filesBin.srcs[item.name].url, thumb )
+                        if (png.error) throw (png.error)
+                        thumbs[item.name] = png
+                        console.log(`[Files] 🖼  created new thumbnail for ${item.name}: ${thumbs[item.name].length} bytes`, filesBin)
+                        setTimeout( e => ($inited.thumbs[item.name] = true), 1)
+                        toSave += 1
+                    } catch(err) {
+                        console.log(`[Files] ❌  can't create thumb for ${item.name}`, filesBin)
+                    }
+                }
 
             }
 
-            for (const item of filesBin.items) {
-                if (!item.thumbnail) {
-                    $inited.thumbnail = false
-                    let thumb = rectd.neu( 0, 0, 320, 320 )
-                    item.thumbnail = await utils.createThumbnail( item.url, thumb )
-                    $inited.thumbnail = true
-                }
+            if (toSave > 0) {
+                console.log(`[Files] ✅  saved ${toSave} new thumbs to localStorage`, thumbs)
+                db.set.thumbs( thumbs )
             }
         }
     })( filesBin )
 
-    async function onRemove( idx ) {
-
-    }
-
-    async function onCollapse( idx ) {
-
+    async function onRemove( item ) {
+        if (item.static) return
+        filesBin.items = filesBin.items.filter( f => (item.name != f.name))
+        filesBin.srcs[item.name] = null
     }
 
     function isSelected( item ) {
@@ -202,7 +212,7 @@
 <!-- FILES -->
 
 
-<section class="flex column checker h100vh w100vw">
+<section class="flex column checker h100vh w100vw z-index99">
     <!-- <Title>Files</Title> -->
     <div class="flex row-space-between-center p1 pop bb1-solid">
         <div class="flex row-flex-end-center cmr1">
@@ -229,7 +239,6 @@
                 Add Local Files
             </button>
             <button 
-                disabled={needsSync}
                 on:click={onRequestAll}>
                 <span class="icon">sync</span>
                 Sync Local Files
@@ -245,81 +254,68 @@
         <div class="flex row-stretch-flex-start wrap">
             {#each filesBin.items as item, idx}
                 <div 
-                    bind:this={elements[idx]}
                     class="b1-solid flex column basis0em grow minw16em m1 rel">
 
 
 
-
-                    <!-- HEADER -->
-
-
-
-                    <header class="bb1-solid pop flex row-space-between-center rel">
-                        <span 
-                            class="fill grabbable" 
-                            bind:this={handles[idx]} />
-                        <div class="flex row-flex-start-center">
-                            <div 
-                                class="plr1 move grabbable">
-                                <span class="icon">drag_indicator</span>
-                            </div>
-                        </div>
-                        <div class="flex row-flex-start-center z-index2  z-index2">
-
-                            <div 
-                                class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
-                                on:click={ e => onRequestFile( item ) }>
-                                <span class="icon t0 l0">sync</span>
-                            </div>
-                            <div 
-                                class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
-                                on:click={ e => onRemove( idx ) }>
-                                <!-- <span class="cross w10px h10px flex block" />   -->
-                                <span class="icon t0 l0">clear</span>  
-                            </div>
-                            <div 
-                                class="grow flex row-flex-end-center pointer p1-5"
-                                on:click={e => onCollapse( idx )}>
-                                <span 
-                                    class:rotate90={item.collapsed}
-                                    class="arrow" />
-                            </div>
-
-
-                        </div>
-                    </header>
 
 
 
                     <!-- BODY -->
 
                     <div class="flex pointer column" on:click={e => onSelectImage( item )}>
-                        {#if item.thumbnail && $inited.thumbnail }
+                        {#if $inited.thumbs[item.name] }
                                 <img 
                                     style={`opacity:${CANDIDATES[item.name] ? '1;' : '0.8;filter: grayscale(100%);'}`}
                                     class="" 
-                                    src={item.thumbnail} 
+                                    src={thumbs[item.name]} 
                                     alt={item.name} />
                         {:else}
                             <div 
-                                class=" minh8em flex row-center-center">
+                                class="cross minh12em flex row-center-center">
                                 {item.name}
                             </div>
                         {/if}
 
-                        <!-- FOOTER -->
-
-                        <footer class="bt1-solid bg flex row-flex-start-stretch">
-                            <span 
-                                class:cross={CANDIDATES[item.name]}
-                                class="br1-solid plr1-2" />
-                            <span class="ptb0-5 plr1">
-                                {item.name}
-                            </span>
-                        </footer>
                     </div>
 
+
+                    <!-- footer -->
+
+
+
+                    <footer 
+                        class="bt1-solid pop flex row-space-between-center rel z-index99 pl1 pr0-5 ptb0-6 ">
+                        <span 
+                            class="fill" />
+                        <div class="flex row-flex-start-center">
+                            <!-- <div 
+                                class="move grabbable">
+                                <span class="icon">drag_indicator</span>
+                            </div> -->
+                            <div>
+                                {item.name}
+                            </div>
+                        </div>
+                        <div class="flex row-flex-start-center z-index2  z-index2">
+
+                            <div 
+                                class:disabled={ item.static }
+                                class="flex h2em w2em row-center-center pointer radius2em"
+                                on:click={ e => onRequestFile( item ) }>
+                                <span class="icon t0 l0">sync</span>
+                            </div>
+                            <div 
+                                class:disabled={ item.static }
+                                class="flex h2em w2em row-center-center pointer radius2em"
+                                on:click={ e => onRemove( item ) }>
+                                <!-- <span class="cross w10px h10px flex block" />   -->
+                                <span class="icon t0 l0">clear</span>  
+                            </div>
+
+
+                        </div>
+                    </footer>
 
 
                 </div>
