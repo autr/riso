@@ -185,7 +185,18 @@ void main(void) {
 		if (type == 7) power = color.b;
 	}
 
-	power = clamp( map(power + (levels_mid - 0.5), levels_low, levels_high, 0.0, 1.0 ), 0.0, 1.0);
+
+
+	float low = levels_low;
+	float high = levels_high;
+	float mid = levels_mid;
+
+	float gamma = pow( power, map(mid, 0.0, 1.0, 2.0, 0.0) );
+	power = clamp( map( gamma, low, high, 0.0, 1.0 ), 0.0, 1.0);
+
+
+	// power = clamp( (pow(( (power) - low) / (levels_high - low), mid)), 0.0, 1.0);
+
 
 	if (solo || compound) {
 		gl_FragColor = vec4(ink,1.0) * power * opacity;
@@ -288,7 +299,7 @@ void main(void) {
 		{#each gui.config as ui}
 			<div 
 				class="flex row-flex-end-center mt1 w100pc"
-				class:none={ ( !isNaN(ui.link) && ui.link != layer.type ) || ui.name == 'opacity2' }>
+				class:none={ ( !isNaN(ui.link) && ui.link != layer.type ) || ui.name == 'opacity' }>
 
 				{#if ui.label}
 
@@ -304,6 +315,7 @@ void main(void) {
 					<Switch bind:value={layer[ui.name]} />
 				{:else if ui.type == 'float'}
 					<input 
+						on:dblclick={ e => layer[ui.name] = ui.default}
 						class="no-basis grow maxw60pc w60pc minw60pc round ml2 radius1em"
 						type="range" 
 						bind:value={layer[ui.name]} 

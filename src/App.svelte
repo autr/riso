@@ -207,6 +207,7 @@
 		let ks = Object.keys(db.set)
 		for (const k of ks) await db.set[k]( null )
 		localStorage.clear()
+		window.location.reload()
 	}
 
     async function addLayer() {
@@ -276,121 +277,120 @@
 <Incompatible />
 
 
-	<div 
-		class="fixed l0 t0 w100vw h100vh bg z-index9 overflow-auto" 
-		class:none={!$library} >
-		<Files bind:filesBin={filesBin} bind:project={PROJECTS[IDX]} />
-	</div>
+<div 
+	class="fixed l0 t0 w100vw h100vh bg z-index9 overflow-auto" 
+	class:none={!$library} >
+	<Files bind:filesBin={filesBin} bind:project={PROJECTS[IDX]} />
+</div>
 
-	<div class="wrapper flex column h100vh checkered">
-		<header 
-			id="header"
-			class:electron={$electron}
-			class="bg plr1 pb1 pt1 bb1-solid flex row-space-between-center">
-			<div class=" flex row-flex-start-center cmr1">
-				<span 
-					class:none={!showProjects}
-					on:click={ e => (showProjects = false) }
-					class="w100pc h100pc l0 t0 fixed z-index98 unclickable" />
-				<div class="rel">
-					<button class="text-left align-left unclickable" on:click={e => (showProjects = !showProjects)}>
-						<span class="icon">folder_open</span>
-						Load Project
-						<span class="chevron ml2 mb0-3" />
-					</button>
+<div class="wrapper flex column h100vh checkered">
+	<header 
+		id="header"
+		class:electron={$electron}
+		class="bg plr1 pb1 pt1 bb1-solid flex row-space-between-center">
+		<div class=" flex row-flex-start-center cmr1">
+			<span 
+				class:none={!showProjects}
+				on:click={ e => (showProjects = false) }
+				class="w100pc h100pc l0 t0 fixed z-index98 unclickable" />
+			<div class="rel">
+				<button class="text-left align-left unclickable" on:click={e => (showProjects = !showProjects)}>
+					<span class="icon">folder_open</span>
+					Load Project
+					<span class="chevron ml2 mb0-3" />
+				</button>
+
+				<div 
+					style="margin-top:-1px;top:100%"
+					class="abs z-index99 unclickable l0 minw24em pop b1-solid flex column-stretch-flex-start" 
+					class:none={!showProjects}>
+
+					{#each PROJECTS as p, idx}
+						<div 
+							on:click={e => setProject(idx)}
+							class="unclickable  plr1 ptb0-7 bg bb1-solid flex row-space-between-center"
+							class:pop={idx != IDX}>
+							<span>
+								<!-- {#if idx == IDX}
+									<span class="icon">radio_button_checked</span>
+								{:else}
+									<span class="icon">radio_button_unchecked</span>
+								{/if} -->
+								<span>{p.name}</span>
+							</span>
+							<span class="flex row-flex-end-center cml1 ml1">
+
+			                    <div 
+			                        class="flex h2em w2em row-center-center pointer f0 radius2em"
+			                        on:click={ e => copyProject( idx ) }>
+			                        <span class="icon t0 l0">copy_all</span>   
+			                    </div>
+			                    <div 
+			                        class="flex h2em w2em row-center-center pointer radius2em"
+			                        on:click={ e => removeProject( idx ) }>
+			                        <span class="icon t0 l0">clear</span>   
+			                    </div>
+							</span>
+						</div>
+					{/each}
 
 					<div 
-						style="margin-top:-1px;top:100%"
-						class="abs z-index99 unclickable l0 minw24em pop b1-solid flex column-stretch-flex-start" 
-						class:none={!showProjects}>
-
-						{#each PROJECTS as p, idx}
-							<div 
-								on:click={e => setProject(idx)}
-								class="unclickable  plr1 ptb0-7 bg bb1-solid flex row-space-between-center"
-								class:pop={idx != IDX}>
-								<span>
-									<!-- {#if idx == IDX}
-										<span class="icon">radio_button_checked</span>
-									{:else}
-										<span class="icon">radio_button_unchecked</span>
-									{/if} -->
-									<span>{p.name}</span>
-								</span>
-								<span class="flex row-flex-end-center cml1 ml1">
-
-				                    <div 
-				                        class="flex h2em w2em row-center-center pointer f0 radius2em"
-				                        on:click={ e => copyProject( idx ) }>
-				                        <span class="icon t0 l0">copy_all</span>   
-				                    </div>
-				                    <div 
-				                        class="flex h2em w2em row-center-center pointer radius2em"
-				                        on:click={ e => removeProject( idx ) }>
-				                        <span class="icon t0 l0">clear</span>   
-				                    </div>
-								</span>
-							</div>
-						{/each}
-
-						<div 
-							on:click={newProject}
-							class=" plr1 ptb1 text-center pop ">
-							<span class="icon">add</span>
-							<span>Create New Project</span>
-						</div>
+						on:click={newProject}
+						class=" plr1 ptb1 text-center pop ">
+						<span class="icon">add</span>
+						<span>Create New Project</span>
 					</div>
 				</div>
+			</div>
 
-			    <button 
-			        on:click={e => ($library = !$library)}>
-	                <span class="icon">photo</span>
-			        Select Images
-			    </button>
-			    <button 
-			        class=""
-			        disabled={PROJECTS?.[IDX]?.layers?.length >= 5}
-			        on:click={e => (e.target.blur())} 
-			        on:click={addLayer}>
-	                <span class="icon">library_add</span>
-			        Add Layer
-			    </button>
-			    <!-- <div class="flex column">
-			    	<span>{PROJECTS?.[IDX]?.name || ''}</span>
-			    	<span>Autosaved: {lastSaved ? lastSaved.toLocaleTimeString() : '-'}</span>
-			    </div> -->
-			</div>
-			<div class=" flex row-flex-end-center cml1">
-				<!-- <button class="pop">
-	                <span class="icon">visibility</span>
-					Preview
-				</button> -->
-				<button on:click={clearDatabases}>
-	                <span class="icon">replay</span>
-					Clear Databases
-				</button>
-				<button 
-					on:click={ e => exporting.set(true) }
-					class="pop">
-	                <span class="icon">file_download</span>
-					Export
-				</button>
-			</div>
-		</header>
-		{#if $inited.db && PROJECTS[IDX]}
-			<Project 
-				bind:IDX={IDX}
-				bind:THUMBS={THUMBS}
-				bind:project={PROJECTS[IDX]} 
-				filesBin={filesBin}>
-			</Project>
-		{/if}
-		<!-- <footer class="bt1-solid bg flex row-space-between-center plr1 ptb0-5">	
-			<div>
-				Hello world
-			</div>
-			<div>
-				Something
-			</div>
-		</footer> -->
-	</div>
+		    <button 
+		        on:click={e => ($library = !$library)}>
+                <span class="icon">photo</span>
+		        Select Images
+		    </button>
+		    <button 
+		        class=""
+		        on:click={e => (e.target.blur())} 
+		        on:click={addLayer}>
+                <span class="icon">library_add</span>
+		        Add Layer
+		    </button>
+		    <!-- <div class="flex column">
+		    	<span>{PROJECTS?.[IDX]?.name || ''}</span>
+		    	<span>Autosaved: {lastSaved ? lastSaved.toLocaleTimeString() : '-'}</span>
+		    </div> -->
+		</div>
+		<div class=" flex row-flex-end-center cml1">
+			<!-- <button class="pop">
+                <span class="icon">visibility</span>
+				Preview
+			</button> -->
+			<button on:click={clearDatabases}>
+                <span class="icon">replay</span>
+				Clear Databases
+			</button>
+			<button 
+				on:click={ e => exporting.set(true) }
+				class="pop">
+                <span class="icon">file_download</span>
+				Export
+			</button>
+		</div>
+	</header>
+	{#if $inited.db && PROJECTS[IDX]}
+		<Project 
+			bind:IDX={IDX}
+			bind:THUMBS={THUMBS}
+			bind:project={PROJECTS[IDX]} 
+			filesBin={filesBin}>
+		</Project>
+	{/if}
+	<!-- <footer class="bt1-solid bg flex row-space-between-center plr1 ptb0-5">	
+		<div>
+			Hello world
+		</div>
+		<div>
+			Something
+		</div>
+	</footer> -->
+</div>

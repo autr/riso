@@ -28,21 +28,26 @@
     function resetDragDrop() {
 
         dragdrop.clear('layers')
-        for (let i = 0; i < elements.length; i++) {
-            let el = elements[i]
-            let handle = handles[i]
-            dragdrop.addDragArea( 'layers', handle, el )
-            dragdrop.addDropArea( 'layers', el, {
-                drop: onDrop
-            })
+        setTimeout( e => {
 
-        }
+            console.log(`[Layers] 👆  resetting drag drop for ${elements.length} elements`)
+            for (let i = 0; i < elements.length; i++) {
+                let el = elements[i]
+                let handle = handles[i]
+                dragdrop.addDragArea( 'layers', handle, el )
+                dragdrop.addDropArea( 'layers', el, {
+                    drop: onDrop
+                })
+
+            }
+        }, 100)
     }
 
     let lastLength = -1
+    let lastEls = -1
     $: ((layers_, els_) => {
         if (lastLength != elements.length) {
-            console.log(`[Layers] 🍰  resetting drag-drop handles for ${elements.length} elements and ${handles.length} handles`)
+            console.log(`[Layers] 🍰  layers changing, resetting ${elements.length} elements and ${handles.length} handles`)
             lastLength = elements.length
             resetDragDrop()
         }
@@ -99,15 +104,21 @@
 
         console.log(`[Layers] 🌸  drag dropped from ${source} to ${destination}`)
 
-        let cp = layers
-        layers = []
-        cp = moveInArray( cp, source, destination )
-        inkLayerContainer.children = moveInArray( inkLayerContainer.children, source, destination)
-        inkLayerGroups = moveInArray( inkLayerGroups, source, destination)
+        // let cp = layers
+        // layers = []
+        layers = moveInArray( layers, source, destination )
+        // layers = cp 
+
+        inkLayerContainer.removeChildren(0)
+        inkLayerGroups = []
     
         console.log(`[Layers] 🌸  resetting layers with 1ms delay...`)
-        layers = cp 
-        setTimeout( e => resetDragDrop(), 1)
+        $trigger.setup = true
+        $trigger.redraw = true
+        setTimeout( e => {
+            lastLength = -1
+            resetDragDrop()
+        }, 100)
 
 
     }

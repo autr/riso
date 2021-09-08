@@ -1,7 +1,7 @@
 <script>
 
 	import * as PIXI from 'pixi.js'
-	import { onMount } from 'svelte'
+	import { onMount, onDestroy } from 'svelte'
 	import gui from './_gui.js'
 	import glLib from './_gl.js'
 	import colours_raw from './_colours.js'
@@ -19,6 +19,22 @@
 	let el
 	onMount( setup )
 
+	let destroyOpts = {
+				children: true,
+				texture: true,
+				baseTexture: true
+			}
+
+	onDestroy( async e => {
+		try {
+			await app.stage.destroy( true, destroyOpts )
+			await app.renderer.destroy( true, destroyOpts )
+			await app.destroy( true, destroyOpts)
+		} catch(err) {}
+		app = null
+		console.log(`[Palette] 🪦  destroying palette`)
+	})
+
 	$: setup( target )
 
 	async function setup( t ) {
@@ -27,11 +43,7 @@
 		if (!layer) return
 
 		if (app) {
-			await app.destroy( true, {
-				children: true,
-				texture: true,
-				baseTexture: true
-			})
+			await app.destroy( true, destroyOpts)
 			graphic = null
 			app = null
 		}

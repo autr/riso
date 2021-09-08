@@ -51,7 +51,7 @@
 		if ($exporting != lastMode && _initedDb && _initedCanvas) {
 			lastMode = $exporting
 			if ($exporting) {
-
+				compounds = {}
 				for (const layer of project.layers) {
 					if (!compounds[layer.colour]) compounds[layer.colour] = []
 					compounds[layer.colour].push( layer )
@@ -231,7 +231,7 @@ Levels High: ${l.levels_high}
 			<div class="cmr0-5 flex row-flex-start-center cmr1">
 	            <button on:click={e => exporting.set(false)}>
 	                <span class="icon">arrow_back</span>
-	                Cancel
+	                Back
 	            </button>
 	            <div class="f1 flex column">
 	            	<span class="">{project.name}</span>

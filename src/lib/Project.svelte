@@ -5,6 +5,7 @@
 	import { get, set } from 'idb-keyval'
 	import rectd from './_rectd.js'
 	import options from './_options.js'
+	import { getBlendFilter } from '@pixi/picture';
 
 	import Layers from './Layers.svelte'
 	import Palette from './Palette.svelte'
@@ -281,7 +282,6 @@
 			await removeChildren( quik.inkLayerGroups[idx] )
 
 
-
 			let i = 0
 
 			for (const [url, resource] of Object.entries(pixi.loader.resources) ) {
@@ -348,10 +348,16 @@
 
 					$trigger.offset = true
 
+
+
 				}
 
 				i += 1
+
 			}
+
+			// let blendMode = PIXI.BLEND_MODES.DIFFERENCE
+			// quik.inkLayerGroups[idx].filters = [ getBlendFilter(blendMode) ]
 
 			quik.inkLayerContainer.addChild( quik.inkLayerGroups[idx] )
 
