@@ -28,16 +28,36 @@
         // $trigger.palettes = true
         let source = elements.indexOf(e.source)
         let destination = elements.indexOf(e.destination)
-        console.log( inkLayerGroups )
-        layers = moveInArray( layers, source, destination )
-        inkLayerContainer.children = moveInArray(inkLayerContainer.children, source, destination)
-        $trigger.redraw = true
-        
-        // setTimeout( e => {
-        //     $trigger.palettes = false
-        // }, 1)
-        // inkLayerContainer
 
+        if (source == destination) return
+
+        console.log(`[Layers] 🌸  drag dropped from ${source} to ${destination}`)
+
+        let cp = layers
+        layers = []
+        cp = moveInArray( cp, source, destination )
+        inkLayerContainer.children = moveInArray( inkLayerContainer.children, source, destination)
+        inkLayerGroups = moveInArray( inkLayerGroups, source, destination)
+    
+        console.log(`[Layers] 🌸  resetting layers with 1ms delay...`)
+        layers = cp 
+        setTimeout( e => resetDragDrop(), 1)
+
+
+    }
+
+    function resetDragDrop() {
+
+        dragdrop.clear('layers')
+        for (let i = 0; i < elements.length; i++) {
+            let el = elements[i]
+            let handle = handles[i]
+            dragdrop.addDragArea( 'layers', handle, el )
+            dragdrop.addDropArea( 'layers', el, {
+                drop: onDrop
+            })
+
+        }
     }
 
     let lastLength = -1
@@ -45,16 +65,7 @@
         if (lastLength != elements.length) {
             console.log(`[Layers] 🍰  resetting drag-drop handles for ${elements.length} elements and ${handles.length} handles`)
             lastLength = elements.length
-            dragdrop.clear('layers')
-            for (let i = 0; i < elements.length; i++) {
-                let el = elements[i]
-                let handle = handles[i]
-                dragdrop.addDragArea( 'layers', handle, el )
-                dragdrop.addDropArea( 'layers', el, {
-                    drop: onDrop
-                })
-
-            }
+            resetDragDrop()
         }
     })(layers, elements)
 

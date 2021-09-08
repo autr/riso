@@ -3,6 +3,36 @@ import utils from './_utils.js'
 export default (e => { 
     let scraped = [
         {
+            "name": "Metallic Silver",
+            "japanese": "Drucken3000",
+            "rgb": "153, 153, 152",
+            "pantone": "4289 C"
+        },
+        {
+            "name": "Metallic Copper",
+            "japanese": "Drucken3000",
+            "rgb": "161,100,91",
+            "pantone": "N/A"
+        },
+        {
+            "name": "Raspberry",
+            "japanese": "Drucken3000",
+            "rgb": "218,1,118",
+            "pantone": "N/A"
+        },
+        {
+            "name": "Fluorescent Lime",
+            "japanese": "Drucken3000",
+            "rgb": "204,255,0",
+            "pantone": "N/A"
+        },
+        {
+            "name": "Black Magic",
+            "japanese": "Drucken3000",
+            "rgb": "0, 0, 0",
+            "pantone": "N/A"
+        },
+        {
             "name": "Black",
             "japanese": "ブラック",
             "rgb": "0, 0, 0",
@@ -498,7 +528,7 @@ export default (e => {
         c.type = 'normal'
         let n = c.name.toLowerCase()
         if ( n.indexOf('fluo') != -1) c.type = 'fluo'
-        if ( n.indexOf('allic') != -1 || n.indexOf('gold') != -1 ) c.type = 'metal'
+        if ( n.indexOf('allic') != -1 || n.indexOf('gold') != -1 || n.indexOf('magic') != -1 ) c.type = 'metal'
         if ( n.indexOf('clear') != -1 ) c.type = 'clear'
         return c
     }).sort( (a,b) => {

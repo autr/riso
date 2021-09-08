@@ -286,7 +286,7 @@ void main(void) {
 		{#each gui.config as ui}
 			<div 
 				class="flex row-flex-end-center mt1 w100pc"
-				class:none={ ( !isNaN(ui.link) && ui.link != layer.type ) || ui.name == 'opacity' }>
+				class:none={ ( !isNaN(ui.link) && ui.link != layer.type ) || ui.name == 'opacity2' }>
 
 				{#if ui.label}
 

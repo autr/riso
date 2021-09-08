@@ -3,15 +3,36 @@
 	import Project from './lib/Project.svelte'
 	import Title from './lib/Title.svelte'
 	import options from './lib/_options.js'
-	import { get, set } from 'idb-keyval'
 	import Files from './lib/Files.svelte'
+	import Incompatible from './lib/Incompatible.svelte'
 	import Colours from './lib/Colours.svelte'
-	import { library, inited, exporting, electron } from './lib/_stores.js'
+	import { library, inited, exporting, electron, browser, incompatible, warning } from './lib/_stores.js'
+	import db from './lib/_db.js'
 
-	electron.set( navigator.userAgent.toLowerCase().indexOf('electron') != -1 )
 
+
+	window.db = db
+
+	const KEY = 'RISOGRAPHINATOR'
+	const FILES_KEY = `${KEY}_FILES`
+	const PROJECTS_KEY = `${KEY}_PROJECTS`
+	const IGNORE_KEY = `${KEY}_IGNORE`
+
+
+	
 
 	onMount( async e => {
+
+		console.log(`[App] 🖥   using browser ${$browser.name} ${$browser.version} ${$browser.os}` )
+
+		let ignore = (await db.get.ignore())
+		if (ignore) console.log(`[App] 🚨   ignoring incompatibility warning` )
+		if ($incompatible && !ignore) {
+			console.log(`[App] ❌  incompatible browser!`)
+			warning.set( true )
+		}
+
+
 		await loadDb()
 	} )
 
@@ -47,7 +68,16 @@
 				name: 'Photographs',
 				url: 'sources/Photographs.png',
 				static: true
-			},
+			}
+		],
+		srcs: {} 
+	}
+
+
+	if (window.location.href.indexOf('localfsdfhost:5000') != -1) {
+
+		filesBin.items = filesBin.items.concat(
+		[
 			{
 				name: 'GS_00001',
 				url: 'sources/GS_00001.jpg',
@@ -113,26 +143,19 @@
 				url: 'sources/GS_00013.png',
 				static: true
 			}
-		],
-		srcs: {} 
+		])
 	}
-
-
-	const KEY = 'RISOGRAPHINATOR'
-	const FILES_KEY = `${KEY}_FILES`
-	const PROJECTS_KEY = `${KEY}_PROJECTS`
-	const THUMBS_KEY = `${KEY}_THUMBS`
 
 
 	async function loadDb() {
 		// await set( PROJECTS_KEY, [] )
 
-		const neuFiles = (await get( FILES_KEY ) || [])
+		const neuFiles = (await db.get.files() || [])
 		filesBin.items = filesBin.items.concat( neuFiles )
 		console.log(`[App] ⏱  loaded ${neuFiles.length} file references from db`)
 
 
-		PROJECTS = (await get( PROJECTS_KEY )).filter( p => (p))
+		PROJECTS = (await db.get.projects()).filter( p => (p))
 		if (PROJECTS.length == 0) {
 			console.log(`[App] 🚨  no database, loading preset project`)
 			PROJECTS.push( intro )
@@ -168,14 +191,14 @@
 			})
 
 			console.log(`[App] 💦  saved ${PROJECTS.length} projects to db`, cleaned[0])
-			await set( PROJECTS_KEY, cleaned )
+			await db.set.projects( cleaned )
 		}, 200)
 		
 	}
 
 	async function clearDatabases() {
-		await set( PROJECTS_KEY, [] )
-		await set( FILES_KEY, [] )
+		let ks = Object.keys(db.set)
+		for (const k of ks) await db.set[k]( null )
 	}
 
     async function addLayer() {
@@ -191,6 +214,8 @@
 </script>
 
 
+
+<Incompatible />
 
 <!-- <Colours overlay={true} /> -->
 {#if $inited.db}

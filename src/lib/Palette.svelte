@@ -8,9 +8,10 @@
 	import { trigger } from './_stores.js'
 
 	export let layer
-	export let target
+	export let target = null
 	export let vertical = false
 
+	let app, graphic
 	let colours = colours_raw()
 
 	$: COLOR = colours?.[layer.colour]
@@ -22,7 +23,20 @@
 
 	async function setup( t ) {
 
-		console.log(`[Palette] 🎨  running setup...`)
+
+		if (!layer) return
+
+		if (app) {
+			await app.destroy( true, {
+				children: true,
+				texture: true,
+				baseTexture: true
+			})
+			graphic = null
+			app = null
+		}
+
+		console.log(`[Palette] 🎨  running setup for ${COLOR?.name || 'unknown'}`)
 		// if (!target) return
 		let config = {
 			width: vertical ? 1 : 360, 
@@ -32,8 +46,8 @@
 			resolution: 1,
 			forceCanvas: true
 		}
-		let app = new PIXI.Application(config)
-		let graphic = new PIXI.Graphics()
+		app = new PIXI.Application(config)
+		graphic = new PIXI.Graphics()
 		graphic.beginFill( 0x000000, 0 )
 		graphic.drawRect(0, 0, config.width, config.height)
 

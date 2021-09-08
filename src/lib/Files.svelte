@@ -1,6 +1,6 @@
 <script>
     import { onMount } from 'svelte'
-    import { library, inited, trigger } from './_stores.js'
+    import { library, inited, trigger, incompatible, warning } from './_stores.js'
     import utils from './_utils.js'
     import dragdrop from 'svelte-native-drag-drop'
     import rectd from './_rectd.js'
@@ -13,7 +13,7 @@
 
     onMount( async e => {
         console.log(`[Files] 🗄  requesting filesBin...`)
-        await requestAll()
+        await onRequestAll()
     } )
 
     let CANDIDATES = {}
@@ -35,7 +35,9 @@
         }
     })( allowMultiple )
 
-    function selectImage( item ) {
+
+
+    function onSelectImage( item ) {
 
         if (allowMultiple) {
             CANDIDATES[ item.name ] = !CANDIDATES[ item.name ]
@@ -48,11 +50,13 @@
     }
 
 
-    async function requestFile( item ) {
+    async function onRequestFile( item ) {
 
         if (item.static) {
             filesBin.srcs[item.name] = item
         } else {
+
+            if ($incompatible) return warning.set(true)
 
             let opts = {mode: 'read'}
             let permission = await item.queryPermission(opts)
@@ -69,11 +73,16 @@
         }
     }
 
-    async function requestAll() {
-        for( const item of filesBin.items) requestFile( item )
+    async function onRequestAll() {
+
+
+        for( const item of filesBin.items) onRequestFile( item )
     }
 
-    async function accessFiles(e) {
+    async function onAccessFiles(e) {
+
+        if ($incompatible) return warning.set(true)
+
         let neu = await window.showOpenFilePicker({
             types: [
                 {
@@ -87,7 +96,7 @@
 
         filesBin.items = filesBin.items.concat(neu)
         await set( FILES_KEY, filesBin.items.filter( h => !h.static ) )
-        await requestAll()
+        await onRequestAll()
     }
 
     async function removeHandle( item ) {
@@ -99,20 +108,14 @@
         filesBin.items = cp
         await set( FILES_KEY, filesBin.items.filter( h => !h.static ) )
     }
-    async function clearAllHandles( item ) {
+    async function onClearAllHandles( item ) {
+
+
         if (!window.confirm(`Remove all filesBin from bin?`)) return
         filesBin.items = filesBin.items.filter( h => h.static )
         await set( FILES_KEY, [] )
     }
 
-    let handlers = {
-        accessFiles,
-        requestAll,
-        selectImage,
-        removeHandle,
-        requestFile,
-        clearAllHandles
-    }
 
     let classes = {
         miniButtons: `p0 rel w3em h3em bg pointer z-index4 bt0-solid br0-solid`,
@@ -214,9 +217,6 @@
                 <span class="icon">done</span>
                 Save to Project
             </button>
-            <Switch bind:value={ allowMultiple }>
-                Multiple
-            </Switch>
             <div>
                 { filesBin.items.length } image{ filesBin.items.length > 0 ? 's' : ''},
                 { totalCandidates } selected
@@ -224,18 +224,18 @@
         </div>
         <div class="flex row-flex-start-center cml1">
             <button 
-                on:click={handlers.accessFiles}>
+                on:click={onAccessFiles}>
                 <span class="icon">add</span>
-                Add Files
+                Add Local Files
             </button>
             <button 
                 disabled={needsSync}
-                on:click={handlers.requestAll}>
+                on:click={onRequestAll}>
                 <span class="icon">sync</span>
-                Sync All Files
+                Sync Local Files
             </button>
             <button 
-                on:click={handlers.clearAllHandles}>
+                on:click={onClearAllHandles}>
                 <span class="icon">clear</span>
                 Clear All
             </button>
@@ -269,7 +269,7 @@
 
                             <div 
                                 class="flex h2em w2em row-center-center mr0-5 pointer radius2em"
-                                on:click={ e => handlers.requestFile( item ) }>
+                                on:click={ e => onRequestFile( item ) }>
                                 <span class="icon t0 l0">sync</span>
                             </div>
                             <div 
@@ -294,7 +294,7 @@
 
                     <!-- BODY -->
 
-                    <div class="flex pointer column" on:click={e => handlers.selectImage( item )}>
+                    <div class="flex pointer column" on:click={e => onSelectImage( item )}>
                         {#if item.thumbnail && $inited.thumbnail }
                                 <img 
                                     style={`opacity:${CANDIDATES[item.name] ? '1;' : '0.8;filter: grayscale(100%);'}`}
