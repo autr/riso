@@ -292,9 +292,9 @@
 				let rectCanvas = rectd.neu( 0, 0, project.info.width, project.info.height )
 				rectCanvas = rectd.shrinkBy( rectCanvas, mm2px( project.config.margin ) )
 				let pixiSprite = new PIXI.Sprite( resource.texture )
-
+				if (!project.config.layout) project.config.layout = Object.keys(options.layouts)[0]
 				let rowsCols = options.layouts[project.config.layout || 0]
-				if (!rowsCols[0] || !rowsCols[1]) console.error(`[Project] no rows and cols?`, rowsCols)
+				if (!rowsCols?.[0] || !rowsCols?.[1]) console.error(`[Project] no rows and cols?`, rowsCols, project.config.layout)
 				let cells = rectd.divideUp( rectCanvas, rowsCols[0], rowsCols[1] )
 
 				if ( i < cells.length) {

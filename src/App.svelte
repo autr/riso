@@ -203,6 +203,7 @@
         if (!window.confirm(`Remove all projects, palettes and file references. Are you sure?`)) return
 		let ks = Object.keys(db.set)
 		for (const k of ks) await db.set[k]( null )
+		localStorage.clear()
 	}
 
     async function addLayer() {
