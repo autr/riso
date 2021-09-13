@@ -5,7 +5,7 @@
 	import { get, set } from 'idb-keyval'
 	import rectd from './_rectd.js'
 	import options from './_options.js'
-	import { getBlendFilter } from '@pixi/picture';
+	import { Sprite, getBlendFilter } from '@pixi/picture'
 
 	import Layers from './Layers.svelte'
 	import Palette from './Palette.svelte'
@@ -22,11 +22,22 @@
 	window.PIXI = PIXI
 	PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.NEAREST
 
+	/*
+		[Container] allContainer
+			[Graphics:filter] paperBackground
+			[Container] inkLayerContainer
+				[Container:filter] inkLayerGroups[...]
+					[Container] pixiScaler
+						[Sprite] sprite
+	*/
+
+
 	let quik = window.quik = {
 		allContainer: new PIXI.Container(),
 		paperBackground: new PIXI.Graphics(),
 		inkLayerGroups: [],
 		inkLayerContainer: new PIXI.Container(),
+		blendedSprites: new PIXI.Container(),
 		sprites: {}
 	}
 
@@ -117,6 +128,7 @@
 		pixi.app.stage.addChild( quik.allContainer )
 		quik.allContainer.addChild( quik.paperBackground )
 		quik.allContainer.addChild( quik.inkLayerContainer )
+		quik.allContainer.addChild( quik.blendedSprites )
 
 		await setup()
 
@@ -181,6 +193,25 @@
 
 	}
 
+	async function createBlendModed() {
+		console.log('create blend moded')
+
+
+		const { width, height } = project.info
+		await removeChildren( quik.blendedSprites )
+		for (const o of quik.inkLayerGroups) {
+			let renderTexture = PIXI.RenderTexture.create({ width, height })
+			await pixi.app.renderer.render(o, { renderTexture } );
+			let sprite = await Sprite.from( renderTexture )
+			sprite.blendMode = PIXI.BLEND_MODES.MULTIPLY
+			quik.blendedSprites.addChild( sprite )
+			console.log('LAYER', renderTexture, sprite )
+		}
+		
+		quik.inkLayerContainer.visible = false
+		quik.blendedSprites.visible = true
+	}
+
 
 	/* UPDATE - when project config changes...*/
 
@@ -194,6 +225,9 @@
 		if (!config) return
 
 		if (pixi?.app?.renderer && $inited.project ) {
+
+			quik.inkLayerContainer.visible = true
+			quik.blendedSprites.visible = false
 
 			const { width, height } = project.info
 
@@ -244,6 +278,7 @@
 				}
 
 
+				await createBlendModed()
 			}, 100)
 
 		}
