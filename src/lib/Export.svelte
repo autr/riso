@@ -6,6 +6,7 @@
     import options from './_options.js'
     import { detect } from 'detect-browser'
     import { downloadZip } from 'client-zip'
+    import { changeDpiDataUrl } from 'changedpi'
 
 	export let pixi 
 	export let quik
@@ -34,6 +35,8 @@
 				// return resolve( true )
 				t1 = Date.now()
 				let pix = await pixi.app.renderer.plugins.extract.base64(pixi.app.stage, exportFormats[format], 0)
+				console.log(`[Export] ⚖️  setting dpi to ${project.config.dpi}`)
+				pix = await changeDpiDataUrl( pix, project.config.dpi )
 				t2 = Date.now()
 				console.log(`[Export] 🍄  exported as ${format} in ${stamp()}`)
 				resolve( pix )

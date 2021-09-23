@@ -72,7 +72,7 @@
 	}
 
 
-	if (window.location.href.indexOf('localfsdfhost:5000') != -1) {
+	if (window.location.href.indexOf('localhost:5000') != -1) {
 
 		filesBin.items = filesBin.items.concat(
 		[

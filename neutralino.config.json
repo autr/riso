@@ -1,0 +1,36 @@
+{
+  "applicationId": "js.neutralino.sample",
+  "port": 0,
+  "defaultMode": "window",
+  "enableHTTPServer": true,
+  "enableNativeAPI": true,
+  "url": "/app/",
+  "nativeBlockList": [],
+  "globalVariables": {
+    "TEST": "Test Value"
+  },
+  "modes": {
+    "window": {
+      "title": "RISO",
+      "width": 800,
+      "height": 500,
+      "minWidth": 400,
+      "minHeight": 250,
+      "fullScreen": false,
+      "alwaysOnTop": false,
+      "icon": "/app/icons/appIcon.png",
+      "enableInspector": true,
+      "borderless": false,
+      "maximize": false
+    },
+    "browser": {},
+    "cloud": {}
+  },
+  "cli": {
+    "binaryName": "hello-world",
+    "resourcesPath": "/app/",
+    "clientLibrary": "/app/neutralino.js",
+    "binaryVersion": "2.7.0",
+    "clientVersion": "1.4.0"
+  }
+}

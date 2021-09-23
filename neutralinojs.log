@@ -1,0 +1,13 @@
+ERROR 2021-09-10 10:48:29,465 Unable to open ./index.html api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:48:51,758 Unable to open ./app.css api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:48:51,761 Unable to open ./neutralino.js api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:48:51,761 Unable to open ./neutralino.jsUnable to open ./bundle.js api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:48:51,761 Unable to open ./neutralino.jsUnable to open ./bundle.js api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:49:48,990 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:50:02,074 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:50:07,525 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:50:14,149 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:50:49,089 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:50:58,425 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:51:11,525 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host
+ERROR 2021-09-10 10:51:32,442 Unable to open ./icons/trayIcon.png api/debug/debug.cpp:14 gilbert@unknown-host

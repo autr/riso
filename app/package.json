@@ -5,7 +5,8 @@
         "menubar": "^9.0.5"
     },
     "scripts": {
-        "dev": "NODE_ENV=development electron ./electron.js",
-        "start": "NODE_ENV=production electron ./electron.js"
+        "electron-dev": "NODE_ENV=development electron ./electron.js",
+        "electron-start": "NODE_ENV=production electron ./electron.js",
+        "neutralino": "neu run"
     }
 }

@@ -9,7 +9,8 @@
     "dev": "rollup -c -w & pnpm run sass-dev",
     "electron": "cd app && pnpm run dev",
     "start": "sirv app --no-clear",
-    "minify": "cp -Rv app/ web/ && rm web/bundle.js.map && rm -rf web/node_modules && minify web/bundle.js && minify web/app.css"
+    "minify": "cp -Rv app/ web/ && rm web/bundle.js.map && rm -rf web/node_modules && minify web/bundle.js && minify web/app.css",
+    "neutralino": "neu run"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^17.0.0",
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "@pixi/picture": "^3.0.1",
+    "changedpi": "^1.0.4",
     "client-zip": "^2.0.0",
     "color": "^3.1.3",
     "color-string": "^1.5.5",
