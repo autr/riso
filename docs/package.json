@@ -1,0 +1,12 @@
+{
+    "main": "electron.js",
+    "devDependencies": {
+        "electron": "^15.0.0-alpha.6",
+        "menubar": "^9.0.5"
+    },
+    "scripts": {
+        "electron-dev": "NODE_ENV=development electron ./electron.js",
+        "electron-start": "NODE_ENV=production electron ./electron.js",
+        "neutralino": "neu run"
+    }
+}
